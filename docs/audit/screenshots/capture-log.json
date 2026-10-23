@@ -1,0 +1,236 @@
+[
+  {
+    "viewport": "desktop",
+    "shot": "home",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "desktop",
+    "shot": "home-expanded",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "desktop",
+    "shot": "directory",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "desktop",
+    "shot": "directory-peek-select",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "desktop",
+    "shot": "directory-stance-menu",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "desktop",
+    "shot": "directory-empty",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "desktop",
+    "shot": "map-network",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "desktop",
+    "shot": "map-selected",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "desktop",
+    "shot": "map-influence",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "desktop",
+    "shot": "map-gaps",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "desktop",
+    "shot": "map-list",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "desktop",
+    "shot": "profile",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "desktop",
+    "shot": "profile-citation",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "desktop",
+    "shot": "profile-relationships",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "desktop",
+    "shot": "profile-commitments",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "desktop",
+    "shot": "meeting",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "desktop",
+    "shot": "meeting-progress",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "desktop",
+    "shot": "palette",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "desktop",
+    "shot": "palette-shortcuts",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "desktop",
+    "shot": "placeholder-section",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "desktop",
+    "shot": "not-found-person",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "desktop",
+    "shot": "not-found-engagement",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "mobile",
+    "shot": "home",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "mobile",
+    "shot": "home-expanded",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "mobile",
+    "shot": "directory",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "mobile",
+    "shot": "directory-peek-select",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "mobile",
+    "shot": "directory-empty",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "mobile",
+    "shot": "map-network",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "mobile",
+    "shot": "map-selected",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "mobile",
+    "shot": "map-influence",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "mobile",
+    "shot": "profile",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "mobile",
+    "shot": "profile-relationships",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "mobile",
+    "shot": "profile-commitments",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "mobile",
+    "shot": "meeting",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "mobile",
+    "shot": "meeting-progress",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "mobile",
+    "shot": "palette",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "mobile",
+    "shot": "placeholder-section",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "mobile",
+    "shot": "not-found-person",
+    "errors": [],
+    "overflowX": false
+  },
+  {
+    "viewport": "mobile",
+    "shot": "not-found-engagement",
+    "errors": [],
+    "overflowX": false
+  }
+]

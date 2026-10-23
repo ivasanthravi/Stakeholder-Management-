@@ -1,0 +1,31 @@
+.auth { min-height: 100vh; display: grid; grid-template-columns: minmax(320px, 0.9fr) 1.1fr; background: var(--bg-canvas); overflow-y: auto; height: 100vh; }
+.auth-brand { position: relative; display: flex; flex-direction: column; justify-content: space-between; padding: 36px 44px 44px; background: var(--slate-900); color: #fff; overflow: hidden; }
+.auth-mark { display: flex; align-items: center; gap: 10px; font: 600 15px/20px var(--font-sans); letter-spacing: -0.01em; }
+.auth-quote { position: relative; z-index: 1; font: 400 34px/42px var(--font-serif); letter-spacing: -0.01em; color: rgb(255 255 255 / .92); max-width: 12ch; }
+/* The meridian: a single reference line, the only ornament. */
+.auth-line { position: absolute; top: 0; bottom: 0; left: 62%; width: 1px; background: linear-gradient(to bottom, transparent, var(--teal-400) 30%, var(--teal-400) 70%, transparent); opacity: .55; }
+.auth-main { display: grid; place-items: center; padding: 48px 24px; }
+.auth-card { width: min(400px, 100%); display: flex; flex-direction: column; gap: 18px; }
+.auth-sub { margin-top: -8px; font: var(--text-body); font-size: 14px; }
+.auth-form { display: flex; flex-direction: column; gap: 16px; }
+.auth-form .input { height: 36px; }
+.auth-submit { height: 36px; margin-top: 4px; }
+.auth-alt { font: var(--text-small); }
+.auth-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: var(--accent-subtle); color: var(--accent); }
+.notice { color: var(--amber-700); }
+.notice-box { background: var(--attention-subtle); color: var(--amber-700); box-shadow: inset 0 0 0 1px var(--amber-100); }
+.notice-box .inline-link { color: inherit; }
+.auth-invites { display: flex; flex-direction: column; gap: 6px; padding-top: 14px; border-top: 1px solid var(--border-soft); }
+.auth-invite { display: flex; align-items: center; gap: 8px; font: var(--text-small); }
+.devmail { display: flex; flex-direction: column; gap: 10px; }
+.devmail li { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: var(--radius-md); background: var(--bg-surface); box-shadow: 0 0 0 1px var(--border); min-width: 0; }
+button.inline-link { font: inherit; }
+@media (max-width: 860px) {
+  .auth { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .auth-brand { flex-direction: row; align-items: center; }
+  .auth-quote { display: none; }
+  .auth-brand { padding: 20px 20px 22px; gap: 14px; }
+  .auth-quote { font-size: 22px; line-height: 28px; max-width: none; }
+  .auth-line { display: none; }
+  .auth-main { place-items: start center; padding: 28px 16px; }
+}

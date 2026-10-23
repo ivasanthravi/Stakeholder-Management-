@@ -1,0 +1,276 @@
+import { Hono } from 'hono'
+import { and, desc, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm'
+import {
+  activityEvent, commitment, decision, decisionStakeholder, engagement, engagementParticipant, initiative, initiativeStakeholder,
+  membership, organization, stakeholder, stakeholderAccess, stakeholderOrganization, user,
+} from '../db/schema'
+import type { Tx } from '../db/client'
+import { jsonBody, patchBody, meta, need, query, tx, type AppEnv, type Ctx } from '../context'
+import { ApiError } from '../http'
+import { diff, recordActivity, recordAudit } from '../history'
+import { csv, getOr404, rowsOf, STANCE_LABEL, versionedUpdate } from './_shared'
+import { buildBriefing } from './briefing'
+import { associationCreateSchema, associationEndSchema, stakeholderCreateSchema, stakeholderListQuerySchema, stakeholderUpdateSchema } from '../../shared/schemas'
+import { z } from 'zod'
+
+const WEEK = 7 * 86_400_000
+
+/** Owners must be members of this workspace (user ids are global, so this is checked explicitly). */
+export async function assertMember(t: Tx, userId: string | null | undefined) {
+  if (!userId) return
+  const m = await t.select({ id: membership.id }).from(membership).where(and(eq(membership.userId, userId), isNull(membership.removedAt))).limit(1)
+  if (!m[0]) throw new ApiError(422, 'invalid', 'Owner must be a member of this workspace', { fields: { ownerId: 'Not a member of this workspace' } })
+}
+
+/** Weekly engagement counts (oldest → newest) for a set of stakeholders. */
+export async function weeklySeries(t: Tx, ids: string[], weeks: number) {
+  const out = new Map<string, number[]>()
+  if (!ids.length) return out
+  const since = new Date(Date.now() - weeks * WEEK)
+  const rows = await t.select({ sid: engagementParticipant.stakeholderId, at: engagement.occurredAt })
+    .from(engagementParticipant).innerJoin(engagement, eq(engagement.id, engagementParticipant.engagementId))
+    .where(and(inArray(engagementParticipant.stakeholderId, ids), gte(engagement.occurredAt, since), isNull(engagement.archivedAt)))
+  const now = Date.now()
+  for (const r of rows) {
+    const w = Math.floor((now - r.at.getTime()) / WEEK)
+    if (w < 0 || w >= weeks) continue
+    let a = out.get(r.sid); if (!a) out.set(r.sid, a = new Array(weeks).fill(0))
+    a[weeks - 1 - w]++
+  }
+  return out
+}
+
+const SORTS: Record<string, string> = {
+  name: 'lower(name)', influence: 'coalesce(influence, 0) * 10 + coalesce(interest, 0)', last: 'last_engaged_at',
+  open: 'open_commitments', updated: 'updated_at', stance: `array_position(array['opposed','concerned','neutral','supporter','champion','unknown'], stance)`,
+}
+
+export const stakeholderRoutes = new Hono<AppEnv>()
+  .get('/', async c => {
+    const q = query(c, stakeholderListQuerySchema)
+    const stances = csv(q.stance)
+    const sortExpr = SORTS[q.sort ?? 'influence'] ?? SORTS.influence
+    const dir = q.sort ? (q.dir === 'desc' ? 'desc' : 'asc') : 'desc'
+    const result = await tx(c, async t => {
+      const filters = [
+        q.archived === 'true' ? sql`s.archived_at is not null` : sql`s.archived_at is null`,
+        q.q ? sql`(s.name ilike ${'%' + q.q + '%'} or s.title ilike ${'%' + q.q + '%'} or s.email ilike ${'%' + q.q + '%'}
+          or exists (select 1 from stakeholder_organization so join organization o on o.id = so.organization_id
+            where so.stakeholder_id = s.id and so.valid_to is null and o.name ilike ${'%' + q.q + '%'}))` : undefined,
+        stances.length ? sql`s.stance in (${sql.join(stances.map(x => sql`${x}`), sql`, `)})` : undefined,
+        q.minInfluence ? sql`s.influence >= ${q.minInfluence}` : undefined,
+        q.initiativeId ? sql`exists (select 1 from initiative_stakeholder i where i.stakeholder_id = s.id and i.initiative_id = ${q.initiativeId})` : undefined,
+        q.organizationId ? sql`exists (select 1 from stakeholder_organization so where so.stakeholder_id = s.id and so.organization_id = ${q.organizationId} and so.valid_to is null)` : undefined,
+        q.ownerId ? sql`s.owner_id = ${q.ownerId}` : undefined,
+      ].filter(Boolean)
+      const res = await t.execute(sql`
+        with last as (
+          select ep.stakeholder_id as sid, max(e.occurred_at) as at
+          from engagement_participant ep join engagement e on e.id = ep.engagement_id
+          where e.archived_at is null group by ep.stakeholder_id
+        ), openc as (
+          select stakeholder_id as sid, count(*)::int as n from commitment
+          where status in ('open', 'in_progress') and archived_at is null and stakeholder_id is not null group by stakeholder_id
+        ), prim as (
+          select distinct on (so.stakeholder_id) so.stakeholder_id as sid, json_build_object('id', o.id, 'name', o.name, 'shortName', o.short_name) as org
+          from stakeholder_organization so join organization o on o.id = so.organization_id
+          where so.valid_to is null order by so.stakeholder_id, so.is_primary desc, so.created_at
+        ), base as (
+          select s.id, s.name, s.title, s.email, s.stance, s.influence, s.interest, s.engagement_status, s.tags, s.owner_id,
+            s.restricted, s.version, s.updated_at, u.name as owner_name, prim.org as primary_org,
+            last.at as last_engaged_at, coalesce(openc.n, 0) as open_commitments
+          from stakeholder s left join "user" u on u.id = s.owner_id
+            left join last on last.sid = s.id left join openc on openc.sid = s.id left join prim on prim.sid = s.id
+        where ${sql.join(filters as never[], sql` and `)}
+        )
+        select *, count(*) over ()::int as total from base
+        ${q.cold === 'true' ? sql`where last_engaged_at is null or last_engaged_at < now() - interval '60 days'` : sql``}
+        order by ${sql.raw(sortExpr)} ${sql.raw(dir)} nulls last, lower(name) asc, id asc
+        limit ${q.limit} offset ${q.offset}`)
+      const rows = rowsOf<Record<string, unknown>>(res)
+      const series = await weeklySeries(t, rows.map(r => r.id as string), 26)
+      return {
+        total: (rows[0]?.total as number | undefined) ?? 0,
+        items: rows.map(r => ({
+          id: r.id, name: r.name, title: r.title, email: r.email, stance: r.stance, influence: r.influence, interest: r.interest,
+          engagementStatus: r.engagement_status, tags: r.tags, ownerId: r.owner_id, ownerName: r.owner_name, restricted: r.restricted,
+          version: r.version, updatedAt: r.updated_at, primaryOrg: r.primary_org, lastEngagedAt: r.last_engaged_at,
+          openCommitments: r.open_commitments, series: series.get(r.id as string) ?? new Array(26).fill(0),
+        })),
+      }
+    })
+    return c.json(result)
+  })
+
+  .post('/', async c => {
+    need(c, 'stakeholder.create')
+    const input = await jsonBody(c, stakeholderCreateSchema)
+    const tn = c.var.tenant
+    const created = await tx(c, async t => {
+      await assertMember(t, input.ownerId)
+      const { organizations, initiativeIds, ...fields } = input
+      const [s] = await t.insert(stakeholder).values({ ...fields, workspaceId: tn.workspaceId, createdBy: tn.userId, updatedBy: tn.userId }).returning()
+      if (organizations.length) {
+        await t.insert(stakeholderOrganization).values(organizations.map((o, i) => ({
+          workspaceId: tn.workspaceId, stakeholderId: s.id, organizationId: o.organizationId, role: o.role, isPrimary: o.isPrimary || i === 0,
+          validFrom: o.validFrom ?? null, createdBy: tn.userId, updatedBy: tn.userId,
+        })))
+      }
+      if (initiativeIds.length) {
+        await t.insert(initiativeStakeholder).values(initiativeIds.map(id => ({ workspaceId: tn.workspaceId, initiativeId: id, stakeholderId: s.id, createdBy: tn.userId })))
+      }
+      await recordActivity(t, tn, { entityType: 'stakeholder', entityId: s.id, verb: 'created', summary: `Added ${s.name}` })
+      return s
+    })
+    return c.json(await tx(c, t => detail(t, created.id)), 201)
+  })
+
+  .get('/:id', async c => c.json(await tx(c, t => detail(t, c.req.param('id')))))
+
+  .patch('/:id', async c => {
+    const input = await patchBody(c, stakeholderUpdateSchema)
+    const tn = c.var.tenant
+    need(c, 'stakeholder.update')
+    if (input.restricted !== undefined) need(c, 'stakeholder.restrict')
+    await tx(c, async t => {
+      const before = await getOr404(t, stakeholder, c.req.param('id'), 'Stakeholder', isNull(stakeholder.archivedAt))
+      if (input.ownerId !== undefined) await assertMember(t, input.ownerId)
+      const { version, ...patch } = input
+      const after = await versionedUpdate(t, stakeholder, before.id as string, version, patch, tn.userId)
+      const changes = diff(before, after, Object.keys(patch))
+      if (changes.stance) {
+        await recordActivity(t, tn, { entityType: 'stakeholder', entityId: before.id as string, verb: 'stance_changed', summary: `Stance changed from ${STANCE_LABEL[changes.stance.from as string]} to ${STANCE_LABEL[changes.stance.to as string]}`, changes: { stance: changes.stance } })
+        delete changes.stance
+      }
+      if (Object.keys(changes).length) await recordActivity(t, tn, { entityType: 'stakeholder', entityId: before.id as string, verb: 'updated', summary: `Updated ${Object.keys(changes).join(', ')}`, changes })
+      if (input.restricted !== undefined && input.restricted !== before.restricted) {
+        await recordAudit(t, { workspaceId: tn.workspaceId, actorId: tn.userId, action: input.restricted ? 'stakeholder.restricted' : 'stakeholder.unrestricted', entityType: 'stakeholder', entityId: before.id as string }, meta(c))
+      }
+    })
+    return c.json(await tx(c, t => detail(t, c.req.param('id'))))
+  })
+
+  .post('/:id/archive', async c => archiveToggle(c, true))
+  .post('/:id/restore', async c => archiveToggle(c, false))
+
+  .post('/:id/organizations', async c => {
+    need(c, 'stakeholder.update')
+    const input = await jsonBody(c, associationCreateSchema)
+    const tn = c.var.tenant
+    await tx(c, async t => {
+      const s = await getOr404(t, stakeholder, c.req.param('id'), 'Stakeholder')
+      const org = await getOr404(t, organization, input.organizationId, 'Organization')
+      if (input.isPrimary) await t.update(stakeholderOrganization).set({ isPrimary: false }).where(eq(stakeholderOrganization.stakeholderId, s.id as string))
+      await t.insert(stakeholderOrganization).values({ workspaceId: tn.workspaceId, stakeholderId: s.id as string, organizationId: input.organizationId, role: input.role, isPrimary: input.isPrimary, validFrom: input.validFrom ?? null, createdBy: tn.userId, updatedBy: tn.userId })
+      await recordActivity(t, tn, { entityType: 'stakeholder', entityId: s.id as string, verb: 'organization_added', summary: `Associated with ${org.name}${input.role ? ` as ${input.role}` : ''}` })
+    })
+    return c.json(await tx(c, t => detail(t, c.req.param('id'))), 201)
+  })
+
+  /** Ending an association keeps it as history (valid_to) rather than deleting it. */
+  .post('/:id/organizations/:assocId/end', async c => {
+    need(c, 'stakeholder.update')
+    const input = await jsonBody(c, associationEndSchema)
+    const tn = c.var.tenant
+    await tx(c, async t => {
+      const a = await getOr404(t, stakeholderOrganization, c.req.param('assocId'), 'Association', eq(stakeholderOrganization.stakeholderId, c.req.param('id')))
+      if (a.validTo) throw new ApiError(409, 'conflict', 'This association has already ended')
+      await t.update(stakeholderOrganization).set({ validTo: input.validTo, isPrimary: false, updatedAt: new Date(), updatedBy: tn.userId }).where(eq(stakeholderOrganization.id, a.id as string))
+      const [org] = await t.select({ name: organization.name }).from(organization).where(eq(organization.id, a.organizationId as string))
+      await recordActivity(t, tn, { entityType: 'stakeholder', entityId: c.req.param('id'), verb: 'organization_ended', summary: `Left ${org?.name ?? 'organization'}` })
+    })
+    return c.json(await tx(c, t => detail(t, c.req.param('id'))))
+  })
+
+  .put('/:id/access', async c => {
+    need(c, 'stakeholder.restrict')
+    const { userIds } = await jsonBody(c, z.object({ userIds: z.array(z.string().min(1)).max(200) }))
+    const tn = c.var.tenant
+    await tx(c, async t => {
+      await getOr404(t, stakeholder, c.req.param('id'), 'Stakeholder')
+      for (const u of userIds) await assertMember(t, u)
+      await t.delete(stakeholderAccess).where(eq(stakeholderAccess.stakeholderId, c.req.param('id')))
+      if (userIds.length) await t.insert(stakeholderAccess).values(userIds.map(userId => ({ workspaceId: tn.workspaceId, stakeholderId: c.req.param('id'), userId })))
+      await recordAudit(t, { workspaceId: tn.workspaceId, actorId: tn.userId, action: 'stakeholder.access_changed', entityType: 'stakeholder', entityId: c.req.param('id'), metadata: { count: userIds.length } }, meta(c))
+    })
+    return c.json({ ok: true })
+  })
+
+  .get('/:id/activity', async c => {
+    const before = Number(c.req.query('before')) || undefined
+    const rows = await tx(c, async t => {
+      await getOr404(t, stakeholder, c.req.param('id'), 'Stakeholder')
+      return t.select({ id: activityEvent.id, verb: activityEvent.verb, summary: activityEvent.summary, changes: activityEvent.changes, createdAt: activityEvent.createdAt, actor: user.name })
+        .from(activityEvent).leftJoin(user, eq(user.id, activityEvent.actorId))
+        .where(and(eq(activityEvent.entityType, 'stakeholder'), eq(activityEvent.entityId, c.req.param('id')), before ? lt(activityEvent.id, before) : undefined))
+        .orderBy(desc(activityEvent.id)).limit(50)
+    })
+    return c.json({ events: rows, next: rows.length === 50 ? rows[rows.length - 1].id : null })
+  })
+
+  /** Everything the profile workspace needs in one round trip. */
+  .get('/:id/overview', async c => c.json(await tx(c, t => overview(t, c.req.param('id')))))
+
+async function archiveToggle(c: Ctx, archive: boolean) {
+  const id = c.req.param('id') ?? ''
+  need(c, 'stakeholder.archive')
+  const tn = c.var.tenant
+  await tx(c, async t => {
+    const s = await getOr404(t, stakeholder, id, 'Stakeholder')
+    if (!!s.archivedAt === archive) return
+    await t.update(stakeholder).set({ archivedAt: archive ? new Date() : null, updatedAt: new Date(), updatedBy: tn.userId, version: sql`${stakeholder.version} + 1` }).where(eq(stakeholder.id, s.id as string))
+    await recordActivity(t, tn, { entityType: 'stakeholder', entityId: s.id as string, verb: archive ? 'archived' : 'restored', summary: `${archive ? 'Archived' : 'Restored'} ${s.name}` })
+  })
+  return c.json(await tx(c, t => detail(t, id)))
+}
+
+export async function detail(t: Tx, id: string) {
+  const s = await getOr404(t, stakeholder, id, 'Stakeholder')
+  const owner = s.ownerId ? (await t.select({ id: user.id, name: user.name, email: user.email }).from(user).where(eq(user.id, s.ownerId as string)))[0] ?? null : null
+  const organizations = await t.select({
+    id: stakeholderOrganization.id, organizationId: organization.id, name: organization.name, shortName: organization.shortName, type: organization.type,
+    role: stakeholderOrganization.role, isPrimary: stakeholderOrganization.isPrimary, validFrom: stakeholderOrganization.validFrom, validTo: stakeholderOrganization.validTo,
+  }).from(stakeholderOrganization).innerJoin(organization, eq(organization.id, stakeholderOrganization.organizationId))
+    .where(eq(stakeholderOrganization.stakeholderId, id))
+    .orderBy(sql`${stakeholderOrganization.validTo} is not null`, desc(stakeholderOrganization.isPrimary), desc(stakeholderOrganization.createdAt))
+  const initiatives = await t.select({ id: initiative.id, code: initiative.code, name: initiative.name, role: initiativeStakeholder.role })
+    .from(initiativeStakeholder).innerJoin(initiative, eq(initiative.id, initiativeStakeholder.initiativeId))
+    .where(and(eq(initiativeStakeholder.stakeholderId, id), isNull(initiative.archivedAt))).orderBy(initiative.code)
+  const access = s.restricted ? await t.select({ userId: stakeholderAccess.userId, name: user.name }).from(stakeholderAccess).leftJoin(user, eq(user.id, stakeholderAccess.userId)).where(eq(stakeholderAccess.stakeholderId, id)) : []
+  return { ...s, owner, organizations, initiatives, access }
+}
+
+async function overview(t: Tx, id: string) {
+  const s = await detail(t, id)
+  const engagements = await t.select({ id: engagement.id, key: engagement.key, kind: engagement.kind, title: engagement.title, occurredAt: engagement.occurredAt, summary: engagement.summary, initiativeId: engagement.initiativeId })
+    .from(engagementParticipant).innerJoin(engagement, eq(engagement.id, engagementParticipant.engagementId))
+    .where(and(eq(engagementParticipant.stakeholderId, id), isNull(engagement.archivedAt)))
+    .orderBy(desc(engagement.occurredAt)).limit(200)
+  const commitments = await t.select({ id: commitment.id, key: commitment.key, title: commitment.title, status: commitment.status, dueDate: commitment.dueDate, direction: commitment.direction, ownerId: commitment.ownerId, ownerName: user.name, version: commitment.version, sourceEngagementId: commitment.sourceEngagementId })
+    .from(commitment).leftJoin(user, eq(user.id, commitment.ownerId))
+    .where(and(eq(commitment.stakeholderId, id), isNull(commitment.archivedAt))).orderBy(commitment.dueDate)
+  const decisions = await t.select({ id: decision.id, key: decision.key, title: decision.title, status: decision.status, dueDate: decision.dueDate, role: decisionStakeholder.role, initiativeId: decision.initiativeId })
+    .from(decisionStakeholder).innerJoin(decision, eq(decision.id, decisionStakeholder.decisionId))
+    .where(and(eq(decisionStakeholder.stakeholderId, id), isNull(decision.archivedAt))).orderBy(desc(decision.createdAt))
+  const relRows = rowsOf<Record<string, unknown>>(await t.execute(sql`
+    select r.id, r.type, r.directed, r.strength, r.status, r.description, r.version,
+      case when r.source_stakeholder_id = ${id} then 'out' else 'in' end as direction,
+      coalesce(case when r.source_stakeholder_id = ${id} then r.target_stakeholder_id else r.source_stakeholder_id end,
+               case when r.source_stakeholder_id = ${id} then r.target_organization_id else r.source_organization_id end) as other_id,
+      case when coalesce(case when r.source_stakeholder_id = ${id} then r.target_stakeholder_id else r.source_stakeholder_id end, null) is not null then 'stakeholder' else 'organization' end as other_kind
+    from relationship r
+    where r.archived_at is null and (r.source_stakeholder_id = ${id} or r.target_stakeholder_id = ${id})`))
+  const otherS = relRows.filter(r => r.other_kind === 'stakeholder').map(r => r.other_id as string)
+  const otherO = relRows.filter(r => r.other_kind === 'organization').map(r => r.other_id as string)
+  const people = otherS.length ? await t.select({ id: stakeholder.id, name: stakeholder.name, stance: stakeholder.stance, influence: stakeholder.influence, title: stakeholder.title }).from(stakeholder).where(inArray(stakeholder.id, otherS)) : []
+  const orgs = otherO.length ? await t.select({ id: organization.id, name: organization.name, shortName: organization.shortName }).from(organization).where(inArray(organization.id, otherO)) : []
+  // Relationships to records the viewer cannot see (restricted) are omitted entirely.
+  const relationships = relRows.map(r => {
+    const other = r.other_kind === 'stakeholder' ? people.find(p => p.id === r.other_id) : orgs.find(o => o.id === r.other_id)
+    return other ? { id: r.id, type: r.type, directed: r.directed, strength: r.strength, status: r.status, description: r.description, version: r.version, direction: r.direction, otherKind: r.other_kind, other } : null
+  }).filter(Boolean)
+  const series = (await weeklySeries(t, [id], 52)).get(id) ?? new Array(52).fill(0)
+  const briefing = buildBriefing({ s: s as never, engagements, commitments, decisions, relationships: relationships as never[] })
+  return { stakeholder: s, engagements, engagementTotal: engagements.length, commitments, decisions, relationships, series, briefing }
+}
+

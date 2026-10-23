@@ -1,0 +1,404 @@
+import { AnimatePresence, LayoutGroup, motion } from 'motion/react'
+import { useMemo, useState, type ReactNode } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { AlertCircle, ArrowRight, ArrowUpRight, Building2, Check, Clock, EyeOff, Gavel, MessagesSquare, Plus, RotateCw, Target, TrendingDown, UserX, Users } from 'lucide-react'
+import { useDashboard, useInvalidate } from '../api/hooks'
+import { errorMessage, request, ws } from '../api/http'
+import type { Dashboard, Signal } from '../api/types'
+import { useSession } from '../session/session'
+import { Avatar, Button, Kbd, Pill, Skeleton, StanceBadge } from '../components/ui'
+import { useApp } from '../shell/context'
+import { useHotkeys } from '../lib/hotkeys'
+import { t } from '../lib/motion'
+import { daysFromToday, DECISION_STATUS_LABEL, ENGAGEMENT_KIND_LABEL, fmtDate, fmtRelative, STANCE_LABEL } from '../lib/format'
+import './home/home.css'
+
+const KIND_META: Record<Signal['kind'], { label: string; icon: typeof Clock }> = {
+  overdue: { label: 'Overdue', icon: AlertCircle },
+  'due-soon': { label: 'Due soon', icon: Clock },
+  'decision-waiting': { label: 'Decision waiting', icon: Gavel },
+  cooling: { label: 'Cooling', icon: TrendingDown },
+  unowned: { label: 'No owner', icon: UserX },
+  'stance-shift': { label: 'Stance shift', icon: TrendingDown },
+}
+const FILTERS = [
+  { id: 'all', label: 'All' },
+  { id: 'commitments', label: 'Commitments', kinds: ['overdue', 'due-soon'] },
+  { id: 'decisions', label: 'Decisions', kinds: ['decision-waiting'] },
+  { id: 'relationships', label: 'Relationships', kinds: ['cooling', 'unowned', 'stance-shift'] },
+] as const
+
+export function Home() {
+  const dash = useDashboard()
+  const { me, workspace } = useSession()
+  const first = me?.user.name.split(' ')[0]
+  const hour = new Date().getHours()
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
+  const [scope, setScope] = useState<'team' | 'mine'>('team')
+
+  return (
+    <>
+      <header className="page-head">
+        <div className="crumbs"><span className="here">Home</span></div>
+        <span className="t-small c3">{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+        <span className="grow" />
+        <LayoutGroup id="scope">
+          <div className="seg" role="radiogroup" aria-label="Scope">
+            {(['team', 'mine'] as const).map(v => (
+              <button key={v} role="radio" aria-checked={scope === v} className="seg-btn" onClick={() => setScope(v)}>
+                {scope === v && <motion.span layoutId="scope-on" className="seg-on" transition={t.indicator} />}
+                <span>{v === 'team' ? 'Team' : 'Assigned to me'}</span>
+              </button>
+            ))}
+          </div>
+        </LayoutGroup>
+      </header>
+      <div className="home-scroll">
+        <div className="home">
+          <div className="home-intro">
+            <h1 className="t-title">{greeting}, {first}</h1>
+            <p className="c2">{dash.data ? <Summary d={dash.data} scope={scope} /> : dash.isError ? 'We couldn’t load your workspace summary.' : <Skeleton w={360} h={12} />}</p>
+          </div>
+          {dash.isError ? <LoadError error={dash.error} onRetry={() => dash.refetch()} />
+            : dash.data && dash.data.stakeholders.total === 0 ? <EmptyWorkspace name={workspace?.name ?? ''} />
+            : <HomeGrid d={dash.data} scope={scope} />}
+        </div>
+      </div>
+    </>
+  )
+}
+
+function Summary({ d, scope }: { d: Dashboard; scope: 'team' | 'mine' }) {
+  const s = d.signals.filter(x => scope === 'team' || x.ownerId === d.me)
+  const od = s.filter(x => x.kind === 'overdue').length, dw = s.filter(x => x.kind === 'decision-waiting').length, cool = s.filter(x => x.kind === 'cooling').length
+  const parts = [od && `${od} overdue commitment${od > 1 ? 's' : ''}`, dw && `${dw} decision${dw > 1 ? 's' : ''} waiting`, cool && `${cool} key relationship${cool > 1 ? 's' : ''} cooling`].filter(Boolean) as string[]
+  const n = d.initiatives.length
+  if (!parts.length) return <>Nothing is slipping across {n} initiative{n === 1 ? '' : 's'}.</>
+  const last = parts.pop()
+  return <>{parts.length ? `${parts.join(', ')} and ${last}` : last} across {n} initiative{n === 1 ? '' : 's'}.</>
+}
+
+export function LoadError({ error, onRetry }: { error: unknown; onRetry: () => void }) {
+  return (
+    <div className="load-error" role="alert">
+      <AlertCircle size={18} />
+      <div className="grow"><p className="t-strong">Couldn’t load this</p><p className="c2 t-small">{errorMessage(error)}</p></div>
+      <Button size="sm" icon={<RotateCw size={13} />} onClick={onRetry}>Retry</Button>
+    </div>
+  )
+}
+
+function EmptyWorkspace({ name }: { name: string }) {
+  const { openCreate } = useApp()
+  const { can } = useSession()
+  const steps = [
+    { label: 'Add an organization', sub: 'Councils, companies, agencies, community groups.', icon: Building2, kind: 'organization' as const, allowed: can('organization.create') },
+    { label: 'Add your first stakeholders', sub: 'The people whose support or approval you need.', icon: Users, kind: 'stakeholder' as const, allowed: can('stakeholder.create') },
+    { label: 'Create an initiative', sub: 'The project or programme they’re connected to.', icon: Target, kind: 'initiative' as const, allowed: can('initiative.create') },
+    { label: 'Log an engagement', sub: 'Meetings and calls become your evidence trail.', icon: MessagesSquare, kind: 'engagement' as const, allowed: can('engagement.create') },
+  ]
+  return (
+    <motion.section className="empty-ws" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0, transition: t.slow }}>
+      <h2 className="t-heading">{name} is ready</h2>
+      <p className="c2">Home fills with commitments that are slipping, decisions waiting and relationships going quiet — all from what you record. Start here:</p>
+      <ol className="empty-steps">
+        {steps.map((s, i) => (
+          <li key={s.kind}>
+            <span className="empty-num num">{i + 1}</span>
+            <s.icon size={16} className="c3" />
+            <span className="grow"><span className="t-strong">{s.label}</span><span className="c2 t-small" style={{ display: 'block' }}>{s.sub}</span></span>
+            {s.allowed ? <Button size="sm" icon={<Plus size={13} />} onClick={() => openCreate(s.kind)}>{s.label.split(' ')[0]}</Button> : <span className="t-small c3">Ask an admin</span>}
+          </li>
+        ))}
+      </ol>
+    </motion.section>
+  )
+}
+
+function HomeGrid({ d, scope }: { d?: Dashboard; scope: 'team' | 'mine' }) {
+  const [filter, setFilter] = useState<typeof FILTERS[number]['id']>('all')
+  const [hidden, setHidden] = useState<Set<string>>(new Set())
+  const [open, setOpen] = useState<string | null>(null)
+  const [focus, setFocus] = useState(0)
+  const [busy, setBusy] = useState<string | null>(null)
+  const { toast } = useApp()
+  const { can } = useSession()
+  const invalidate = useInvalidate()
+  const nav = useNavigate()
+
+  const scoped = useMemo(() => (d?.signals ?? []).filter(x => !hidden.has(x.id) && (scope === 'team' || x.ownerId === d?.me)), [d, hidden, scope])
+  const f = FILTERS.find(x => x.id === filter)!
+  const matching = scoped.filter(x => !('kinds' in f) || (f.kinds as readonly string[]).includes(x.kind))
+  const visible = matching.slice(0, 60)
+  const counts = Object.fromEntries(FILTERS.map(fl => [fl.id, scoped.filter(x => !('kinds' in fl) || (fl.kinds as readonly string[]).includes(x.kind)).length]))
+
+  const hide = (sig: Signal) => {
+    setHidden(h => new Set(h).add(sig.id))
+    toast('Hidden until you reload', () => setHidden(h => { const n = new Set(h); n.delete(sig.id); return n }))
+  }
+  const complete = async (sig: Signal) => {
+    if (!sig.commitmentId || !can('commitment.update') || busy) return
+    setBusy(sig.id)
+    try {
+      const r = await request<{ version: number; key: string }>(ws(`/commitments/${sig.commitmentId}`), { method: 'PATCH', body: { status: 'completed', version: sig.commitmentVersion } })
+      await invalidate()
+      toast(`${r.key} completed`, async () => {
+        try { await request(ws(`/commitments/${sig.commitmentId}`), { method: 'PATCH', body: { status: 'open', version: r.version } }); await invalidate() }
+        catch (e) { toast(errorMessage(e), undefined, 'error') }
+      })
+    } catch (e) { toast(errorMessage(e), undefined, 'error') } finally { setBusy(null) }
+  }
+
+  useHotkeys({
+    j: () => setFocus(i => Math.min(visible.length - 1, i + 1)),
+    k: () => setFocus(i => Math.max(0, i - 1)),
+    Enter: () => { const v = visible[focus]; if (v) setOpen(o => (o === v.id ? null : v.id)) },
+    e: () => { const v = visible[focus]; if (v) hide(v) },
+    d: () => { const v = visible[focus]; if (v?.commitmentId) void complete(v) },
+    o: () => { const v = visible[focus]; if (v?.stakeholder) nav(`/stakeholders/${v.stakeholder.id}`); else if (v?.decisionId) nav(`/decisions?open=${v.decisionId}`) },
+  }, [visible, focus])
+
+  return (
+    <div className="home-grid">
+      <section className="ledger" aria-labelledby="ledger-h">
+        <header className="ledger-head">
+          <h2 id="ledger-h" className="t-heading">Needs attention</h2>
+          <LayoutGroup id="ledger-filter">
+            <div className="ftabs" role="tablist">
+              {FILTERS.map(fl => (
+                <button key={fl.id} role="tab" aria-selected={filter === fl.id} className="ftab" onClick={() => { setFilter(fl.id); setFocus(0) }}>
+                  {filter === fl.id && <motion.span layoutId="ftab-on" className="ftab-on" transition={t.indicator} />}
+                  <span>{fl.label}</span>
+                  <span className="ftab-count num">{d ? counts[fl.id] : '·'}</span>
+                </button>
+              ))}
+            </div>
+          </LayoutGroup>
+        </header>
+        <ul className="ledger-list" role="list" aria-busy={!d || undefined}>
+          {!d ? Array.from({ length: 7 }, (_, i) => <li key={i} className="lrow"><div className="lrow-main"><Skeleton w={3} h={22} /><Skeleton w={96} h={10} /><span className="grow"><Skeleton w={`${50 + (i * 13) % 35}%`} h={11} /></span><Skeleton w={52} h={10} /></div></li>) : (
+            <AnimatePresence initial={false} mode="popLayout">
+              {visible.map((sig, i) => (
+                <LedgerRow key={sig.id} sig={sig} open={open === sig.id} focused={i === focus} busy={busy === sig.id} canComplete={can('commitment.update')}
+                  onToggle={() => { setFocus(i); setOpen(o => (o === sig.id ? null : sig.id)) }} onHide={() => hide(sig)} onComplete={() => void complete(sig)} />
+              ))}
+            </AnimatePresence>
+          )}
+          {d && visible.length === 0 && (
+            <motion.li className="ledger-empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              <Check size={18} />
+              <p className="t-heading">Nothing needs attention here</p>
+              <p className="c2 t-small">Items appear when commitments slip, decisions wait too long, or key relationships go quiet.</p>
+            </motion.li>
+          )}
+          {d && matching.length > visible.length && <li className="ledger-more t-small c2">Showing {visible.length} of {matching.length}. <Link className="inline-link" to="/commitments?view=overdue">See all overdue commitments</Link></li>}
+        </ul>
+        <footer className="ledger-foot t-small c3">
+          <span className="row gap-1"><Kbd>J</Kbd><Kbd>K</Kbd> move</span>
+          <span className="row gap-1"><Kbd>↵</Kbd> why</span>
+          <span className="row gap-1"><Kbd>D</Kbd> done</span>
+          <span className="row gap-1"><Kbd>E</Kbd> hide</span>
+          <span className="row gap-1"><Kbd>O</Kbd> open</span>
+          <span className="grow" />
+          <span>Rules over your records — not predictions</span>
+        </footer>
+      </section>
+
+      <aside className="home-rail">
+        <StakeholderOverview d={d} />
+        <Horizon d={d} scope={scope} />
+        <PendingDecisions d={d} />
+        <InitiativeActivity d={d} />
+        <RecentEngagements d={d} />
+      </aside>
+    </div>
+  )
+}
+
+function LedgerRow({ sig, open, focused, busy, canComplete, onToggle, onHide, onComplete }: { sig: Signal; open: boolean; focused: boolean; busy: boolean; canComplete: boolean; onToggle: () => void; onHide: () => void; onComplete: () => void }) {
+  const nav = useNavigate()
+  const meta = KIND_META[sig.kind]
+  const person = sig.stakeholder
+  const personKind = sig.kind === 'cooling' || sig.kind === 'unowned' || sig.kind === 'stance-shift'
+  return (
+    <motion.li layout="position" className="lrow" data-sev={sig.severity} data-open={open || undefined} data-focus={focused || undefined}
+      initial={{ opacity: 0 }} animate={{ opacity: 1, transition: t.fast }} exit={{ opacity: 0, x: 24, transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={t.base}>
+      <div className="lrow-main" onClick={onToggle}>
+        <span className="sev" role="img" aria-label={`Severity ${sig.severity} of 3`} />
+        <span className={`lkind lkind-${sig.kind}`}><meta.icon size={13} /><span className="lkind-label">{meta.label}</span></span>
+        <span className="lbody">
+          <span className="ltitle truncate">{personKind ? person?.name : sig.title}</span>
+          <span className="lreason truncate">{sig.reason}</span>
+        </span>
+        {person && !personKind && <span className="lperson" title={`Stakeholder: ${person.name}`}><Avatar name={person.name} size={18} /></span>}
+        {sig.initiativeCode && <span className="mono lcode">{sig.initiativeCode}</span>}
+        {sig.ownerName ? <span title={`Owner: ${sig.ownerName}`}><Avatar name={sig.ownerName} size={20} internal /></span> : <span className="lnone" title="No owner" />}
+        <span className="lactions" onClick={e => e.stopPropagation()}>
+          {sig.commitmentId && canComplete && <button className="icon-btn" onClick={onComplete} disabled={busy} title="Mark complete (D)" aria-label="Mark complete"><Check size={14} /></button>}
+          <button className="icon-btn" onClick={onHide} title="Hide until reload (E)" aria-label="Hide"><EyeOff size={13} /></button>
+          {person && <button className="icon-btn" onClick={() => nav(`/stakeholders/${person.id}`)} title="Open stakeholder (O)" aria-label="Open stakeholder"><ArrowUpRight size={14} /></button>}
+        </span>
+        <button className="lchev-btn" onClick={e => { e.stopPropagation(); onToggle() }} aria-expanded={open} aria-label={`Why this is here: ${sig.title}`}><ArrowRight size={13} className="lchev" /></button>
+      </div>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div className="lwhy" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1, transition: t.base }} exit={{ height: 0, opacity: 0, transition: t.exit }}>
+            <div className="lwhy-inner">
+              <div className="why-rule"><span className="t-caption c3">Why this is here</span><span>{sig.rule}</span></div>
+              {person && (
+                <div className="why-person">
+                  <Avatar name={person.name} size={22} /><span className="t-strong">{person.name}</span>
+                  {person.title && <span className="c2 t-small truncate">{person.title}</span>}<StanceBadge stance={person.stance} />
+                </div>
+              )}
+              {sig.evidence.length > 0 && (
+                <div className="why-ev">
+                  <span className="t-caption c3">Evidence</span>
+                  {sig.evidence.map(e => (
+                    <Link key={e.id} to={`/engagements/${e.id}`} className="ev"><span className="mono c3">{e.key}</span><span className="truncate grow">{e.title}</span><span className="c3 t-small num">{fmtRelative(e.occurredAt)}</span></Link>
+                  ))}
+                </div>
+              )}
+              <div className="why-actions">
+                {sig.commitmentId && canComplete && <Button size="sm" onClick={onComplete} loading={busy} icon={<Check size={13} />}>Mark complete</Button>}
+                {sig.decisionId && <Button size="sm" onClick={() => nav(`/decisions?open=${sig.decisionId}`)}>Open decision</Button>}
+                {person && <Button size="sm" variant="ghost" onClick={() => nav(`/stakeholders/${person.id}`)}>Open profile <ArrowRight size={13} /></Button>}
+                <span className="grow" />
+                <Button size="sm" variant="ghost" onClick={onHide} icon={<EyeOff size={13} />}>Hide</Button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.li>
+  )
+}
+
+function Card({ title, meta, children, loading }: { title: string; meta?: ReactNode; children: ReactNode; loading?: boolean }) {
+  return (
+    <section className="rcard" aria-busy={loading || undefined}>
+      <header className="rcard-head"><h2 className="t-heading">{title}</h2>{meta !== undefined && <span className="c3 t-small num">{meta}</span>}</header>
+      {loading ? <div className="rcard-skel"><Skeleton h={10} w="70%" /><Skeleton h={10} w="90%" /><Skeleton h={10} w="55%" /></div> : children}
+    </section>
+  )
+}
+
+const STANCE_ORDER = ['opposed', 'concerned', 'neutral', 'supporter', 'champion', 'unknown'] as const
+function StakeholderOverview({ d }: { d?: Dashboard }) {
+  const total = d?.stakeholders.total ?? 0
+  return (
+    <Card title="Stakeholders" meta={d ? `${total} active` : undefined} loading={!d}>
+      <Link to="/stakeholders" className="stance-bar" aria-label="Stance distribution — open stakeholders">
+        {STANCE_ORDER.map(s => { const n = d?.stakeholders.byStance[s] ?? 0; return n ? <i key={s} className={`sb-${s}`} style={{ flexGrow: n }} title={`${STANCE_LABEL[s]}: ${n}`} /> : null })}
+      </Link>
+      <div className="stance-legend">
+        {STANCE_ORDER.map(s => { const n = d?.stakeholders.byStance[s] ?? 0; return n ? <Link key={s} to={`/stakeholders?stance=${s}`} className="sl-item"><i className={`sb-${s}`} />{STANCE_LABEL[s]}<span className="num c3">{n}</span></Link> : null })}
+      </div>
+    </Card>
+  )
+}
+
+function Horizon({ d, scope }: { d?: Dashboard; scope: 'team' | 'mine' }) {
+  const nav = useNavigate()
+  const [hover, setHover] = useState<string | null>(null)
+  const W = 316, H = 112, PAST = 30, FUT = 30
+  const items = (d?.horizon ?? []).filter(c => scope === 'team' || c.ownerId === d?.me).map(c => ({ c, d: daysFromToday(c.dueDate) })).filter(x => x.d >= -PAST && x.d <= FUT)
+  const x = (v: number) => ((v + PAST) / (PAST + FUT)) * (W - 16) + 8
+  const stacks = new Map<number, number>()
+  const dots = items.sort((a, b) => a.d - b.d).map(it => { const b = Math.round(it.d / 2); const k = stacks.get(b) ?? 0; stacks.set(b, k + 1); return { ...it, cx: x(it.d), cy: Math.max(8, H - 22 - k * 9) } })
+  const od = items.filter(i => i.d < 0).length, wk = items.filter(i => i.d >= 0 && i.d <= 7).length, later = items.filter(i => i.d > 7).length
+  const h = dots.find(dd => dd.c.id === hover)
+  return (
+    <Card title="Commitment horizon" meta="±30 days" loading={!d}>
+      <div className="hz-stats">
+        <Link to="/commitments?view=overdue"><span className="hz-n num is-overdue">{od}</span><span className="t-caption c3">overdue</span></Link>
+        <Link to="/commitments?view=week"><span className="hz-n num hz-wk">{wk}</span><span className="t-caption c3">due this week</span></Link>
+        <Link to="/commitments"><span className="hz-n num">{later}</span><span className="t-caption c3">later</span></Link>
+      </div>
+      <svg width="100%" viewBox={`0 0 ${W} ${H}`} className="hz" role="img" aria-label={`${od} overdue, ${wk} due within 7 days, ${later} due later in the next 30 days`}>
+        <rect x={8} y={H - 14} width={x(0) - 8} height={1} className="hz-axis-past" />
+        <rect x={x(0)} y={H - 14} width={W - 8 - x(0)} height={1} className="hz-axis" />
+        {[-30, -14, 14, 30].map(v => <text key={v} x={x(v)} y={H - 2} textAnchor="middle" className="hz-tick">{v > 0 ? `+${v}d` : `${v}d`}</text>)}
+        <line x1={x(0)} x2={x(0)} y1={6} y2={H - 10} className="hz-today" />
+        <text x={x(0)} y={H - 2} textAnchor="middle" className="hz-tick hz-tick-today">Today</text>
+        {dots.map((dd, i) => (
+          <motion.circle key={dd.c.id} cx={dd.cx} cy={dd.cy} r={hover === dd.c.id ? 4.6 : 3.4} className={dd.d < 0 ? 'hz-dot od' : dd.d <= 7 ? 'hz-dot wk' : 'hz-dot'}
+            initial={{ opacity: 0, cy: H - 22 }} animate={{ opacity: 1, cy: dd.cy, transition: { duration: 0.3, delay: Math.min(i, 30) * 0.008, ease: [0.2, 0, 0, 1] } }}
+            onMouseEnter={() => setHover(dd.c.id)} onMouseLeave={() => setHover(null)}
+            onClick={() => nav(dd.c.stakeholderId ? `/stakeholders/${dd.c.stakeholderId}?tab=commitments` : `/commitments?open=${dd.c.id}`)} />
+        ))}
+      </svg>
+      <div className="hz-tip" aria-live="polite">
+        {h ? <><span className="mono c3">{h.c.key}</span><span className="truncate grow">{h.c.title}</span><span className={`num t-small ${h.d < 0 ? 'is-overdue' : 'c2'}`}>{fmtDate(h.c.dueDate)}</span></> : <span className="c3 t-small">{items.length ? 'Hover a commitment to inspect · click to open' : 'No open commitments due in this window'}</span>}
+      </div>
+    </Card>
+  )
+}
+
+function PendingDecisions({ d }: { d?: Dashboard }) {
+  const items = (d?.decisions ?? []).slice(0, 5)
+  return (
+    <Card title="Decisions in progress" meta={d ? d.decisions.length : undefined} loading={!d}>
+      {!items.length ? <p className="t-small c3">No decisions are waiting. <Link to="/decisions" className="inline-link">Decision register</Link></p> : (
+        <ul className="ap-list">
+          {items.map(x => {
+            const due = x.dueDate ? daysFromToday(x.dueDate) : null
+            return (
+              <li key={x.id}>
+                <Link className="ap" to={`/decisions?open=${x.id}`}>
+                  <span className="row gap-2"><span className="mono c3">{x.key}</span><span className="truncate grow t-strong">{x.title}</span></span>
+                  <span className="row gap-2 t-small">
+                    <Pill tone={x.status === 'under_review' ? 'attention' : 'neutral'}>{DECISION_STATUS_LABEL[x.status]}</Pill>
+                    {x.initiativeCode && <span className="mono lcode">{x.initiativeCode}</span>}
+                    <span className="grow" />
+                    <span className={`num ${due !== null && due < 0 ? 'is-overdue' : 'c3'}`}>{due === null ? `opened ${fmtRelative(x.createdAt)}` : due < 0 ? `${-due}d late` : `needed ${fmtDate(x.dueDate)}`}</span>
+                  </span>
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </Card>
+  )
+}
+
+function InitiativeActivity({ d }: { d?: Dashboard }) {
+  return (
+    <Card title="Initiatives" meta="key people engaged · 60 days" loading={!d}>
+      {!d?.initiatives.length ? <p className="t-small c3">No initiatives yet.</p> : (
+        <div className="cov">
+          {d.initiatives.map(r => {
+            const pct = r.keyTotal ? Math.round((r.keyEngaged / r.keyTotal) * 100) : 0
+            return (
+              <Link key={r.id} to={`/initiatives/${r.id}`} className="cov-row" title={`${r.engagements30} engagements in 30 days · ${r.openCommitments} open commitments · ${r.pendingDecisions} pending decisions`}>
+                <span className="mono cov-code">{r.code}</span>
+                <span className="cov-bar" aria-hidden>
+                  <motion.i initial={{ width: 0 }} animate={{ width: `${pct}%`, transition: { duration: 0.5, ease: [0.2, 0, 0, 1] } }} data-low={pct < 70 || undefined} />
+                  <span className="cov-target" style={{ left: '80%' }} />
+                </span>
+                <span className="num cov-n">{r.keyEngaged}/{r.keyTotal}</span>
+                <span className="num cov-p">{r.keyTotal ? `${pct}%` : '—'}</span>
+              </Link>
+            )
+          })}
+        </div>
+      )}
+      <p className="t-small c3 cov-note">High and very-high influence stakeholders. Marker at 80%.</p>
+    </Card>
+  )
+}
+
+function RecentEngagements({ d }: { d?: Dashboard }) {
+  return (
+    <Card title="Recent engagements" loading={!d}>
+      {!d?.recentEngagements.length ? <p className="t-small c3">Nothing logged yet.</p> : (
+        <ul className="chg">
+          {d.recentEngagements.slice(0, 5).map(e => (
+            <li key={e.id}><Link to={`/engagements/${e.id}`} className="chg-link"><span className="grow chg-txt"><span className="t-strong truncate">{e.title}</span><span className="c3 t-small">{ENGAGEMENT_KIND_LABEL[e.kind] ?? e.kind}{e.initiativeCode ? ` · ${e.initiativeCode}` : ''} · {e.participants} {e.participants === 1 ? 'person' : 'people'}</span></span><span className="c3 t-small num">{fmtRelative(e.occurredAt)}</span></Link></li>
+          ))}
+        </ul>
+      )}
+    </Card>
+  )
+}

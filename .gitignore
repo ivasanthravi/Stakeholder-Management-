@@ -1,0 +1,4 @@
+.DS_Store
+*.tsbuildinfo
+*.log
+.claude/settings.local.json

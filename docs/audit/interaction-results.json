@@ -1,0 +1,317 @@
+{
+  "results": [
+    {
+      "area": "Navigation",
+      "name": "Sidebar → Stakeholders",
+      "pass": true,
+      "detail": "active surface 216×30"
+    },
+    {
+      "area": "Navigation",
+      "name": "Sidebar → Engagements",
+      "pass": true,
+      "detail": "active surface 216×30"
+    },
+    {
+      "area": "Navigation",
+      "name": "Sidebar → Decisions",
+      "pass": true,
+      "detail": "active surface 216×30"
+    },
+    {
+      "area": "Navigation",
+      "name": "Sidebar → Home",
+      "pass": true,
+      "detail": "active surface 216×30"
+    },
+    {
+      "area": "Navigation",
+      "name": "Keyboard G S",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "area": "Navigation",
+      "name": "Keyboard G M",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "area": "Navigation",
+      "name": "Keyboard G H",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "area": "Navigation",
+      "name": "Sidebar initiative link opens scoped map",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "area": "Navigation",
+      "name": "Browser back restores previous screen",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "area": "Errors",
+      "name": "Unknown route shows not-found with a way back",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "area": "Errors",
+      "name": "Unknown stakeholder shows not-found",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "area": "Errors",
+      "name": "Unknown engagement shows not-found",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "area": "Errors",
+      "name": "Placeholder sections are labelled as out of scope",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "area": "Palette",
+      "name": "⌘K opens, focus in input",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "area": "Palette",
+      "name": "Multi-word search ranks the right person first",
+      "pass": true,
+      "detail": "Bea Ellwood"
+    },
+    {
+      "area": "Palette",
+      "name": "Enter opens the record",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "area": "Palette",
+      "name": "Esc closes and screen shortcuts stay blocked while open",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "area": "Palette",
+      "name": "? lists shortcuts",
+      "pass": true,
+      "detail": "14 shortcuts"
+    },
+    {
+      "area": "Palette",
+      "name": "Record key search (C-1xx)",
+      "pass": true,
+      "detail": "C-130 · Felix Eriksen"
+    },
+    {
+      "area": "Directory",
+      "name": "J/K moves focus",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "area": "Directory",
+      "name": "X selects, Shift+X selects range, bulk bar appears",
+      "pass": true,
+      "detail": "3 selected"
+    },
+    {
+      "area": "Directory",
+      "name": "Esc clears selection",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "area": "Directory",
+      "name": "Space opens peek; J follows; Esc closes",
+      "pass": true,
+      "detail": "Fiona Ellwood → Felix Kendrick"
+    },
+    {
+      "area": "Directory",
+      "name": "S opens stance menu; choose; ⌘Z undoes",
+      "pass": true,
+      "detail": "Unknown → Opposed → Unknown"
+    },
+    {
+      "area": "Directory",
+      "name": "Sort by name is stable and ascending",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "area": "Directory",
+      "name": "Stance filter narrows; Clear all resets",
+      "pass": true,
+      "detail": "14 of 184 → 184 of 184"
+    },
+    {
+      "area": "Directory",
+      "name": "Text filter with no results shows empty state",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "area": "Directory",
+      "name": "Enter opens profile",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "area": "Profile",
+      "name": "] and [ switch tabs (URL-addressable)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "area": "Profile",
+      "name": "Citation chip reveals its source",
+      "pass": true,
+      "detail": "1classificationStance set to Concerned by Sara Velasquez3 Sept"
+    },
+    {
+      "area": "Profile",
+      "name": "Mark commitment fulfilled, then undo",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "area": "Profile",
+      "name": "J moves to next stakeholder",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "area": "Profile",
+      "name": "M opens map focused on this person",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "area": "Map",
+      "name": "Arrow keys select and traverse; panel follows",
+      "pass": true,
+      "detail": "p57 → p2"
+    },
+    {
+      "area": "Map",
+      "name": "Selected node and neighbours are not faded",
+      "pass": true,
+      "detail": "4 nodes at opacity 1"
+    },
+    {
+      "area": "Map",
+      "name": "Esc deselects",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "area": "Map",
+      "name": "Search + Enter selects match",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "area": "Map",
+      "name": "Stance filter changes node count",
+      "pass": true,
+      "detail": "98 people  → 9 people "
+    },
+    {
+      "area": "Map",
+      "name": "Influence grid lens, gaps and list toggles",
+      "pass": true,
+      "detail": "4 quadrants, 9 gaps, 98 list items"
+    },
+    {
+      "area": "Map",
+      "name": "Zoom buttons change zoom",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "area": "Home",
+      "name": "Enter expands evidence; Enter again collapses",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "area": "Home",
+      "name": "D marks an overdue commitment fulfilled; count drops; ⌘Z restores",
+      "pass": true,
+      "detail": "18 → 17 → 18"
+    },
+    {
+      "area": "Home",
+      "name": "E snoozes with undo",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "area": "Home",
+      "name": "\"Assigned to me\" narrows the ledger",
+      "pass": true,
+      "detail": "33 → 4"
+    },
+    {
+      "area": "Home",
+      "name": "Horizon dot opens the counterparty",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "area": "Meeting",
+      "name": "A accepts decision and creates a real decision record",
+      "pass": true,
+      "detail": "D-111"
+    },
+    {
+      "area": "Meeting",
+      "name": "Accepted stance change updates the stakeholder (and undo restores)",
+      "pass": true,
+      "detail": "Bea Ellwood → Neutral (recorded in history)Undo ⌘Z"
+    },
+    {
+      "area": "Meeting",
+      "name": "E edits then ⌘↵ accepts edited text",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "area": "Meeting",
+      "name": "X rejects; injection line is never a suggestion",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "area": "Meeting",
+      "name": "⇧A accepts remaining high-confidence; completion state",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "area": "Reduced motion",
+      "name": "CSS transitions clamp to ≤1ms",
+      "pass": true,
+      "detail": "0.001s"
+    },
+    {
+      "area": "Reduced motion",
+      "name": "Peek panel appears without a slide transform",
+      "pass": true,
+      "detail": "none"
+    }
+  ],
+  "consoleErrors": []
+}

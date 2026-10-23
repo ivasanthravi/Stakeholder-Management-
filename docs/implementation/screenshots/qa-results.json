@@ -1,0 +1,310 @@
+[
+  {
+    "tag": "desktop",
+    "name": "home",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "stakeholders",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "stakeholder-peek",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "profile",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "profile-relationships",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "profile-history",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "map",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "map-selected",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "organizations",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "organization",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "initiatives",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "initiative",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "engagements",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "engagement",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "decisions",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "commitments",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "settings-members",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "settings-audit",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "create-stakeholder",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "create-engagement",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "palette",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "not-found",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "sign-in",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "sign-up",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "forgot-password",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "home",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "stakeholders",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "profile",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "map",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "map-selected",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "organizations",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "organization",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "initiatives",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "initiative",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "engagements",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "engagement",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "decisions",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "commitments",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "settings-members",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "settings-audit",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "not-found",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "sign-in",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "sign-up",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "forgot-password",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  }
+]

@@ -1,0 +1,119 @@
+/* ── Buttons ─────────────────────────────────────────────── */
+.btn {
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: var(--control-h); padding: 0 10px;
+  border-radius: var(--radius-sm);
+  font: var(--text-strong); font-size: 13px; letter-spacing: -0.003em;
+  white-space: nowrap; user-select: none;
+  transition: background-color var(--dur-instant) linear, border-color var(--dur-instant) linear,
+              color var(--dur-instant) linear, transform 90ms var(--ease-standard), box-shadow var(--dur-fast) var(--ease-standard);
+}
+.btn:active:not(:disabled) { transform: scale(.975); transition-duration: 60ms; }
+.btn:disabled { opacity: .5; }
+.btn[data-loading] { pointer-events: none; }
+.btn-sm { height: 26px; padding: 0 8px; font-size: 12.5px; gap: 5px; }
+.btn-icon { width: var(--control-h); padding: 0; }
+.btn-sm.btn-icon { width: 26px; }
+.btn svg { color: currentColor; }
+
+.btn-primary { background: var(--accent); color: var(--text-on-accent); box-shadow: inset 0 1px 0 rgb(255 255 255 / .12), 0 1px 2px rgb(14 107 101 / .25); }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-secondary { background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-1); box-shadow: 0 1px 1px rgb(16 24 40 / .03); }
+.btn-secondary:hover { border-color: var(--border-strong); background: var(--bg-surface); }
+.btn-secondary svg { color: var(--text-2); }
+.btn-ghost { color: var(--text-2); }
+.btn-ghost:hover { background: var(--bg-hover); color: var(--text-1); }
+.btn-ghost:active { background: var(--bg-press); }
+.btn-ai { color: var(--ai); border: 1px solid var(--violet-200); background: var(--bg-surface); }
+.btn-ai:hover { background: var(--ai-subtle); }
+.btn-danger { color: var(--critical); border: 1px solid var(--border); background: var(--bg-surface); }
+.btn-danger:hover { background: var(--critical-subtle); border-color: var(--red-100); }
+.btn .kbd { margin-left: 2px; color: var(--text-2); }
+.btn-primary .kbd { background: rgb(0 0 0 / .2); color: #fff; border-color: transparent; }
+
+.kbd {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 4px;
+  font: 500 10.5px/1 var(--font-mono);
+  color: var(--text-3); background: var(--bg-subtle);
+  border: 1px solid var(--border-soft); border-radius: 4px;
+}
+
+.spin { animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Avatar ─────────────────────────────────────────────── */
+.avatar {
+  display: inline-grid; place-items: center; flex: none;
+  border-radius: var(--radius-full);
+  background: oklch(0.94 0.03 var(--h));
+  color: oklch(0.38 0.07 var(--h));
+  font-weight: 600; letter-spacing: -0.02em;
+  box-shadow: inset 0 0 0 1px oklch(0.86 0.04 var(--h) / .6);
+}
+.avatar-internal { background: var(--bg-surface); color: var(--accent); box-shadow: inset 0 0 0 1.5px var(--teal-300); }
+
+/* ── Stance badge ───────────────────────────────────────── */
+.stance {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 20px; padding: 0 7px 0 5px; border-radius: var(--radius-xs);
+  font: var(--text-caption); white-space: nowrap;
+  color: var(--sc); background: color-mix(in oklch, var(--sc) 9%, var(--bg-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--sc) 18%, transparent);
+}
+.stance svg { stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.stance-compact { padding: 0; width: 20px; justify-content: center; }
+.stance-opposed { --sc: var(--stance-opposed); }
+.stance-concerned { --sc: #8F4E0B; }
+.stance-neutral { --sc: var(--slate-600); }
+.stance-supporter { --sc: var(--teal-600); }
+.stance-champion { --sc: var(--teal-800); }
+.stance-unknown { --sc: #5E6774; }
+.stance-neutral svg, .stance-unknown svg { fill: currentColor; stroke: none; }
+
+/* ── Level meter (influence/interest) ───────────────────── */
+.meter { display: inline-flex; gap: 2px; align-items: flex-end; height: 12px; }
+.meter i { width: 3px; border-radius: 1px; background: var(--slate-200); }
+.meter i:nth-child(1) { height: 5px; } .meter i:nth-child(2) { height: 7px; }
+.meter i:nth-child(3) { height: 9.5px; } .meter i:nth-child(4) { height: 12px; }
+.meter i[data-on] { background: var(--slate-700); }
+
+/* ── Pill ───────────────────────────────────────────────── */
+.pill {
+  display: inline-flex; align-items: center; gap: 6px; height: 20px; padding: 0 7px;
+  border-radius: var(--radius-xs); font: var(--text-caption); white-space: nowrap;
+  background: var(--pb); color: var(--pc);
+}
+.pill i { width: 6px; height: 6px; border-radius: 50%; background: var(--pd, var(--pc)); }
+.pill-neutral { --pb: var(--bg-subtle); --pc: var(--text-2); --pd: var(--slate-400); }
+.pill-accent { --pb: var(--accent-subtle); --pc: var(--teal-700); }
+.pill-attention { --pb: var(--attention-subtle); --pc: var(--amber-700); --pd: var(--amber-500); }
+.pill-critical { --pb: var(--critical-subtle); --pc: var(--red-700); --pd: var(--red-500); }
+.pill-positive { --pb: var(--positive-subtle); --pc: var(--green-700); --pd: var(--green-400); }
+.pill-ai { --pb: var(--ai-subtle); --pc: var(--violet-700); --pd: var(--violet-400); }
+
+/* ── Skeleton ───────────────────────────────────────────── */
+.skeleton {
+  display: block;
+  background: linear-gradient(90deg, var(--slate-100) 0%, var(--slate-150) 40%, var(--slate-100) 80%);
+  background-size: 300% 100%;
+  animation: shimmer 1.4s var(--ease-standard) infinite;
+}
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: -50% 0; } }
+
+/* ── Citation chip ──────────────────────────────────────── */
+.cite {
+  display: inline-grid; place-items: center;
+  min-width: 15px; height: 15px; padding: 0 3px; margin: 0 1px 0 2px;
+  vertical-align: 2px;
+  font: 600 9.5px/1 var(--font-sans); color: var(--ai);
+  background: var(--ai-subtle); border-radius: 4px;
+  box-shadow: inset 0 0 0 1px var(--violet-100);
+  transition: background-color var(--dur-instant) linear, transform var(--dur-fast) var(--ease-standard);
+}
+.cite:hover { background: var(--violet-100); transform: translateY(-1px); }
+
+/* ── Sparkline ──────────────────────────────────────────── */
+.spark path { fill: var(--slate-300); }
+.spark path[data-tail] { fill: var(--slate-700); }
