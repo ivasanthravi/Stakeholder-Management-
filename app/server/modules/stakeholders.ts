@@ -240,7 +240,7 @@ export async function detail(t: Tx, id: string) {
   return { ...s, owner, organizations, initiatives, access }
 }
 
-async function overview(t: Tx, id: string) {
+export async function overview(t: Tx, id: string) {
   const s = await detail(t, id)
   const engagements = await t.select({ id: engagement.id, key: engagement.key, kind: engagement.kind, title: engagement.title, occurredAt: engagement.occurredAt, summary: engagement.summary, initiativeId: engagement.initiativeId })
     .from(engagementParticipant).innerJoin(engagement, eq(engagement.id, engagementParticipant.engagementId))

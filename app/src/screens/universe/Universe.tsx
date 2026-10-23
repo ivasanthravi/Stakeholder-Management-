@@ -4,9 +4,11 @@ import layoutUtilities from 'cytoscape-layout-utilities'
 import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Building2, ChevronDown, Crosshair, List, Maximize, Minus, Network, Plus, Search, ScanEye, Grid2x2 } from 'lucide-react'
-import { useGraph, useLookups } from '../../api/hooks'
-import type { Graph, Stance } from '../../api/types'
+import { ArrowLeftRight, Building2, ChevronDown, Crosshair, List, Maximize, Minus, Network, Plus, Route, Search, ScanEye, Grid2x2, X } from 'lucide-react'
+import { useGraph, useList, useLookups } from '../../api/hooks'
+import { usePath, type PathHop } from '../../api/ai'
+import { Picker, type PickerOption } from '../../components/Picker'
+import type { Graph, Stance, StakeholderRow } from '../../api/types'
 import { LEVEL_LABEL, RELATIONSHIP_LABEL, STANCE_LABEL } from '../../lib/format'
 import { RELATIONSHIP_TYPES } from '../../../shared/schemas'
 import { Avatar, Button, Kbd, StanceBadge } from '../../components/ui'
@@ -79,6 +81,10 @@ export default function Universe() {
   const [ready, setReady] = useState(false)
   const [zoom, setZoom] = useState(1)
   const [menu, setMenu] = useState<{ kind: 'init' | 'stance' | 'type'; el: HTMLElement } | null>(null)
+  // Path finder: shortest chain of recorded relationships between two people (deterministic, server-side).
+  const [pathOpen, setPathOpen] = useState(false)
+  const [pathEnds, setPathEnds] = useState<{ from: string | null; to: string | null }>({ from: null, to: null })
+  const path = usePath(pathOpen ? pathEnds.from : null, pathOpen ? pathEnds.to : null)
 
   // Keep URL in sync with scope/selection so views are shareable.
   // Debounced: rapid arrow-key traversal shouldn't re-render the route on every step.
@@ -109,6 +115,14 @@ export default function Universe() {
     if (graph.data && f && scope.initiative !== 'all' && !graph.data.nodes.some(n => n.id === f)) setScope(sc => ({ ...sc, initiative: 'all' }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [graph.data])
+
+  const pathSet = useMemo(() => {
+    const r = path.data
+    if (!pathOpen || !r?.found || !r.hops.length) return null
+    const nodes = new Set(r.hops.flatMap(h => [h.from.id, h.to.id]))
+    const edges = new Map(r.hops.map(h => [h.relationshipId, h.status]))
+    return { nodes, edges }
+  }, [path.data, pathOpen])
 
   // ── Mount Cytoscape once ──────────────────────────────────────────
   useEffect(() => {
@@ -307,6 +321,14 @@ export default function Universe() {
     } else if (gaps) {
       cy.nodes('.person').forEach(n => add(n.id(), n.data('gap') ? 'gapped' : 'faded'))
       cy.edges().forEach(e => add(e.id(), 'faded'))
+    } else if (pathSet) {
+      cy.nodes('.person').forEach(n => add(n.id(), pathSet.nodes.has(n.id()) ? 'path' : 'faded'))
+      cy.edges().forEach(e => {
+        const st = pathSet.edges.get(e.id())
+        if (st === undefined) add(e.id(), 'faded')
+        else { add(e.id(), 'path'); if (st !== 'confirmed') add(e.id(), 'path-inferred') }
+      })
+      cy.nodes('.org').forEach(o => { if (!o.children().some(c => pathSet.nodes.has((c as NodeSingular).id()))) add(o.id(), 'org-dim') })
     } else if (focusId) {
       const n = cy.getElementById(focusId)
       if (n.nonempty()) {
@@ -319,7 +341,7 @@ export default function Universe() {
       }
     }
     if (sel) add(sel, 'sel')
-    const MANAGED = ['faded', 'hl', 'sel', 'nb', 'match', 'gapped', 'org-dim']
+    const MANAGED = ['faded', 'hl', 'sel', 'nb', 'match', 'gapped', 'org-dim', 'path', 'path-inferred']
     cy.batch(() => {
       cy.elements().forEach(e => {
         const target = want.get(e.id()) ?? []
@@ -330,7 +352,15 @@ export default function Universe() {
       })
     })
   }
-  useEffect(() => { applyVisual.current() }, [sel, matches, gaps, data])
+  useEffect(() => { applyVisual.current() }, [sel, matches, gaps, data, pathSet])
+
+  // Path found: bring the whole chain into view.
+  useEffect(() => {
+    const cy = cyRef.current
+    if (!cy || !pathSet || !ready) return
+    const eles = cy.nodes('.person').filter(n => pathSet.nodes.has(n.id()))
+    if (eles.nonempty()) cy.animate({ fit: { eles, padding: 140 } }, { duration: reduceMotion() ? 0 : 400, easing: 'ease-in-out-cubic', complete: () => capZoom(cy) })
+  }, [pathSet, ready])
 
   // Camera: centre selection only if it sits outside the central 60% of the viewport.
   useEffect(() => {
@@ -456,6 +486,10 @@ export default function Universe() {
         <button className={`tool-btn ${gaps ? 'on on-attention' : ''}`} aria-pressed={gaps} onClick={() => setGaps(v => !v)} title="Highlight high-influence stakeholders with no owner or no contact in 60 days (G)">
           <ScanEye size={14} /><span>Gaps</span><span className="num tool-count">{gapCount}</span>
         </button>
+        <button className={`tool-btn ${pathOpen ? 'on' : ''}`} aria-pressed={pathOpen} title="Find a chain of recorded relationships between two people"
+          onClick={() => { if (!pathOpen && sel && !pathEnds.from) setPathEnds(pe => ({ ...pe, from: sel })); setPathOpen(v => !v) }}>
+          <Route size={14} /><span>Find path</span>
+        </button>
         <button className={`tool-btn ${list ? 'on' : ''}`} aria-pressed={list} onClick={() => setList(v => !v)} title="Accessible list view (L)">
           <List size={14} /><span>List</span>
         </button>
@@ -486,7 +520,17 @@ export default function Universe() {
           {list && <ListView key="list" people={data.people} rels={data.rels} orgs={data.orgs} sel={sel} onSel={setSel} />}
         </AnimatePresence>
 
-        {!sel && !list && <HoverCard byId={byId} orgName={data.orgName} />}
+        {!sel && !list && !pathOpen && <HoverCard byId={byId} orgName={data.orgName} />}
+        <AnimatePresence>
+          {pathOpen && (
+            <PathFinder key="path" ends={pathEnds} onEnds={setPathEnds} people={data.people} loading={path.isFetching} error={path.isError ? path.error : null}
+              result={path.data && pathEnds.from && pathEnds.to && pathEnds.from !== pathEnds.to ? path.data : null}
+              edges={graph.data?.edges ?? []} inMap={byId}
+              onShowAll={() => setScope(sc => ({ ...sc, initiative: 'all', stances: [], types: [] }))}
+              onPick={id => setSel(id)}
+              onClose={() => { setPathOpen(false); containerRef.current?.focus() }} />
+          )}
+        </AnimatePresence>
         {graph.isError && <div className="uni-loading"><LoadError error={graph.error} onRetry={() => graph.refetch()} /></div>}
         {graph.data && graph.data.nodes.length === 0 && (
           <div className="uni-loading uni-empty">
@@ -590,6 +634,82 @@ function ListView({ people, rels, orgs, sel, onSel }: { people: MapPerson[]; rel
         {people.length === 0 && <p className="c2" style={{ padding: 40, textAlign: 'center' }}>No stakeholders match these filters.</p>}
       </div>
     </motion.div>
+  )
+}
+
+// ── Path finder ──────────────────────────────────────────────────────────────
+/** Stakeholder search for the path finder: people on the map first, then server-side search as you type. */
+function PersonPick({ id, label, value, onChange, people }: { id: string; label: string; value: string | null; onChange: (v: string | null) => void; people: MapPerson[] }) {
+  const [q, setQ] = useState('')
+  const list = useList<StakeholderRow>('stakeholders', { q, limit: 20, sort: 'name' }, { enabled: !!q })
+  const [known, setKnown] = useState<PickerOption[]>([])
+  const mapOpts = useMemo<PickerOption[]>(() => people.slice().sort((a, b) => a.name.localeCompare(b.name)).map(p => ({ value: p.id, label: p.name, sub: p.title ?? undefined, icon: <Avatar name={p.name} size={18} /> })), [people])
+  const options = useMemo<PickerOption[]>(() => (q ? (list.data?.items ?? []).map(s => ({ value: s.id, label: s.name, sub: s.primaryOrg?.shortName ?? s.title ?? undefined, icon: <Avatar name={s.name} size={18} /> })) : mapOpts), [q, list.data, mapOpts])
+  return (
+    <div className="pf-field">
+      <label htmlFor={id} className="t-caption c3">{label}</label>
+      <Picker id={id} options={options} loading={!!q && list.isFetching} onQuery={setQ} selectedOptions={[...known, ...mapOpts]} value={value}
+        onChange={v => { const o = options.find(x => x.value === v); if (o) setKnown(k => [o, ...k.filter(x => x.value !== o.value)]); onChange((v as string | null) ?? null) }}
+        placeholder="Search stakeholders" emptyText={q ? 'No matching stakeholder' : 'Type to search'} />
+    </div>
+  )
+}
+
+function PathFinder({ ends, onEnds, people, loading, error, result, edges, inMap, onShowAll, onPick, onClose }: {
+  ends: { from: string | null; to: string | null }; onEnds: (e: { from: string | null; to: string | null }) => void
+  people: MapPerson[]; loading: boolean; error: unknown; result: { found: boolean; hops: PathHop[]; method: string } | null
+  edges: Graph['edges']; inMap: Map<string, MapPerson>; onShowAll: () => void; onPick: (id: string) => void; onClose: () => void
+}) {
+  const byEdge = useMemo(() => new Map(edges.map(e => [e.id, e])), [edges])
+  const offMap = result?.found ? [...new Set(result.hops.flatMap(h => [h.from.id, h.to.id]))].filter(id => !inMap.has(id)).length : 0
+  const same = !!ends.from && ends.from === ends.to
+  return (
+    <motion.section className="pathfinder" aria-labelledby="pf-h" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0, transition: t.fast }} exit={{ opacity: 0, transition: { duration: 0.08 } }}>
+      <header className="pf-head">
+        <Route size={14} className="c3" aria-hidden />
+        <h2 id="pf-h" className="t-strong grow">Find a path</h2>
+        <button className="icon-btn" onClick={onClose} aria-label="Close path finder" title="Close"><X size={14} /></button>
+      </header>
+      <div className="pf-ends">
+        <PersonPick id="pf-from" label="From" value={ends.from} onChange={v => onEnds({ ...ends, from: v })} people={people} />
+        <button className="icon-btn pf-swap" onClick={() => onEnds({ from: ends.to, to: ends.from })} aria-label="Swap from and to" title="Swap" disabled={!ends.from && !ends.to}><ArrowLeftRight size={13} /></button>
+        <PersonPick id="pf-to" label="To" value={ends.to} onChange={v => onEnds({ ...ends, to: v })} people={people} />
+      </div>
+      <div className="pf-result" aria-live="polite">
+        {same ? <p className="t-small c2">Pick two different people.</p>
+          : !ends.from || !ends.to ? <p className="t-small c3">Choose two stakeholders to see how they connect through recorded relationships.</p>
+          : loading && !result ? <p className="t-small c3">Looking for a chain of recorded relationships…</p>
+          : error ? <p className="t-small pf-err">Couldn’t look up a path. Try again.</p>
+          : result && !result.found ? <p className="t-small c2">No chain of recorded relationships (up to 4 steps) connects them in records you can see.</p>
+          : result ? (
+            <>
+              <p className="t-small c2">{result.hops.length} step{result.hops.length === 1 ? '' : 's'} through recorded relationships:</p>
+              <ol className="pf-hops">
+                {result.hops.map(h => {
+                  const e = byEdge.get(h.relationshipId)
+                  const labels = RELATIONSHIP_LABEL[h.type] ?? [h.type.replace(/_/g, ' '), h.type.replace(/_/g, ' ')]
+                  // The server walks relationships in either direction; the map's edge tells us which way it was recorded.
+                  const dir = e ? (e.source === h.from.id ? 'fwd' : 'rev') : null
+                  const rel = (dir === 'rev' ? labels[1] : labels[0]).toLowerCase()
+                  const confirmed = h.status === 'confirmed'
+                  return (
+                    <li key={h.relationshipId} className="pf-hop">
+                      <button className="pf-name" onClick={() => onPick(h.from.id)} disabled={!inMap.has(h.from.id)}>{h.from.name}</button>
+                      <span className="pf-rel" data-inferred={!confirmed || undefined}>{dir ? `—${rel}→` : `— ${rel} —`}</span>
+                      <button className="pf-name" onClick={() => onPick(h.to.id)} disabled={!inMap.has(h.to.id)}>{h.to.name}</button>
+                      {!confirmed && <span className="pf-status" title="Recorded as inferred — not confirmed">{h.status === 'inferred' ? 'Inferred, unconfirmed' : h.status}</span>}
+                    </li>
+                  )
+                })}
+              </ol>
+              {offMap > 0 && (
+                <p className="t-small c2 pf-off">{offMap} {offMap === 1 ? 'person' : 'people'} on this path {offMap === 1 ? 'isn’t' : 'aren’t'} in the current map view. <button className="link-btn" onClick={onShowAll}>Show everyone</button></p>
+              )}
+            </>
+          ) : null}
+        {result && <p className="t-micro c3 pf-method">{result.method} A path shows recorded relationships only — not influence.</p>}
+      </div>
+    </motion.section>
   )
 }
 

@@ -5,7 +5,8 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNod
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
-import { Check, ChevronDown, Copy, History, Lock, LogOut, Mail, Settings2, Trash2, UserPlus, Users, X } from 'lucide-react'
+import { Check, ChevronDown, Copy, History, Lock, LogOut, Mail, Settings2, Sparkle, Trash2, UserPlus, Users, X } from 'lucide-react'
+import { useAIStatus, useAIUsage, useUpdateAISettings, type AISettings, type AIStatus } from '../../api/ai'
 import { useInvalidate, useWorkspace, wk } from '../../api/hooks'
 import { ApiError, errorMessage, request, ws } from '../../api/http'
 import type { WorkspaceInfo } from '../../api/types'
@@ -31,10 +32,11 @@ interface AuditPage { events: AuditEvent[]; next: number | null }
 
 const useMembers = () => useQuery({ queryKey: wk('members'), queryFn: () => request<MembersData>(ws('/members')), staleTime: 15_000 })
 
-type TabId = 'general' | 'members' | 'audit'
+type TabId = 'general' | 'members' | 'ai' | 'audit'
 const TABS: { id: TabId; label: string; icon: typeof Users }[] = [
   { id: 'general', label: 'General', icon: Settings2 },
   { id: 'members', label: 'Members', icon: Users },
+  { id: 'ai', label: 'AI', icon: Sparkle },
   { id: 'audit', label: 'Audit log', icon: History },
 ]
 
@@ -120,6 +122,7 @@ export function Settings() {
               <motion.div key={tab} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0, transition: t.fast }} exit={{ opacity: 0, transition: { duration: 0.07 } }}>
                 {tab === 'general' && <GeneralTab />}
                 {tab === 'members' && <MembersTab />}
+                {tab === 'ai' && <AITab />}
                 {tab === 'audit' && <AuditTab />}
               </motion.div>
             </AnimatePresence>
@@ -579,6 +582,239 @@ function RoleLegend({ mine }: { mine: Role | null }) {
           </div>
         ))}
       </dl>
+    </section>
+  )
+}
+
+// ── AI ────────────────────────────────────────────────────────────────────────
+const wholeNumber = (min: number, max: number, unit: string) => z.string().trim().min(1, 'Required').regex(/^\d+$/, 'Use a whole number')
+  .refine(v => Number(v) >= min && Number(v) <= max, `Use ${min.toLocaleString('en-GB')}–${max.toLocaleString('en-GB')} ${unit}`)
+const aiSchema = z.object({
+  enabled: z.boolean(),
+  retentionDays: wholeNumber(0, 365, 'days'),
+  monthlyTokenBudget: wholeNumber(0, 1_000_000_000, 'tokens'),
+  perUserPerMinute: wholeNumber(1, 120, 'requests'),
+  noContactDays: wholeNumber(7, 365, 'days'),
+  dueSoonDays: wholeNumber(1, 60, 'days'),
+  decisionStaleDays: wholeNumber(1, 180, 'days'),
+  coolingPct: wholeNumber(5, 95, '%'),
+})
+type AIValues = z.input<typeof aiSchema>
+const toAIValues = (s: AISettings): AIValues => ({
+  enabled: s.enabled,
+  retentionDays: String(s.retentionDays),
+  monthlyTokenBudget: String(s.monthlyTokenBudget),
+  perUserPerMinute: String(s.perUserPerMinute),
+  noContactDays: String(s.thresholds.noContactDays),
+  dueSoonDays: String(s.thresholds.dueSoonDays),
+  decisionStaleDays: String(s.thresholds.decisionStaleDays),
+  coolingPct: String(Math.round(s.thresholds.coolingRatio * 100)),
+})
+/** `/ai/status` reports this month's usage; accept either a token count or a `{ tokens }` summary. */
+const monthTokenCount = (m: unknown) => (typeof m === 'number' ? m : typeof m === 'object' && m && typeof (m as { tokens?: unknown }).tokens === 'number' ? (m as { tokens: number }).tokens : 0)
+const fmtInt = (n: number) => n.toLocaleString('en-GB')
+const fmtTokens = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}M` : n >= 10_000 ? `${Math.round(n / 1000)}k` : fmtInt(n))
+const FEATURE_LABEL: Record<string, string> = {
+  copilot: 'Assistant', meeting_extraction: 'Meeting analysis', briefing_stakeholder: 'Stakeholder briefing', briefing_decision: 'Decision briefing', briefing_workspace: 'Workspace briefing',
+}
+
+const featureLabel = (f: string) => FEATURE_LABEL[f]
+  ?? (f.startsWith('briefing_stakeholder_') ? `Stakeholder briefing (${f.slice('briefing_stakeholder_'.length)})` : f.replace(/_/g, ' '))
+
+function AITab() {
+  const status = useAIStatus()
+  const { can } = useSession()
+  return (
+    <>
+      <PageTitle title="AI" sub="Which engine powers briefings and the assistant, what it may spend, and the rules behind Home’s signals." />
+      {status.isPending ? <GeneralSkeleton /> : status.isError ? <LoadError error={status.error} onRetry={() => void status.refetch()} /> : (
+        <>
+          <EngineSection s={status.data} />
+          <AISettingsForm key={JSON.stringify(status.data.settings)} s={status.data} />
+          {can('audit.read') && <UsageSection />}
+        </>
+      )}
+    </>
+  )
+}
+
+function EngineSection({ s }: { s: AIStatus }) {
+  const local = s.engine.kind === 'local'
+  return (
+    <section className="set-section" aria-labelledby="set-ai-engine">
+      <div className="set-sec-head"><h2 className="t-heading" id="set-ai-engine">Engine</h2></div>
+      <div className="set-card">
+        <div className="set-field-row">
+          <div className="set-field-meta"><span className="t-strong">Current engine</span><span className="t-small c3">Set by your server configuration.</span></div>
+          <div className="set-field-ctl">
+            <div className="row gap-2">
+              <span className="t-strong">{local ? 'Built-in rules engine' : s.engine.label}</span>
+              <Pill tone={local ? 'neutral' : 'ai'}>{local ? 'Local' : 'Model'}</Pill>
+              {!local && s.engine.model && <code className="mono aud-action">{s.engine.model}</code>}
+            </div>
+            <p className="t-small c2 set-mt">
+              {local
+                ? 'No model key configured — features use the built-in rules engine; no data leaves your server. Briefings show facts and rule-based items only, with no AI interpretation.'
+                : 'Briefings and the assistant send the relevant records you can see to this model. AI interpretations are labelled and cite the records they rely on.'}
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function AISettingsForm({ s }: { s: AIStatus }) {
+  const { can } = useSession()
+  const { toast } = useApp()
+  const qc = useQueryClient()
+  const update = useUpdateAISettings()
+  const editable = can('workspace.update')
+  const form = useForm(aiSchema, toAIValues(s.settings))
+  const v = form.values as AIValues
+  const used = monthTokenCount(s.month)
+  const budget = s.settings.monthlyTokenBudget
+  const pct = budget > 0 ? Math.min(100, (used / budget) * 100) : used > 0 ? 100 : 0
+
+  const save = async () => {
+    const ok = await form.submit(async d => {
+      const cur = s.settings
+      const n = (x: string) => Number(x)
+      const ratio = n(d.coolingPct) / 100
+      const thresholds = {
+        ...(n(d.noContactDays) !== cur.thresholds.noContactDays ? { noContactDays: n(d.noContactDays) } : {}),
+        ...(n(d.dueSoonDays) !== cur.thresholds.dueSoonDays ? { dueSoonDays: n(d.dueSoonDays) } : {}),
+        ...(n(d.decisionStaleDays) !== cur.thresholds.decisionStaleDays ? { decisionStaleDays: n(d.decisionStaleDays) } : {}),
+        ...(Math.round(cur.thresholds.coolingRatio * 100) !== n(d.coolingPct) ? { coolingRatio: ratio } : {}),
+      }
+      // PATCH only what moved, so the audit trail names the fields that changed.
+      const body = {
+        ...(d.enabled !== cur.enabled ? { enabled: d.enabled } : {}),
+        ...(n(d.retentionDays) !== cur.retentionDays ? { retentionDays: n(d.retentionDays) } : {}),
+        ...(n(d.monthlyTokenBudget) !== cur.monthlyTokenBudget ? { monthlyTokenBudget: n(d.monthlyTokenBudget) } : {}),
+        ...(n(d.perUserPerMinute) !== cur.perUserPerMinute ? { perUserPerMinute: n(d.perUserPerMinute) } : {}),
+        ...(Object.keys(thresholds).length ? { thresholds } : {}),
+      }
+      const next = await update.mutateAsync(body)
+      qc.setQueryData<AIStatus>(wk('ai', 'status'), old => (old ? { ...old, settings: next } : old))
+      form.reset(toAIValues(next))
+    })
+    if (ok) toast('AI settings saved')
+  }
+
+  const num = (name: keyof AIValues, label: string, suffix: string, max?: number) => (
+    <div className="ai-num">
+      <TextField form={form} name={name} label={label} readOnly={!editable} inputMode="numeric" autoComplete="off" maxLength={max ?? 4} />
+      <span className="t-small c3 ai-suffix">{suffix}</span>
+    </div>
+  )
+
+  return (
+    <form className="set-section" onSubmit={e => { e.preventDefault(); if (editable && form.dirty) void save() }} noValidate aria-label="AI settings">
+      <SectionHead title="Settings" sub={editable ? undefined : (
+        <span className="row gap-1"><Lock size={12} aria-hidden />Only administrators can change AI settings. You can see how they’re set.</span>
+      )} />
+      <div className="set-card">
+        <div className="set-field-row">
+          <div className="set-field-meta"><span className="t-strong">AI features</span><span className="t-small c3">Briefings, meeting analysis and the assistant. Home’s rule-based signals stay on either way.</span></div>
+          <div className="set-field-ctl">
+            <label className="ai-switch">
+              <input type="checkbox" role="switch" checked={!!v.enabled} disabled={!editable} onChange={e => form.set('enabled', e.target.checked)} />
+              <span className="ai-switch-track" aria-hidden><i /></span>
+              <span>{v.enabled ? 'On for this workspace' : 'Off for this workspace'}</span>
+            </label>
+          </div>
+        </div>
+        <div className="set-field-row">
+          <div className="set-field-meta"><span className="t-strong">Conversation history</span><span className="t-small c3">How long assistant conversations are kept. 0 means they are not stored.</span></div>
+          <div className="set-field-ctl">
+            {num('retentionDays', 'Retention in days', v.retentionDays === '0' ? 'not stored' : 'days')}
+          </div>
+        </div>
+        <div className="set-field-row">
+          <div className="set-field-meta"><span className="t-strong">Monthly token budget</span><span className="t-small c3">Model calls stop for the month once it’s reached. The built-in rules engine is never limited by it.</span></div>
+          <div className="set-field-ctl">
+            {num('monthlyTokenBudget', 'Monthly token budget', 'tokens', 10)}
+            <div className="ai-meter" role="meter" aria-valuemin={0} aria-valuemax={budget} aria-valuenow={Math.min(used, budget)} aria-label="Tokens used this month">
+              <i style={{ width: `${pct}%` }} data-high={pct >= 85 || undefined} />
+            </div>
+            <p className="t-small c3 num">{fmtTokens(used)} of {fmtTokens(budget)} used this month ({budget > 0 ? `${Math.round((used / budget) * 100)}%` : 'no budget'})</p>
+          </div>
+        </div>
+        <div className="set-field-row">
+          <div className="set-field-meta"><span className="t-strong">Requests per person</span><span className="t-small c3">Limit per member per minute, across all AI features.</span></div>
+          <div className="set-field-ctl">{num('perUserPerMinute', 'Requests per minute', 'per minute', 3)}</div>
+        </div>
+      </div>
+
+      <SectionHead title="Signal rules" sub="Thresholds for Home’s Needs attention list and briefings. These are fixed rules over your records, not predictions." />
+      <div className="set-card">
+        <div className="set-field-row">
+          <div className="set-field-meta"><span className="t-strong">Contact window</span><span className="t-small c3">Period used to compare recent engagement with the one before it.</span></div>
+          <div className="set-field-ctl">{num('noContactDays', 'Contact window in days', 'days', 3)}</div>
+        </div>
+        <div className="set-field-row">
+          <div className="set-field-meta"><span className="t-strong">Due soon</span><span className="t-small c3">Commitments and decisions due within this many days are flagged.</span></div>
+          <div className="set-field-ctl">{num('dueSoonDays', 'Due soon in days', 'days', 2)}</div>
+        </div>
+        <div className="set-field-row">
+          <div className="set-field-meta"><span className="t-strong">Decision waiting</span><span className="t-small c3">Open decisions older than this are flagged even without a date.</span></div>
+          <div className="set-field-ctl">{num('decisionStaleDays', 'Decision waiting in days', 'days', 3)}</div>
+        </div>
+        <div className="set-field-row">
+          <div className="set-field-meta"><span className="t-strong">Cooling</span><span className="t-small c3">A high-influence relationship is cooling when recent engagements fall to this share of the previous window or below.</span></div>
+          <div className="set-field-ctl">{num('coolingPct', 'Cooling threshold in percent', '% of previous window', 2)}</div>
+        </div>
+        {editable && (
+          <div className="set-card-foot">
+            <div className="grow"><FormError form={form} /></div>
+            <AnimatePresence>
+              {form.dirty && !form.submitting && (
+                <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1, transition: t.fast }} exit={{ opacity: 0, transition: t.exit }}>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => form.reset(toAIValues(s.settings))}>Discard</Button>
+                </motion.span>
+              )}
+            </AnimatePresence>
+            <Button type="submit" variant="primary" size="sm" disabled={!form.dirty} loading={form.submitting}>{form.submitting ? 'Saving…' : 'Save changes'}</Button>
+          </div>
+        )}
+      </div>
+    </form>
+  )
+}
+
+function UsageSection() {
+  const q = useAIUsage()
+  const rows = q.data?.rows ?? []
+  const money = (micros: number, local: boolean) => (local ? '$0.00 (local)' : `$${(micros / 1e6).toFixed(micros > 0 && micros < 10_000 ? 4 : 2)}`)
+  return (
+    <section className="set-section" aria-labelledby="set-ai-usage">
+      <SectionHead title="Usage" sub={<>Last 30 days, by feature. Usage records store counts and cost only — never prompts or answers.</>} />
+      {q.isPending ? <div className="set-card set-skel" aria-busy="true"><div className="set-skel-row"><Skeleton w={110} h={11} /><Skeleton w="100%" h={11} /></div></div>
+        : q.isError ? <LoadError error={q.error} onRetry={() => void q.refetch()} />
+        : !rows.length ? <div className="set-card set-empty"><p className="t-strong">No AI usage yet</p><p className="t-small c2">Briefings, meeting analysis and assistant questions will be counted here.</p></div>
+        : (
+          <div className="set-card ai-usage-wrap" tabIndex={0} role="region" aria-label="AI usage by feature, last 30 days">
+            <table className="ai-usage">
+              <thead>
+                <tr><th scope="col">Feature</th><th scope="col">Engine</th><th scope="col" className="r">Calls</th><th scope="col" className="r">Errors</th><th scope="col" className="r">Tokens in / out</th><th scope="col" className="r">Cost</th><th scope="col" className="r">Latency p50 / p95</th></tr>
+              </thead>
+              <tbody>
+                {rows.map(r => (
+                  <tr key={`${r.feature}-${r.engine}`}>
+                    <td>{featureLabel(r.feature)}</td>
+                    <td className="c2">{r.engine === 'local' ? 'Rules engine' : 'Model'}</td>
+                    <td className="r num">{fmtInt(r.calls)}</td>
+                    <td className={`r num ${r.errors ? 'set-warn' : 'c3'}`}>{fmtInt(r.errors)}</td>
+                    <td className="r num">{fmtTokens(r.input)} / {fmtTokens(r.output)}</td>
+                    <td className="r num">{money(r.costMicros, r.engine === 'local')}</td>
+                    <td className="r num c2">{fmtInt(r.p50)} / {fmtInt(r.p95)} ms</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
     </section>
   )
 }

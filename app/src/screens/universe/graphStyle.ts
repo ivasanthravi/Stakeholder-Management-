@@ -130,6 +130,10 @@ export function buildStyle(p: Palette): StylesheetJson {
     { selector: 'edge.hl.rel-reports-to, edge.hl.rel-colleague', style: { 'label': '' } },
     { selector: 'node.org-dim', style: { 'background-opacity': 0.18, 'border-opacity': 0.35, 'text-opacity': 0.35 } },
     { selector: 'node.nb', style: { 'border-width': 2.5, 'z-index': 10 } },
+    // Path finder: the chain stands out; unconfirmed (inferred) hops stay dashed so they never read as fact.
+    { selector: 'node.path', style: { 'underlay-color': p.accent, 'underlay-opacity': 0.2, 'underlay-padding': 8, 'border-width': 3, 'z-index': 15, 'font-weight': 650 } },
+    { selector: 'edge.path', style: { 'line-color': p.accent, 'target-arrow-color': p.accent, 'width': 3, 'opacity': 1, 'label': 'data(label)', 'z-index': 15 } },
+    { selector: 'edge.path-inferred', style: { 'line-style': 'dashed', 'line-dash-pattern': [6, 4], 'line-color': p.attention, 'target-arrow-color': p.attention } },
     { selector: 'node.match', style: { 'underlay-color': p.accent, 'underlay-opacity': 0.14 } },
     { selector: 'node.gapped', style: { 'underlay-color': p.attention, 'underlay-opacity': 0.22, 'underlay-padding': 9, 'border-style': 'double', 'border-width': 3.5 } },
     {

@@ -13,5 +13,5 @@
     "isolatedModules": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["server", "shared", "tests", "drizzle.config.ts"]
+  "include": ["server", "shared", "tests", "evals", "drizzle.config.ts"]
 }

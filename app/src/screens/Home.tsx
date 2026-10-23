@@ -1,12 +1,14 @@
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react'
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { AlertCircle, ArrowRight, ArrowUpRight, Building2, Check, Clock, EyeOff, Gavel, MessagesSquare, Plus, RotateCw, Target, TrendingDown, UserX, Users } from 'lucide-react'
+import { AlertCircle, ArrowRight, ArrowUpRight, Building2, CalendarClock, Check, Clock, EyeOff, Gavel, MessagesSquare, Plus, RotateCw, Sparkle, Target, TrendingDown, UserX, Users } from 'lucide-react'
 import { useDashboard, useInvalidate } from '../api/hooks'
+import { sourceHref, useAIStatus, useWorkspaceBriefing, type Briefing, type BriefingItem, type ItemKind } from '../api/ai'
+import { openCopilot } from '../lib/copilotBus'
 import { errorMessage, request, ws } from '../api/http'
 import type { Dashboard, Signal } from '../api/types'
 import { useSession } from '../session/session'
-import { Avatar, Button, Kbd, Pill, Skeleton, StanceBadge } from '../components/ui'
+import { Avatar, Button, Cite, Kbd, Pill, Skeleton, StanceBadge } from '../components/ui'
 import { useApp } from '../shell/context'
 import { useHotkeys } from '../lib/hotkeys'
 import { t } from '../lib/motion'
@@ -20,10 +22,12 @@ const KIND_META: Record<Signal['kind'], { label: string; icon: typeof Clock }> =
   cooling: { label: 'Cooling', icon: TrendingDown },
   unowned: { label: 'No owner', icon: UserX },
   'stance-shift': { label: 'Stance shift', icon: TrendingDown },
+  unassigned: { label: 'Unassigned', icon: UserX },
+  'repeated-delay': { label: 'Repeated delay', icon: CalendarClock },
 }
 const FILTERS = [
   { id: 'all', label: 'All' },
-  { id: 'commitments', label: 'Commitments', kinds: ['overdue', 'due-soon'] },
+  { id: 'commitments', label: 'Commitments', kinds: ['overdue', 'due-soon', 'unassigned', 'repeated-delay'] },
   { id: 'decisions', label: 'Decisions', kinds: ['decision-waiting'] },
   { id: 'relationships', label: 'Relationships', kinds: ['cooling', 'unowned', 'stance-shift'] },
 ] as const
@@ -61,7 +65,7 @@ export function Home() {
           </div>
           {dash.isError ? <LoadError error={dash.error} onRetry={() => dash.refetch()} />
             : dash.data && dash.data.stakeholders.total === 0 ? <EmptyWorkspace name={workspace?.name ?? ''} />
-            : <HomeGrid d={dash.data} scope={scope} />}
+            : <><WorkspaceBriefing /><HomeGrid d={dash.data} scope={scope} /></>}
         </div>
       </div>
     </>
@@ -244,7 +248,11 @@ function LedgerRow({ sig, open, focused, busy, canComplete, onToggle, onHide, on
         {open && (
           <motion.div className="lwhy" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1, transition: t.base }} exit={{ height: 0, opacity: 0, transition: t.exit }}>
             <div className="lwhy-inner">
-              <div className="why-rule"><span className="t-caption c3">Why this is here</span><span>{sig.rule}</span></div>
+              <div className="why-rule">
+                <span className="row gap-2"><span className="t-caption c3">Why it matters</span><span className="why-basis" title="Raised by a fixed rule over your records — not an AI prediction">Rule-based</span></span>
+                <span>{sig.reason}</span>
+                <span className="t-small c2">Rule: {sig.rule}</span>
+              </div>
               {person && (
                 <div className="why-person">
                   <Avatar name={person.name} size={22} /><span className="t-strong">{person.name}</span>
@@ -259,10 +267,13 @@ function LedgerRow({ sig, open, focused, busy, canComplete, onToggle, onHide, on
                   ))}
                 </div>
               )}
+              {sig.next && <NextStep sig={sig} next={sig.next} />}
               <div className="why-actions">
                 {sig.commitmentId && canComplete && <Button size="sm" onClick={onComplete} loading={busy} icon={<Check size={13} />}>Mark complete</Button>}
-                {sig.decisionId && <Button size="sm" onClick={() => nav(`/decisions?open=${sig.decisionId}`)}>Open decision</Button>}
+                {sig.decisionId && sig.next?.action !== 'review_decision' && <Button size="sm" onClick={() => nav(`/decisions?open=${sig.decisionId}`)}>Open decision</Button>}
                 {person && <Button size="sm" variant="ghost" onClick={() => nav(`/stakeholders/${person.id}`)}>Open profile <ArrowRight size={13} /></Button>}
+                <Button size="sm" variant="ai" icon={<Sparkle size={13} />} title="Opens the assistant with this item as context"
+                  onClick={() => openCopilot({ message: `Tell me about: ${sig.title}`, context: { stakeholderId: sig.stakeholder?.id ?? null, label: sig.stakeholder?.name ?? sig.title }, send: true })}>Ask AI about this</Button>
                 <span className="grow" />
                 <Button size="sm" variant="ghost" onClick={onHide} icon={<EyeOff size={13} />}>Hide</Button>
               </div>
@@ -271,6 +282,134 @@ function LedgerRow({ sig, open, focused, busy, canComplete, onToggle, onHide, on
         )}
       </AnimatePresence>
     </motion.li>
+  )
+}
+
+/** The deterministic next step for a signal. Buttons only navigate or open a form — nothing changes until the user saves. */
+function NextStep({ sig, next }: { sig: Signal; next: NonNullable<Signal['next']> }) {
+  const nav = useNavigate()
+  const { openCreate } = useApp()
+  const { can } = useSession()
+  const person = sig.stakeholder
+  const recordHref = sig.commitmentId ? `/commitments?open=${sig.commitmentId}` : sig.decisionId ? `/decisions?open=${sig.decisionId}` : person ? `/stakeholders/${person.id}` : null
+  let action: { label: string; run: () => void } | null = null
+  switch (next.action) {
+    case 'follow_up_commitment':
+      if (sig.commitmentId) action = { label: 'Open commitment', run: () => nav(`/commitments?open=${sig.commitmentId}`) }
+      break
+    case 'log_engagement':
+      if (can('engagement.create')) action = { label: 'Log engagement', run: () => openCreate('engagement', person ? { participantIds: [person.id], participantOptions: [{ id: person.id, name: person.name }] } : undefined) }
+      else if (person) action = { label: 'Open profile', run: () => nav(`/stakeholders/${person.id}`) }
+      break
+    case 'review_decision':
+      if (sig.decisionId) action = { label: 'Review decision', run: () => nav(`/decisions?open=${sig.decisionId}`) }
+      break
+    case 'assign_owner':
+      if (recordHref) action = { label: 'Assign owner', run: () => nav(recordHref) }
+      break
+    case 'open_record':
+      if (recordHref) action = { label: sig.commitmentId ? 'Open commitment' : sig.decisionId ? 'Open decision' : 'Open profile', run: () => nav(recordHref) }
+      break
+  }
+  return (
+    <div className="why-next">
+      <div className="grow">
+        <span className="t-caption c3">Suggested next step</span>
+        <p>{next.text}</p>
+      </div>
+      {action && <Button size="sm" onClick={action.run}>{action.label} <ArrowRight size={13} /></Button>}
+    </div>
+  )
+}
+
+// ── AI workspace briefing ──────────────────────────────────────────────────────
+const ITEM_KIND_LABEL: Record<ItemKind, string> = { fact: 'Fact', metric: 'Metric', interpretation: 'AI interpretation', recommendation: 'Recommendation' }
+const clock = (iso: string) => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+
+/**
+ * Briefing over today's signals. With the built-in rules engine it is free, so it loads on its own;
+ * with a model it spends tokens, so it waits for an explicit "Generate briefing".
+ */
+function WorkspaceBriefing() {
+  const status = useAIStatus()
+  const [requested, setRequested] = useState(false)
+  const engine = status.data?.engine
+  const on = !!status.data && status.data.settings.enabled
+  const local = engine?.kind === 'local'
+  const q = useWorkspaceBriefing(on && (local || requested))
+  if (status.isError || (status.data && !on)) return null
+  const b = q.data
+  const shownEngine = b?.engine ?? engine
+  return (
+    <section className="brief" aria-labelledby="brief-h" aria-busy={q.isFetching || undefined}>
+      <header className="brief-head">
+        <Sparkle size={14} className="brief-ico" aria-hidden />
+        <h2 id="brief-h" className="t-heading">Workspace briefing</h2>
+        {shownEngine && <span className="brief-engine t-small c3">{shownEngine.kind === 'local' ? 'Built-in rules engine' : shownEngine.label}{shownEngine.kind !== 'local' && shownEngine.model ? ` · ${shownEngine.model}` : ''}</span>}
+        <span className="grow" />
+        {b && <span className="t-small c3 num" title={new Date(b.generatedAt).toLocaleString('en-GB')}>Generated {clock(b.generatedAt)}{b.cached ? ' · cached' : ''}</span>}
+        {b && <Button size="sm" variant="ghost" icon={<RotateCw size={13} />} onClick={() => void q.refetch()} loading={q.isFetching} aria-label="Regenerate briefing" title="Regenerate" />}
+      </header>
+      {!status.data ? <div className="rcard-skel"><Skeleton h={10} w="60%" /></div>
+        : q.isError ? (
+          <div className="brief-err" role="alert">
+            <AlertCircle size={14} /><span className="grow">Couldn’t generate the briefing. {errorMessage(q.error)}</span>
+            <Button size="sm" icon={<RotateCw size={13} />} onClick={() => void q.refetch()}>Retry</Button>
+          </div>
+        ) : !b && !q.isFetching ? (
+          <div className="brief-idle">
+            <p className="c2 t-small grow">A short read of today’s signals, citing the records behind each point. Generating it uses {engine?.label ?? 'the AI model'} and counts toward this workspace’s monthly AI budget.</p>
+            <Button size="sm" variant="ai" icon={<Sparkle size={13} />} onClick={() => setRequested(true)}>Generate briefing</Button>
+          </div>
+        ) : !b ? (
+          <div className="rcard-skel" aria-label="Generating briefing"><Skeleton h={10} w="72%" /><Skeleton h={10} w="88%" /><Skeleton h={10} w="50%" /></div>
+        ) : <BriefingBody b={b} />}
+    </section>
+  )
+}
+
+function BriefingBody({ b }: { b: Briefing }) {
+  const nav = useNavigate()
+  const local = b.engine.kind === 'local'
+  const num = new Map(b.sources.map((s, i) => [s.ref, { n: i + 1, s }]))
+  const empty = b.sections.every(s => !s.items.length)
+  return (
+    <div className="brief-body">
+      {b.aiError && (
+        <p className="brief-warn t-small" role="status"><AlertCircle size={13} aria-hidden />The AI model couldn’t complete this briefing ({b.aiError}). Showing facts and rule-based items only.</p>
+      )}
+      {local && <p className="t-small c3">Facts and rule-based items from your records. No model key is configured, so there is no AI interpretation.</p>}
+      {empty ? <p className="t-small c2">Nothing to report from today’s records.</p> : (
+        <div className="brief-sections">
+          {b.sections.filter(s => s.items.length).map(sec => (
+            <section key={sec.id} className="brief-sec" aria-label={sec.title}>
+              <h3 className="t-caption c3">{sec.title}</h3>
+              <ul>
+                {sec.items.map((it, i) => <BriefItem key={i} it={it} aiEngine={!local} cite={ref => num.get(ref)} onOpen={href => nav(href)} />)}
+              </ul>
+            </section>
+          ))}
+        </div>
+      )}
+      {b.unsupportedDropped > 0 && <p className="t-small c3">{b.unsupportedDropped} AI statement{b.unsupportedDropped === 1 ? ' was' : 's were'} left out because {b.unsupportedDropped === 1 ? 'it wasn’t' : 'they weren’t'} supported by your records.</p>}
+    </div>
+  )
+}
+
+function BriefItem({ it, aiEngine, cite, onOpen }: { it: BriefingItem; aiEngine: boolean; cite: (ref: string) => { n: number; s: Briefing['sources'][number] } | undefined; onOpen: (href: string) => void }) {
+  const cites = it.cites.map(cite).filter(Boolean) as { n: number; s: Briefing['sources'][number] }[]
+  const tentative = it.kind === 'interpretation'
+  return (
+    <li className={`bitem bitem-${it.kind}`} data-ai={(tentative || (aiEngine && it.kind === 'recommendation')) || undefined}>
+      <span className="bitem-kind t-micro">{ITEM_KIND_LABEL[it.kind]}{tentative ? ' · tentative' : ''}</span>
+      <span className="bitem-text">
+        {it.text}
+        {cites.map(c => <Cite key={c.s.ref} n={c.n} label={c.s.label} onClick={() => { const h = sourceHref(c.s); if (h !== '#') onOpen(h) }} />)}
+        {it.kind === 'metric' && it.method && (
+          <details className="bitem-method"><summary className="t-small c3">How this is counted</summary><span className="t-small c2">{it.method}</span></details>
+        )}
+      </span>
+    </li>
   )
 }
 

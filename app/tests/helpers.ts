@@ -10,14 +10,17 @@ export const ORIGIN = 'http://localhost:5173'
 export const PASSWORD = 'correct-horse-battery'
 
 /** Fresh in-memory Postgres (PGlite), migrated, with the real app and auth wired up. */
-export async function createTestContext() {
+export async function createTestContext(opts: { ai?: import('../server/ai/engine').AIEngine } = {}) {
   const database = await createDatabase({})
   await migrate(database)
   const env = loadEnv({ NODE_ENV: 'test', APP_URL: ORIGIN, REQUIRE_EMAIL_VERIFICATION: 'true' })
   const mailer = createLogMailer(database.db, { quiet: true })
   const auth = createAuth(database.db, env, mailer)
-  const app = createApp({ db: database.db, auth, env, mailer })
-  return { app, db: database.db, close: () => database.close() }
+  const { createLocalEngine } = await import('../server/ai/engine')
+  const { createLimiter } = await import('../server/ratelimit')
+  const limiter = createLimiter()
+  const app = createApp({ db: database.db, auth, env, mailer, limiter, ai: opts.ai ?? createLocalEngine() })
+  return { app, db: database.db, limiter, close: () => database.close() }
 }
 export type TestContext = Awaited<ReturnType<typeof createTestContext>>
 
@@ -88,4 +91,17 @@ export async function addMember(ctx: TestContext, admin: Client, wid: string, me
   const token = new URL((await lastMail(ctx, email, 'invite')).url!).pathname.split('/').pop()!
   const acc = await member.post(`/api/invitations/${token}/accept`)
   if (acc.status !== 200) throw new Error(`accept failed ${acc.status} ${JSON.stringify(acc.body)}`)
+}
+
+/** Reads a server-sent-event response into its events. */
+export async function sse(ctx: TestContext, c: Client, path: string, body: unknown) {
+  const res = await ctx.app.request(path, { method: 'POST', headers: { 'content-type': 'application/json', origin: ORIGIN, cookie: [...c.jar].map(([k, v]) => `${k}=${v}`).join('; ') }, body: JSON.stringify(body) })
+  if (res.status !== 200) return { status: res.status, events: [] as { event: string; data: any }[], body: await res.json() }
+  const text = await res.text()
+  const events = text.split('\n\n').filter(Boolean).map(chunk => {
+    const ev = /event: (.+)/.exec(chunk)?.[1] ?? 'message'
+    const data = /data: (.+)/.exec(chunk)?.[1]
+    return { event: ev, data: data ? JSON.parse(data) : null }
+  })
+  return { status: 200, events, body: null }
 }

@@ -9,7 +9,7 @@ import { ApiError, forbidden, notFound, unauthorized } from './http'
 import { can, type Action, type Role } from '../shared/permissions'
 import type { RequestMeta } from './history'
 
-export interface Deps { db: DB; auth: Auth; env: Env; mailer: Mailer }
+export interface Deps { db: DB; auth: Auth; env: Env; mailer: Mailer; limiter?: import('./ratelimit').Limiter; ai?: import('./ai/engine').AIEngine }
 export interface SessionUser { id: string; email: string; name: string; emailVerified: boolean }
 export interface Tenant extends TenantContext { role: Role; workspaceName: string; membershipId: string }
 

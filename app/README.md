@@ -39,11 +39,21 @@ Sample accounts (development only), all with the password `meridian-sample-2026`
 | `npm run db:migrate` | Apply pending migrations |
 | `npm run db:seed` / `db:reset` | Seed sample data / wipe `.data` and reseed |
 | `npm run build` / `npm start` | Production build, then serve API and client from one process |
+| `npm run eval` | AI evaluation: extraction precision/recall, quote and citation validity, leakage, latency, cost (`AI_ENGINE=local` forces the rules engine) |
+
+## AI features
+Copilot (⌘J), meeting intelligence (engagement → *Review meeting intelligence*), briefings (profile → *Prepare briefing*, decision panel), the Home briefing and signals, map *Find path*, and Settings › AI.
+
+- **No key needed.** Without `ANTHROPIC_API_KEY` everything runs on the built-in rules engine: deterministic, no data leaves the server, and it is labelled as such in the UI.
+- **With a key** the Claude engine adds extraction, cited interpretation and a tool-using copilot. Review the provider's data-handling terms first (`docs/ai/security-and-privacy.md`).
+- **Nothing is written without approval.** Extracted items are proposals; a person accepts, edits, rejects or merges each one.
+- **Further reading.** Architecture, model strategy, costs, eval results and limitations are in `docs/ai/`.
 
 ## Database & migrations
 - The schema is in `server/db/schema.ts`. Migrations live in `server/db/migrations/`:
   - `0000_init.sql` is generated.
   - `0001_rls.sql` is hand-written: row-level security, the `app_user` role, and append-only audit.
+  - `0002_ai_layer.sql` (generated) and `0003_ai_rls.sql` (hand-written) add the AI tables and their policies.
 - **Migrations run automatically** on server start (`migrate()` is idempotent and tracked in `drizzle.__drizzle_migrations`). `npm run db:migrate` runs them explicitly.
 - **Rollback.** Migrations are forward-only. To roll back, write a new migration that reverses the change. Never edit an applied migration. Take a backup (`pg_dump`) before applying migrations in production.
 - **Recovery.** Production should use managed Postgres with point-in-time recovery. PGlite data in `.data/` is for development only and is safe to delete (`npm run db:reset`).

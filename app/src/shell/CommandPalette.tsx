@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState, type ReactNode, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Building2, CornerDownLeft, Gavel, Handshake, Home, Map as MapIcon, MessagesSquare, Plus, Search, Sparkles, Users, Clock, Target, Settings, Loader2 } from 'lucide-react'
+import { Building2, CornerDownLeft, Gavel, Handshake, Home, Map as MapIcon, MessagesSquare, MessageCircleQuestionMark, Plus, Search, Users, Clock, Target, Settings, Loader2 } from 'lucide-react'
 import { useApp, type CreateKind } from './context'
 import { useLookups, useSearch } from '../api/hooks'
 import { useSession } from '../session/session'
@@ -11,6 +11,7 @@ import type { Stance } from '../api/types'
 import { t } from '../lib/motion'
 import { MOD } from '../lib/hotkeys'
 import { fmtRelative } from '../lib/format'
+import { openCopilot } from '../lib/copilotBus'
 import './palette.css'
 
 interface Item { id: string; group: string; label: string; sub?: string; icon: ReactNode; hint?: string; path?: string; run?: () => void; keywords?: string; stance?: Stance }
@@ -21,7 +22,7 @@ const readRecent = (): Recent[] => { try { const v = JSON.parse(localStorage.get
 const pushRecent = (r: Recent) => { try { localStorage.setItem(RECENT_KEY, JSON.stringify([r, ...readRecent().filter(x => x.id !== r.id)].slice(0, 6))) } catch { /* storage unavailable */ } }
 
 const SHORTCUTS: [string, string][] = [
-  [`${MOD} K`, 'Command palette'], ['G H', 'Go to Home'], ['G S', 'Go to Stakeholders'], ['G M', 'Relationship map'],
+  [`${MOD} K`, 'Command palette'], [`${MOD} J`, 'Ask copilot'], ['G H', 'Go to Home'], ['G S', 'Go to Stakeholders'], ['G M', 'Relationship map'],
   ['G O / G I', 'Organizations / Initiatives'], ['G E / G D / G C', 'Engagements / Decisions / Commitments'],
   ['C then P', 'New stakeholder'], ['C then E', 'Log engagement'], ['C then M', 'New commitment'],
   ['J / K', 'Move through rows'], ['Space', 'Peek record'], ['↵', 'Open record'], ['X', 'Select row'],
@@ -117,8 +118,15 @@ function Palette({ seed, onClose }: { seed: string; onClose: () => void }) {
     const all = [...remotes.filter(r => r.item.group === 'Stakeholders'), ...locals, ...remotes.filter(r => r.item.group !== 'Stakeholders')]
     const order: string[] = []
     all.forEach(s => { if (!order.includes(s.item.group)) order.push(s.item.group) })
-    return order.flatMap(g => all.filter(s => s.item.group === g).slice(0, 6))
-  }, [mode, term, commands, initiatives, remote])
+    const ranked = order.flatMap(g => all.filter(s => s.item.group === g).slice(0, 6))
+    if (mode !== 'all') return ranked
+    // Free text can always be asked as a question; it sits after record matches so Enter still opens an exact hit.
+    const ask: Item = {
+      id: 'ask', group: 'Ask', label: `Ask copilot: “${term}”`, icon: <MessageCircleQuestionMark size={15} />,
+      run: () => { restoreFocus.current = null; onClose(); openCopilot({ message: term, send: true }) },
+    }
+    return [...ranked, { item: ask, hits: [] as number[] }]
+  }, [mode, term, commands, initiatives, remote, onClose])
 
   useEffect(() => setSel(0), [q])
   useEffect(() => { listRef.current?.querySelector(`[data-idx="${sel}"]`)?.scrollIntoView({ block: 'nearest' }) }, [sel])
@@ -158,10 +166,17 @@ function Palette({ seed, onClose }: { seed: string; onClose: () => void }) {
         <div className="pal-list" id="pal-list" role="listbox" ref={listRef} aria-label="Results" aria-busy={searching || undefined}>
           {mode === 'help' ? (
             <div className="pal-help">{SHORTCUTS.map(([k, l]) => <div key={k} className="pal-help-row"><span>{l}</span><span className="row gap-1">{k.split(' ').map((x, i) => <Kbd key={i}>{x}</Kbd>)}</span></div>)}</div>
-          ) : results.length === 0 ? (
-            <div className="pal-empty">
-              {searching ? <span className="c3">Searching…</span> : search.isError ? <span>Search is unavailable right now</span> : <><span>No matches for “{term}”</span><span className="c3 t-small">Try a name, an organization, or a record key like C-142</span></>}
-            </div>
+          ) : results.length === 0 || (results.length === 1 && results[0].item.id === 'ask' && !searching) ? (
+            <>
+              <div className="pal-empty">
+                {searching ? <span className="c3">Searching…</span> : search.isError ? <span>Search is unavailable right now</span> : <><span>No matches for “{term}”</span><span className="c3 t-small">Try a name, an organization, or a record key like C-142</span></>}
+              </div>
+              {results.map(({ item }, i) => (
+                <div key={item.id} id={`pal-opt-${i}`} data-idx={i} role="option" aria-selected={i === sel} className="pal-item" onClick={() => runItem(item)}>
+                  {i === sel && <span className="pal-sel" />}<span className="pal-icon">{item.icon}</span><span className="truncate pal-label">{item.label}</span>
+                </div>
+              ))}
+            </>
           ) : results.map(({ item, hits }, i) => {
             const header = item.group !== lastGroup ? (lastGroup = item.group) : null
             return (
@@ -188,7 +203,7 @@ function Palette({ seed, onClose }: { seed: string; onClose: () => void }) {
           <span className="row gap-1"><Kbd>↵</Kbd> open</span>
           <span className="grow" />
           <span className="row gap-1 c3"><Kbd>@</Kbd> people <Kbd>&gt;</Kbd> commands <Kbd>?</Kbd> shortcuts</span>
-          <span className="pal-ask" title="Natural-language Ask needs the AI service, which is not connected."><Sparkles size={12} /> Ask · not available</span>
+          <span className="row gap-1 c3"><MessageCircleQuestionMark size={12} /> Ask copilot <Kbd>{MOD}</Kbd><Kbd>J</Kbd></span>
         </div>
       </motion.div>
     </motion.div>

@@ -442,3 +442,111 @@ export const auditEvent = pgTable('audit_event', {
   userAgent: text('user_agent'),
   createdAt: ts('created_at').notNull().defaultNow(),
 }, t => [index('audit_ws_time_idx').on(t.workspaceId, t.createdAt)])
+
+// ── AI intelligence layer ────────────────────────────────────────────────────
+/** One row per model (or local-engine) call. Stores counts and cost only — never prompt or response text. */
+export const aiUsage = pgTable('ai_usage', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  workspaceId: tenant(),
+  userId: text('user_id').references(() => user.id, { onDelete: 'set null' }),
+  feature: text('feature').notNull(),
+  engine: text('engine', { enum: ['claude', 'local'] }).notNull(),
+  model: text('model'),
+  inputTokens: integer('input_tokens').notNull().default(0),
+  outputTokens: integer('output_tokens').notNull().default(0),
+  cacheReadTokens: integer('cache_read_tokens').notNull().default(0),
+  /** Estimated cost in micro-dollars (1e-6 USD) from the published per-token price. */
+  costMicros: integer('cost_micros').notNull().default(0),
+  latencyMs: integer('latency_ms').notNull().default(0),
+  status: text('status', { enum: ['ok', 'error', 'refused', 'cancelled', 'quota_exceeded'] }).notNull(),
+  errorCode: text('error_code'),
+  createdAt: ts('created_at').notNull().defaultNow(),
+}, t => [index('ai_usage_ws_time_idx').on(t.workspaceId, t.createdAt)])
+
+/** Copilot conversations are private to the user who started them and expire per workspace retention. */
+export const aiConversation = pgTable('ai_conversation', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  workspaceId: tenant(),
+  userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  context: jsonb('context').$type<Record<string, unknown>>().notNull().default({}),
+  expiresAt: ts('expires_at').notNull(),
+  createdAt: ts('created_at').notNull().defaultNow(),
+  updatedAt: ts('updated_at').notNull().defaultNow(),
+}, t => [unique('ai_conv_ws_id_uq').on(t.workspaceId, t.id), index('ai_conv_user_idx').on(t.workspaceId, t.userId, t.updatedAt)])
+
+export const aiMessage = pgTable('ai_message', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  workspaceId: tenant(),
+  conversationId: uuid('conversation_id').notNull(),
+  userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  role: text('role', { enum: ['user', 'assistant'] }).notNull(),
+  content: text('content').notNull(),
+  /** Citations and structured cards for assistant messages. */
+  payload: jsonb('payload').$type<Record<string, unknown>>().notNull().default({}),
+  engine: text('engine'),
+  createdAt: ts('created_at').notNull().defaultNow(),
+}, t => [
+  index('ai_msg_conv_idx').on(t.conversationId, t.createdAt),
+  sameTenant('ai_msg_conv_fk', [t.workspaceId, t.conversationId], aiConversation, 'cascade'),
+])
+
+/** Result of analysing one engagement's notes/transcript. Proposals hang off it. */
+export const meetingAnalysis = pgTable('meeting_analysis', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  workspaceId: tenant(),
+  engagementId: uuid('engagement_id').notNull(),
+  /** Hash of the analysed text: a changed source marks the analysis stale. */
+  sourceHash: text('source_hash').notNull(),
+  engine: text('engine', { enum: ['claude', 'local'] }).notNull(),
+  model: text('model'),
+  summary: text('summary'),
+  topics: jsonb('topics').$type<string[]>().notNull().default([]),
+  openQuestions: jsonb('open_questions').$type<unknown[]>().notNull().default([]),
+  mentions: jsonb('mentions').$type<unknown[]>().notNull().default([]),
+  /** Instruction-like lines found in the content (treated as data, surfaced to the user). */
+  flags: jsonb('flags').$type<unknown[]>().notNull().default([]),
+  createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+  createdAt: ts('created_at').notNull().defaultNow(),
+}, t => [
+  unique('analysis_ws_id_uq').on(t.workspaceId, t.id),
+  index('analysis_engagement_idx').on(t.engagementId, t.createdAt),
+  sameTenant('analysis_engagement_fk', [t.workspaceId, t.engagementId], engagement, 'cascade'),
+])
+
+/** A reviewable, human-approved change proposed by the AI layer. Nothing is written until accepted. */
+export const aiProposal = pgTable('ai_proposal', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  workspaceId: tenant(),
+  analysisId: uuid('analysis_id'),
+  source: text('source', { enum: ['meeting', 'signal', 'copilot'] }).notNull(),
+  kind: text('kind', { enum: ['commitment', 'decision', 'action', 'stakeholder_note', 'follow_up_engagement'] }).notNull(),
+  status: text('status', { enum: ['pending', 'accepted', 'rejected', 'merged'] }).notNull().default('pending'),
+  title: text('title').notNull(),
+  values: jsonb('values').$type<Record<string, unknown>>().notNull().default({}),
+  evidence: jsonb('evidence').$type<unknown[]>().notNull().default([]),
+  reasoning: text('reasoning'),
+  basis: text('basis', { enum: ['explicit', 'inferred'] }).notNull(),
+  needsReview: jsonb('needs_review').$type<string[]>().notNull().default([]),
+  requiredPermission: text('required_permission').notNull(),
+  mergedInto: uuid('merged_into'),
+  createdRecordType: text('created_record_type'),
+  createdRecordId: uuid('created_record_id'),
+  decidedBy: text('decided_by').references(() => user.id, { onDelete: 'set null' }),
+  decidedAt: ts('decided_at'),
+  version: integer('version').notNull().default(1),
+  createdAt: ts('created_at').notNull().defaultNow(),
+}, t => [
+  index('proposal_analysis_idx').on(t.analysisId),
+  index('proposal_ws_status_idx').on(t.workspaceId, t.status),
+  sameTenant('proposal_analysis_fk', [t.workspaceId, t.analysisId], meetingAnalysis, 'cascade'),
+])
+
+/** Short-lived cache for generated briefings, keyed by a hash of the evidence they were built from. */
+export const aiCache = pgTable('ai_cache', {
+  workspaceId: tenant(),
+  key: text('key').notNull(),
+  userId: text('user_id').notNull(),
+  value: jsonb('value').notNull(),
+  expiresAt: ts('expires_at').notNull(),
+}, t => [primaryKey({ columns: [t.workspaceId, t.userId, t.key] })])

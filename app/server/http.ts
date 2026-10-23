@@ -4,7 +4,7 @@ import { ZodError } from 'zod'
 
 /** Error envelope returned by every API failure: { error: { code, message, fields?, current? } } */
 export class ApiError extends Error {
-  constructor(public status: 400 | 401 | 403 | 404 | 409 | 410 | 422 | 429 | 500, public code: string, message: string, public extra: Record<string, unknown> = {}) {
+  constructor(public status: 400 | 401 | 403 | 404 | 409 | 410 | 422 | 429 | 500 | 503, public code: string, message: string, public extra: Record<string, unknown> = {}) {
     super(message)
   }
 }

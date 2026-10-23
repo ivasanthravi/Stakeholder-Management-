@@ -1,7 +1,8 @@
 import { Hono } from 'hono'
 import { and, eq, isNull, sql } from 'drizzle-orm'
 import { decision, decisionStakeholder, engagement, initiative, stakeholder, user } from '../db/schema'
-import type { Tx } from '../db/client'
+import type { TenantContext, Tx } from '../db/client'
+import type { z } from 'zod'
 import { jsonBody, patchBody, need, query, tx, type AppEnv } from '../context'
 import { diff, nextKey, recordActivity } from '../history'
 import { csv, getOr404, rowsOf, versionedUpdate } from './_shared'
@@ -37,19 +38,7 @@ export const decisionRoutes = new Hono<AppEnv>()
     const tn = c.var.tenant
     // Contributors may propose; only managers+ can create a decision in a decided state.
     if (input.status !== 'proposed') need(c, 'decision.update')
-    const id = await tx(c, async t => {
-      await assertMember(t, input.ownerId)
-      const { stakeholders, ...fields } = input
-      const key = await nextKey(t, tn.workspaceId, 'D', 100)
-      const [d] = await t.insert(decision).values({
-        ...fields, key, ownerId: input.ownerId ?? tn.userId, decidedAt: FINAL.has(input.status) ? new Date() : null,
-        workspaceId: tn.workspaceId, createdBy: tn.userId, updatedBy: tn.userId,
-      }).returning()
-      await setStakeholders(t, tn.workspaceId, d.id, stakeholders)
-      await recordActivity(t, tn, { entityType: 'decision', entityId: d.id, verb: 'created', summary: `${d.key} recorded as ${STATUS_LABEL[d.status]}` })
-      for (const s of stakeholders) await recordActivity(t, tn, { entityType: 'stakeholder', entityId: s.stakeholderId, verb: 'decision_linked', summary: `${s.role[0].toUpperCase() + s.role.slice(1)} on ${d.key} ${d.title}` })
-      return d.id
-    })
+    const id = await tx(c, async t => (await createDecision(t, tn, input)).id)
     return c.json(await tx(c, t => decisionDetail(t, id)), 201)
   })
 
@@ -86,6 +75,21 @@ export const decisionRoutes = new Hono<AppEnv>()
     return c.json({ ok: true })
   })
 
+/** Shared by the API route and AI proposal acceptance. Callers check permissions first. */
+export async function createDecision(t: Tx, tn: TenantContext, input: z.output<typeof decisionCreateSchema>) {
+  await assertMember(t, input.ownerId)
+  const { stakeholders, ...fields } = input
+  const key = await nextKey(t, tn.workspaceId, 'D', 100)
+  const [d] = await t.insert(decision).values({
+    ...fields, key, ownerId: input.ownerId ?? tn.userId, decidedAt: FINAL.has(input.status) ? new Date() : null,
+    workspaceId: tn.workspaceId, createdBy: tn.userId, updatedBy: tn.userId,
+  }).returning()
+  await setStakeholders(t, tn.workspaceId, d.id, stakeholders)
+  await recordActivity(t, tn, { entityType: 'decision', entityId: d.id, verb: 'created', summary: `${d.key} recorded as ${STATUS_LABEL[d.status]}` })
+  for (const s of stakeholders) await recordActivity(t, tn, { entityType: 'stakeholder', entityId: s.stakeholderId, verb: 'decision_linked', summary: `${s.role[0].toUpperCase() + s.role.slice(1)} on ${d.key} ${d.title}` })
+  return d
+}
+
 async function setStakeholders(t: Tx, workspaceId: string, decisionId: string, list: { stakeholderId: string; role: 'approver' | 'consulted' | 'informed' | 'affected' }[]) {
   await t.delete(decisionStakeholder).where(eq(decisionStakeholder.decisionId, decisionId))
   const seen = new Set<string>()
@@ -93,7 +97,7 @@ async function setStakeholders(t: Tx, workspaceId: string, decisionId: string, l
   if (rows.length) await t.insert(decisionStakeholder).values(rows)
 }
 
-async function decisionDetail(t: Tx, id: string) {
+export async function decisionDetail(t: Tx, id: string) {
   const d = await getOr404(t, decision, id, 'Decision')
   const stakeholders = await t.select({ id: stakeholder.id, name: stakeholder.name, title: stakeholder.title, stance: stakeholder.stance, role: decisionStakeholder.role })
     .from(decisionStakeholder).innerJoin(stakeholder, eq(stakeholder.id, decisionStakeholder.stakeholderId))

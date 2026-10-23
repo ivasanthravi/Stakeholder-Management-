@@ -1,7 +1,8 @@
 import { Hono } from 'hono'
 import { eq, isNull, sql } from 'drizzle-orm'
 import { commitment, engagement, initiative, stakeholder, user } from '../db/schema'
-import type { Tx } from '../db/client'
+import type { TenantContext, Tx } from '../db/client'
+import type { z } from 'zod'
 import { jsonBody, patchBody, need, query, tx, type AppEnv } from '../context'
 import { diff, nextKey, recordActivity } from '../history'
 import { csv, getOr404, rowsOf, versionedUpdate } from './_shared'
@@ -39,17 +40,7 @@ export const commitmentRoutes = new Hono<AppEnv>()
     need(c, 'commitment.create')
     const input = await jsonBody(c, commitmentCreateSchema)
     const tn = c.var.tenant
-    const id = await tx(c, async t => {
-      await assertMember(t, input.ownerId)
-      const key = await nextKey(t, tn.workspaceId, 'C', 100)
-      const [row] = await t.insert(commitment).values({
-        ...input, key, ownerId: input.ownerId ?? tn.userId, completedAt: input.status === 'completed' ? new Date() : null,
-        workspaceId: tn.workspaceId, createdBy: tn.userId, updatedBy: tn.userId,
-      }).returning()
-      await recordActivity(t, tn, { entityType: 'commitment', entityId: row.id, verb: 'created', summary: `${row.key} “${row.title}”` })
-      if (row.stakeholderId) await recordActivity(t, tn, { entityType: 'stakeholder', entityId: row.stakeholderId, verb: 'commitment_added', summary: `Commitment ${row.key}: ${row.title}` })
-      return row.id
-    })
+    const id = await tx(c, async t => (await createCommitment(t, tn, input)).id)
     return c.json(await tx(c, t => commitmentDetail(t, id)), 201)
   })
 
@@ -89,7 +80,20 @@ export const commitmentRoutes = new Hono<AppEnv>()
     return c.json({ ok: true })
   })
 
-async function commitmentDetail(t: Tx, id: string) {
+/** Shared by the API route and AI proposal acceptance, so both paths validate, key and record history identically. */
+export async function createCommitment(t: Tx, tn: TenantContext, input: z.output<typeof commitmentCreateSchema>) {
+  await assertMember(t, input.ownerId)
+  const key = await nextKey(t, tn.workspaceId, 'C', 100)
+  const [row] = await t.insert(commitment).values({
+    ...input, key, ownerId: input.ownerId ?? tn.userId, completedAt: input.status === 'completed' ? new Date() : null,
+    workspaceId: tn.workspaceId, createdBy: tn.userId, updatedBy: tn.userId,
+  }).returning()
+  await recordActivity(t, tn, { entityType: 'commitment', entityId: row.id, verb: 'created', summary: `${row.key} “${row.title}”` })
+  if (row.stakeholderId) await recordActivity(t, tn, { entityType: 'stakeholder', entityId: row.stakeholderId, verb: 'commitment_added', summary: `Commitment ${row.key}: ${row.title}` })
+  return row
+}
+
+export async function commitmentDetail(t: Tx, id: string) {
   const cm = await getOr404(t, commitment, id, 'Commitment')
   const owner = cm.ownerId ? (await t.select({ id: user.id, name: user.name }).from(user).where(eq(user.id, cm.ownerId as string)))[0] ?? null : null
   const sh = cm.stakeholderId ? (await t.select({ id: stakeholder.id, name: stakeholder.name }).from(stakeholder).where(eq(stakeholder.id, cm.stakeholderId as string)))[0] ?? null : null

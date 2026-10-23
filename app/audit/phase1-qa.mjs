@@ -41,6 +41,7 @@ const ids = {
   person: (await api(`/api/w/${w}/search?q=Ellwood`)).stakeholders[0]?.id,
   org: await pick('organizations'), init: await pick('initiatives'), eng: await pick('engagements'),
   dec: await pick('decisions', '&status=under_review'), com: await pick('commitments', '&overdue=true'),
+  meeting: await pick('engagements', '&q=planning%20liaison'),
 }
 
 const ROUTES = [
@@ -56,6 +57,14 @@ const ROUTES = [
   ['create-engagement', '/', async p => { await p.locator('body').click({ position: { x: 5, y: 5 } }); await p.keyboard.press('c'); await p.keyboard.press('e') }],
   ['palette', '/', async p => { await p.keyboard.press('Meta+k'); await p.keyboard.type('ellw') }],
   ['not-found', '/stakeholders/00000000-0000-0000-0000-000000000000'],
+  // Phase 2: AI views
+  ['ai-intelligence', `/engagements/${ids.meeting}/intelligence`],
+  ['ai-briefing', `/stakeholders/${ids.person}/briefing`], ['ai-briefing-prep', `/stakeholders/${ids.person}/briefing?mode=prep`],
+  ['ai-decision-briefing', `/decisions?open=${ids.dec}`, async p => { await p.getByRole('button', { name: /Decision briefing/ }).click(); await p.waitForTimeout(800) }],
+  ['ai-copilot', '/', async p => { await p.keyboard.press('Meta+j'); await p.keyboard.type('Which commitments are overdue?'); await p.keyboard.press('Enter'); await p.waitForTimeout(1200) }],
+  ['ai-home-signal', '/', async p => { await p.locator('.lchev-btn').first().click() }],
+  ['ai-settings', '/settings/ai'],
+  ['ai-map-path', '/stakeholders?view=map', async p => { await p.getByRole('button', { name: /Find path|Find a chain/ }).click() }],
 ]
 const PUBLIC = [['sign-in', '/sign-in'], ['sign-up', '/sign-up'], ['forgot-password', '/forgot-password']]
 

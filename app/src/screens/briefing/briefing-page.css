@@ -1,0 +1,46 @@
+/* Stakeholder briefing page: a readable single column (~760px) with a print stylesheet that drops the app chrome. */
+.bp-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; }
+.bp { max-width: 760px; margin: 0 auto; padding: 28px 24px 64px; display: flex; flex-direction: column; gap: 18px; }
+.bp-back { gap: 6px; }
+.bp-top { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.bp-title { margin: 0; }
+.bp-sub { margin: 4px 0 0; }
+.bp-print-title { display: none; }
+.bp-head-skel { display: flex; flex-direction: column; gap: 8px; padding-bottom: 14px; border-bottom: 1px solid var(--border-soft); }
+.bp-body { margin-top: 18px; }
+
+/* Segmented control (local copy so this page doesn't depend on the directory stylesheet) */
+.bp-seg { display: inline-flex; padding: 2px; gap: 2px; background: var(--bg-subtle); border-radius: 7px; box-shadow: inset 0 0 0 1px var(--border-soft); }
+.bp-seg-btn {
+  position: relative; height: 26px; padding: 0 12px; border-radius: 5px; font: var(--text-small); font-weight: 500; color: var(--text-2);
+  transition: color var(--dur-instant) linear;
+}
+.bp-seg-btn > span:not(.bp-seg-on) { position: relative; z-index: 1; }
+.bp-seg-btn[aria-checked="true"], .bp-seg-btn:hover { color: var(--text-1); }
+.bp-seg-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.bp-seg-on { position: absolute; inset: 0; border-radius: 5px; background: var(--bg-surface); box-shadow: 0 1px 2px rgb(16 24 40 / .08), 0 0 0 1px rgb(16 24 40 / .05); }
+
+.bp-error {
+  display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: var(--radius-md);
+  background: var(--critical-subtle); box-shadow: inset 0 0 0 1px var(--red-100);
+}
+.bp-error > svg { color: var(--critical); flex: none; margin-top: 1px; }
+.bp-error p { margin: 0 0 2px; }
+
+@media (max-width: 640px) {
+  .bp { padding: 20px 16px 48px; }
+  .bp-top { align-items: flex-start; }
+}
+
+@media print {
+  @page { margin: 18mm 16mm; }
+  .app:has(.bp) { display: block; height: auto; background: #fff; }
+  .app:has(.bp) > :not(.main), .main:has(.bp) > :not(.page) { display: none !important; }
+  .main:has(.bp) { margin: 0; box-shadow: none; border-radius: 0; overflow: visible; }
+  .page:has(.bp) { position: static; display: block; }
+  .bp-scroll { overflow: visible; }
+  .bp { max-width: none; padding: 0; }
+  .bp-chrome, .bp-chrome * { display: none !important; }
+  .bp-print-title { display: block; font: 600 18pt/1.3 var(--font-sans); margin: 0 0 4px; }
+  .bp-body { margin-top: 12px; }
+}

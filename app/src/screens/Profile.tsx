@@ -1,8 +1,8 @@
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
-  AlertCircle, Archive, ArrowUpRight, Building2, Clock, Footprints, Gavel, Lock, Mail, MapPin, MessagesSquare, MoreHorizontal, Network,
+  AlertCircle, Archive, ArrowUpRight, Building2, Clock, FileText, Footprints, Gavel, Lock, Mail, MapPin, MessagesSquare, MoreHorizontal, Network,
   NotebookPen, Pencil, Phone, Plus, Presentation, RotateCcw, Sparkles, Users as UsersIcon, X,
 } from 'lucide-react'
 import { useActivity, useInvalidate, useOverview } from '../api/hooks'
@@ -20,6 +20,7 @@ import { useHotkeys } from '../lib/hotkeys'
 import { useApp } from '../shell/context'
 import { useSession } from '../session/session'
 import { t } from '../lib/motion'
+import { openCopilot } from '../lib/copilotBus'
 import {
   COMMITMENT_STATUS_LABEL, daysFromToday, DECISION_STATUS_LABEL, dueLabel, ENGAGEMENT_KIND_LABEL, fmtDate, fmtRelative, isOpenStatus, isoToday,
   LEVEL_LABEL, RELATIONSHIP_LABEL,
@@ -46,6 +47,7 @@ export const KIND_ICON: Record<string, typeof MessagesSquare> = {
 export function Profile() {
   const { id = '' } = useParams()
   const nav = useNavigate()
+  const location = useLocation()
   const [params, setParams] = useSearchParams()
   const { setPeek, openCreate, toast } = useApp()
   const { can } = useSession()
@@ -104,6 +106,8 @@ export function Profile() {
         </div>
         <span className="grow" />
         <Button size="sm" icon={<Network size={14} />} onClick={() => nav(`/stakeholders?view=map&focus=${id}`)} kbd="M">Show in map</Button>
+        {s && <Button size="sm" variant="ai" icon={<Sparkles size={14} />} onClick={() => openCopilot({ context: { stakeholderId: id, label: s.name, route: location.pathname + location.search } })}>Ask AI</Button>}
+        {s && <Button size="sm" icon={<FileText size={13} />} onClick={() => nav(`/stakeholders/${id}/briefing`)}>Prepare briefing</Button>}
         {s && can('stakeholder.update') && !s.archivedAt && <Button size="sm" icon={<Pencil size={13} />} onClick={() => setEditing(true)} kbd="E">Edit</Button>}
         {s && can('engagement.create') && !s.archivedAt && <Button size="sm" variant="primary" icon={<Plus size={14} />} onClick={logEngagement} kbd="L">Log engagement</Button>}
         {s && (can('stakeholder.archive') || can('stakeholder.restrict')) && <Button ref={moreBtn} size="sm" variant="ghost" icon={<MoreHorizontal size={15} />} aria-label="More actions" onClick={() => setMenu(true)} />}

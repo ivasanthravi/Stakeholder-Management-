@@ -194,6 +194,23 @@ Bottom-left, used for **undoable** actions only ("Commitment closed · Undo"), 5
 
 ---
 
+### 7.12 AI surfaces (Phase 2)
+AI is not a separate visual system. It reuses the tokens above, plus one rule: **the violet `--ai` tokens mark only content a model produced.**
+
+| Element | Treatment |
+|---|---|
+| Model interpretation | Violet left rule (`--ai-line`), softer text, "AI interpretation" tag. Never used for rules-engine output. |
+| Recorded fact | Plain text, neutral bullet |
+| Metric | Tabular figures, with an (i) disclosure showing *how it's calculated* (`method`) |
+| Recommendation | Bordered row with a `Rule` or `AI` badge (from the server's `origin`) and one action that navigates or opens a form. Never auto-executes. |
+| Citation | Small numbered chip, numbered in reading order. Links to the record, with label and date on hover or focus. Sources list at the end. |
+| Engine label | Always visible where AI output appears: "Built-in rules engine · no AI model" or the model's label |
+| Proposal (meeting intelligence) | Card with a `Stated` / `Inferred · confirm` badge (dashed border and muted title when inferred), review-flag chips in warning colour, a verbatim quote, and *Nothing is saved until you accept it.* |
+| Source highlight | Underline styles, not colour alone: solid = stated, dotted = inferred, dashed = open question, hatched with a shield icon = instruction-like text that was ignored |
+| Copilot | Right panel, 420 px, no scrim (full-screen sheet under 640 px). The streaming status is one quiet line, and the footer states its limits and retention. |
+
+Copy rules: say "recorded relationships", never "influence paths". Say "rule" or "AI" for every recommendation. Never describe a person's personality, loyalty or trustworthiness.
+
 ## 8. Motion tokens
 
 | Token | Duration | Easing | Use |

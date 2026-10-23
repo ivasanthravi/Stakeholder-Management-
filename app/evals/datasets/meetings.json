@@ -1,0 +1,148 @@
+{
+  "description": "Synthetic meeting notes across industries with hand-labelled gold items. All people and organisations are fictional. Gold items match a prediction when the prediction's text + quote contains every keyword (case-insensitive). 'forbidden' strings must not appear in any extracted item.",
+  "cases": [
+    {
+      "id": "infra-01", "industry": "Infrastructure", "meetingDate": "2026-10-21",
+      "participants": ["Bea Ellwood", "Jonah Thorne"], "members": ["Olive Grant", "Cara Mendes"],
+      "notes": "Attendees: Bea Ellwood (Highways), Jonah Thorne (Parish Council); Olive Grant, Cara Mendes.\n\n1. Marlow Fen alignment\nBea Ellwood confirmed the council will not oppose the preferred alignment provided hedgerow loss is offset within the parish. The eastern option is no longer under consideration. We will share the hedgerow replanting plan by 6 November.\n\n2. Construction hours\nJonah asked whether viaduct pours could avoid Sundays. Cara said we will revise the working hours proposal to exclude Sundays before the next liaison meeting.\n\n3. Traffic\nOlive will send the haul route drawings to Bea by Friday.",
+      "gold": {
+        "decisions": [{ "keys": ["not oppose", "alignment"] }, { "keys": ["eastern option"] }],
+        "obligations": [
+          { "keys": ["hedgerow", "plan"], "owner": null, "due": "2026-11-06" },
+          { "keys": ["working hours"], "owner": "Cara Mendes", "due": null },
+          { "keys": ["haul route"], "owner": "Olive Grant", "due": "2026-10-23" }
+        ],
+        "open_questions": 1
+      },
+      "forbidden": []
+    },
+    {
+      "id": "health-01", "industry": "Healthcare", "meetingDate": "2026-09-14",
+      "participants": ["Dr Priya Nair", "Tom Okafor"], "members": ["Hana Lewis", "Marcus Bell"],
+      "notes": "Clinical governance review — Riverside Trust\nPresent: Dr Priya Nair (Medical Director), Tom Okafor (Patient Safety Lead); Hana Lewis, Marcus Bell.\n\nThe board approved the pilot of the new discharge checklist on two wards from 1 October.\nDr Nair agreed to nominate a clinical champion for each ward by 25 September.\nHana will circulate the revised audit template to the ward managers by Friday.\nTom raised concerns about staffing over winter; no decision was taken on additional bank shifts.\nIt is still unclear whether pharmacy can support same-day discharge on weekends.",
+      "gold": {
+        "decisions": [{ "keys": ["approved", "discharge checklist"] }],
+        "obligations": [
+          { "keys": ["clinical champion"], "owner": "Dr Priya Nair", "due": "2026-09-25" },
+          { "keys": ["audit template"], "owner": "Hana Lewis", "due": "2026-09-18" }
+        ],
+        "open_questions": 2
+      },
+      "forbidden": ["bank shifts"]
+    },
+    {
+      "id": "energy-01", "industry": "Energy", "meetingDate": "2026-08-03",
+      "participants": ["Gwen Harlow", "Ifan Pritchard"], "members": ["Sam Ortiz"],
+      "notes": "Community benefit fund — Cefn Ridge wind farm\nAttendees: Gwen Harlow (Community Council chair), Ifan Pritchard (Landowner rep); Sam Ortiz.\n\nIt was agreed that the fund will be administered by the community council rather than a new trust.\nSam will draft the fund terms of reference and send them to Gwen by 17 August.\nIfan said the landowners will confirm access arrangements for the cable route next week.\nGwen asked if the annual contribution would be index-linked. Sam to check with finance.",
+      "gold": {
+        "decisions": [{ "keys": ["administered by the community council"] }],
+        "obligations": [
+          { "keys": ["terms of reference"], "owner": "Sam Ortiz", "due": "2026-08-17" },
+          { "keys": ["access arrangements"], "owner": "Ifan Pritchard", "due": null },
+          { "keys": ["check with finance"], "owner": "Sam Ortiz", "due": null }
+        ],
+        "open_questions": 1
+      },
+      "forbidden": []
+    },
+    {
+      "id": "localgov-01", "industry": "Local government", "meetingDate": "2026-07-08",
+      "participants": ["Cllr Ruth Adeyemi", "Neil Barker"], "members": ["Fatima Shah", "Leo Park"],
+      "notes": "Town centre regeneration — cabinet member briefing\nPresent: Cllr Ruth Adeyemi, Neil Barker (Head of Planning); Fatima Shah, Leo Park.\n\nCllr Adeyemi signed off the consultation plan for the market square proposals.\nThe pedestrianisation of Bridge Street was withdrawn from phase one.\nFatima will book the exhibition venue for the public drop-in sessions by 15 July.\nNeil committed to providing the heritage impact assessment before the cabinet meeting.\nLeo to update the project risk register.",
+      "gold": {
+        "decisions": [{ "keys": ["consultation plan"] }, { "keys": ["bridge street", "withdrawn"] }],
+        "obligations": [
+          { "keys": ["exhibition venue"], "owner": "Fatima Shah", "due": "2026-07-15" },
+          { "keys": ["heritage impact assessment"], "owner": "Neil Barker", "due": null },
+          { "keys": ["risk register"], "owner": "Leo Park", "due": null }
+        ],
+        "open_questions": 0
+      },
+      "forbidden": []
+    },
+    {
+      "id": "finserv-01", "industry": "Financial services", "meetingDate": "2026-06-10",
+      "participants": ["Alicia Romero", "Ken Watanabe"], "members": ["Diane Fox"],
+      "notes": "Regulator engagement — quarterly supervisory meeting\nAttendees: Alicia Romero (Supervisor), Ken Watanabe (Policy); Diane Fox (Compliance).\n\nThe regulator confirmed that the remediation plan timeline is acceptable.\nWe will submit the updated consumer duty board report by 30 June.\nAlicia asked whether the complaints data could be broken down by product line.\nDiane will arrange a follow-up session on operational resilience testing.\nKen mentioned the consultation on outsourcing rules may be published in the autumn.",
+      "gold": {
+        "decisions": [{ "keys": ["remediation plan", "acceptable"] }],
+        "obligations": [
+          { "keys": ["consumer duty"], "owner": null, "due": "2026-06-30" },
+          { "keys": ["operational resilience"], "owner": "Diane Fox", "due": null }
+        ],
+        "open_questions": 1
+      },
+      "forbidden": ["published in the autumn"]
+    },
+    {
+      "id": "highered-01", "industry": "Higher education", "meetingDate": "2026-05-12",
+      "participants": ["Prof Elena Rossi", "James Kerr"], "members": ["Nadia Iqbal"],
+      "notes": "Student accommodation partnership\nPresent: Prof Elena Rossi (Pro-Vice-Chancellor), James Kerr (Student Union President); Nadia Iqbal.\n\nThe university decided to cap first-year rent increases at 3% for 2027.\nJames will share the student survey results with Nadia by Thursday.\nNadia said we will publish the affordability framework in due course.\nProf Rossi asked whether the partnership covers postgraduate housing.",
+      "gold": {
+        "decisions": [{ "keys": ["cap", "rent"] }],
+        "obligations": [
+          { "keys": ["survey results"], "owner": "James Kerr", "due": "2026-05-14" },
+          { "keys": ["affordability framework"], "owner": "Nadia Iqbal", "due": null }
+        ],
+        "open_questions": 1
+      },
+      "forbidden": []
+    },
+    {
+      "id": "tech-01", "industry": "Technology", "meetingDate": "2026-04-22",
+      "participants": ["Mei Chen", "Rafael Duarte"], "members": ["Owen Price", "Zara Ali"],
+      "notes": "Enterprise customer steering call — Northwind Logistics\nAttendees: Mei Chen (CIO, Northwind), Rafael Duarte (Procurement); Owen Price, Zara Ali.\n\nNorthwind approved the move to single sign-on for all depots.\nOwen will send the SSO migration runbook to Mei by 30 April.\nZara agreed to set up a weekly status call during the migration.\nRafael asked if the renewal could move to a three-year term. Pricing remains open pending legal review.",
+      "gold": {
+        "decisions": [{ "keys": ["single sign-on"] }],
+        "obligations": [
+          { "keys": ["runbook"], "owner": "Owen Price", "due": "2026-04-30" },
+          { "keys": ["weekly status call"], "owner": "Zara Ali", "due": null }
+        ],
+        "open_questions": 2
+      },
+      "forbidden": []
+    },
+    {
+      "id": "ngo-01", "industry": "Non-profit", "meetingDate": "2026-03-18",
+      "participants": ["Samuel Mensah", "Laura Bianchi"], "members": ["Grace Kim"],
+      "notes": "Funder check-in — clean water programme\nPresent: Samuel Mensah (Programme Officer, funder), Laura Bianchi (Field Director); Grace Kim.\n\nThe funder endorsed the revised year-two budget.\nGrace will provide the quarterly impact report by 31 March.\nLaura agreed to host a site visit for the funder in May.\nSamuel asked whether the monitoring data could be shared with partner NGOs.",
+      "gold": {
+        "decisions": [{ "keys": ["endorsed", "budget"] }],
+        "obligations": [
+          { "keys": ["impact report"], "owner": "Grace Kim", "due": "2026-03-31" },
+          { "keys": ["site visit"], "owner": "Laura Bianchi", "due": null }
+        ],
+        "open_questions": 1
+      },
+      "forbidden": []
+    },
+    {
+      "id": "transcript-01", "industry": "Infrastructure (transcript)", "meetingDate": "2026-10-14",
+      "participants": ["Harriet Cole"], "members": ["Daniel Ross"],
+      "notes": "Harriet Cole: Thanks for coming. The main thing for us is the lorry movements past the school.\nDaniel Ross: Understood. We will move deliveries outside school drop-off and pick-up times from next month.\nHarriet Cole: That would help. Can you put that in writing?\nDaniel Ross: Yes, I'll send you a letter confirming the delivery windows by Monday.\nHarriet Cole: And the noise monitoring results?\nDaniel Ross: Those still need to be verified, so I can't promise a date yet.",
+      "gold": {
+        "decisions": [],
+        "obligations": [
+          { "keys": ["deliveries", "school"], "owner": "Daniel Ross", "due": null },
+          { "keys": ["letter"], "owner": "Daniel Ross", "due": "2026-10-19" }
+        ],
+        "open_questions": 1
+      },
+      "forbidden": ["can't promise"]
+    },
+    {
+      "id": "pharma-01", "industry": "Life sciences", "meetingDate": "2026-02-09",
+      "participants": ["Dr Anke Vogel", "Marta Silva"], "members": ["Chris Doyle"],
+      "notes": "Patient advocacy group engagement\nAttendees: Dr Anke Vogel (Medical Affairs), Marta Silva (Patient Group CEO); Chris Doyle.\n\nWe agreed that the patient group will co-design the trial information leaflet.\nChris will share the draft leaflet with Marta by 20 February.\nMarta will collect feedback from members over the following two weeks.\nThe group asked whether travel costs for trial participants will be reimbursed; this is to be confirmed by finance.",
+      "gold": {
+        "decisions": [{ "keys": ["co-design", "leaflet"] }],
+        "obligations": [
+          { "keys": ["draft leaflet"], "owner": "Chris Doyle", "due": "2026-02-20" },
+          { "keys": ["collect feedback"], "owner": "Marta Silva", "due": null }
+        ],
+        "open_questions": 1
+      },
+      "forbidden": []
+    }
+  ]
+}

@@ -2,9 +2,12 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Archive, ArrowUpRight, ChevronDown, Gavel, Pencil, Plus, Search, X } from 'lucide-react'
-import { useInvalidate, useList, useLookups, useRecord } from '../../api/hooks'
-import { ApiError, errorMessage, request, ws } from '../../api/http'
+import { Archive, ArrowUpRight, ChevronDown, Copy, Gavel, Pencil, Plus, RotateCw, Search, Sparkles, X } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
+import { useInvalidate, useList, useLookups, useRecord, wk } from '../../api/hooks'
+import { ApiError, errorMessage, qs, request, ws } from '../../api/http'
+import { useDecisionBriefing, type Briefing } from '../../api/ai'
+import { BriefingSkeleton, BriefingView, briefingToMarkdown } from '../../components/BriefingView'
 import type { DecisionStatus, Stance } from '../../api/types'
 import { Avatar, Button, Kbd, StanceBadge } from '../../components/ui'
 import { Menu } from '../../components/Menu'
@@ -352,6 +355,8 @@ function DecisionPanel({ id, onClose, onEdit }: { id: string; onClose: () => voi
                   </section>
                 )}
 
+                <DecisionBriefingSection key={d.id} id={d.id} />
+
                 <section className="peek-sec"><h3 className="label-rule">History</h3><ActivityList type="decision" id={d.id} /></section>
               </>
             )}
@@ -376,5 +381,50 @@ function StatusSwap({ status }: { status: string }) {
         <DecisionStatusDot status={status} />
       </motion.span>
     </AnimatePresence>
+  )
+}
+
+/** Collapsible, on-demand decision briefing: nothing is requested until the reader expands it. */
+function DecisionBriefingSection({ id }: { id: string }) {
+  const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const { toast, announce } = useApp()
+  const qc = useQueryClient()
+  const q = useDecisionBriefing(id, open)
+  const regenerate = async () => {
+    setBusy(true)
+    try {
+      qc.setQueryData(wk('ai', 'briefing', 'decision', id), await request<Briefing>(ws(`/ai/briefings/decisions/${id}${qs({ fresh: 1 })}`)))
+      announce('Decision briefing regenerated')
+    } catch (e) { toast(errorMessage(e), undefined, 'error') } finally { setBusy(false) }
+  }
+  const copy = async () => {
+    if (!q.data) return
+    try { await navigator.clipboard.writeText(briefingToMarkdown(q.data)); toast('Briefing copied with sources') }
+    catch { toast('Couldn’t copy the briefing', undefined, 'error') }
+  }
+  return (
+    <section className="peek-sec rb-brief">
+      <button className="rb-brief-toggle" aria-expanded={open} aria-controls={`dc-brief-${id}`} onClick={() => setOpen(o => !o)}>
+        <Sparkles size={13} className="rb-brief-ico" aria-hidden />
+        <span className="t-caption grow">Decision briefing</span>
+        {!open && <span className="t-small c3">Generate on open</span>}
+        <ChevronDown size={14} className="c3 rb-brief-chev" data-open={open || undefined} />
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div id={`dc-brief-${id}`} className="rb-brief-body" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1, transition: t.base }} exit={{ height: 0, opacity: 0, transition: t.exit }}>
+            <div className="rb-brief-inner" aria-busy={q.isPending || busy || undefined}>
+              {q.isError ? <LoadError error={q.error} onRetry={() => void q.refetch()} />
+                : !q.data ? <BriefingSkeleton compact sections={3} />
+                : <BriefingView briefing={q.data} compact headerExtra={<>
+                    <Button size="sm" variant="ghost" icon={<Copy size={12} />} aria-label="Copy briefing" title="Copy as text with sources" onClick={() => void copy()} />
+                    <Button size="sm" variant="ghost" icon={<RotateCw size={12} />} aria-label="Regenerate briefing" title="Rebuild from the latest records" loading={busy} onClick={() => void regenerate()} />
+                  </>} />}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </section>
   )
 }

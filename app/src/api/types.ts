@@ -66,11 +66,13 @@ export interface Overview {
 export interface ActivityEvent { id: number; entityType?: string; entityId?: string; verb: string; summary: string; changes: Record<string, { from: unknown; to: unknown }> | null; createdAt: string; actor: string | null }
 
 export interface Signal {
-  id: string; kind: 'overdue' | 'due-soon' | 'decision-waiting' | 'cooling' | 'unowned' | 'stance-shift'; severity: 1 | 2 | 3
+  id: string; kind: 'overdue' | 'due-soon' | 'decision-waiting' | 'cooling' | 'unowned' | 'stance-shift' | 'unassigned' | 'repeated-delay'; severity: 1 | 2 | 3
   title: string; reason: string; rule: string
   stakeholder?: { id: string; name: string; title: string | null; stance: Stance } | null
   commitmentId?: string; commitmentVersion?: number; decisionId?: string; ownerId?: string | null; ownerName?: string | null; initiativeCode?: string | null
   evidence: { id: string; key: string; title: string; occurredAt: string }[]
+  /** Deterministic next step from the rule that raised the signal. */
+  next?: { text: string; action: 'follow_up_commitment' | 'log_engagement' | 'review_decision' | 'assign_owner' | 'open_record' } | null
 }
 export interface Dashboard {
   generatedAt: string; me: string

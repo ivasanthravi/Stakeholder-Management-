@@ -179,3 +179,28 @@
   .set-invite-foot { order: 3; display: block; }
   .set-invite-foot svg { vertical-align: -2px; margin-right: 4px; }
 }
+
+/* ── AI ─────────────────────────────────────────────────── */
+.ai-num { display: flex; align-items: flex-start; gap: 8px; }
+.ai-num > .field { width: 160px; flex: none; }
+.ai-num > .field > .field-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ai-suffix { line-height: var(--control-h, 32px); white-space: nowrap; }
+.ai-switch { display: inline-flex; align-items: center; gap: 10px; font: var(--text-body); cursor: pointer; position: relative; }
+.ai-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.ai-switch-track { position: relative; width: 30px; height: 18px; border-radius: 9px; background: var(--slate-300); transition: background-color var(--dur-fast) var(--ease-standard); flex: none; }
+.ai-switch-track i { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgb(16 24 40 / .2); transition: transform var(--dur-fast) var(--ease-standard); }
+.ai-switch input:checked + .ai-switch-track { background: var(--accent); }
+.ai-switch input:checked + .ai-switch-track i { transform: translateX(12px); }
+.ai-switch input:focus-visible + .ai-switch-track { outline: 2px solid var(--focus); outline-offset: 2px; }
+.ai-switch input:disabled + .ai-switch-track { opacity: .55; }
+.ai-switch:has(input:disabled) { cursor: default; color: var(--text-2); }
+.ai-meter { position: relative; height: 6px; max-width: 360px; margin-top: 12px; border-radius: 3px; background: var(--slate-100); overflow: hidden; }
+.ai-meter i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--teal-500); transition: width var(--dur-slow) var(--ease-emphasized); }
+.ai-meter i[data-high] { background: var(--amber-500); }
+.ai-meter + p { margin-top: 6px; }
+.ai-usage-wrap { overflow-x: auto; }
+.ai-usage { width: 100%; border-collapse: collapse; font: var(--text-small); }
+.ai-usage th { height: 34px; padding: 0 12px; background: var(--bg-canvas); font: var(--text-caption); color: var(--text-3); text-align: left; white-space: nowrap; }
+.ai-usage td { height: 40px; padding: 0 12px; border-top: 1px solid var(--border-soft); white-space: nowrap; }
+.ai-usage .r { text-align: right; }
+.set-card + .set-sec-head { margin-top: 18px; }

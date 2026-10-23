@@ -15,6 +15,20 @@
       "when": 1792690103959,
       "tag": "0001_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792769650259,
+      "tag": "0002_ai_layer",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792769650654,
+      "tag": "0003_ai_rls",
+      "breakpoints": true
     }
   ]
 }

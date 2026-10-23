@@ -17,9 +17,11 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "audit:interactions": "node audit/interactions.mjs",
-    "audit:perf": "node audit/perf.mjs"
+    "audit:perf": "node audit/perf.mjs",
+    "eval": "tsx evals/run.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.2.0",
     "@better-auth/drizzle-adapter": "^1.7.12",
     "@electric-sql/pglite": "^0.5.11",
     "@fontsource-variable/inter": "^5.3.0",

@@ -65,3 +65,27 @@ All are under `/api/w/:workspaceId`. Lists take `q, limit (≤200), offset, arch
 
 ## Development only
 `GET /api/dev/mail` lists the emails that would have been sent. It is disabled when `NODE_ENV=production`.
+
+## AI layer (Phase 2) — `/api/w/:workspaceId/ai`
+Everything here runs behind the same tenant gate and RLS as the record APIs. Model-backed calls are also checked against the workspace's AI settings (`ai_disabled` 403), the per-user rate limit (`rate_limited` 429, `retry-after`) and the monthly token budget (`quota_exceeded` 429). Every call is metered in `ai_usage` (counts, cost, latency — never content). See `docs/ai/architecture.md`.
+
+| Method | Path | Min role / permission | Notes |
+|---|---|---|---|
+| GET | `/status` | viewer | Engine (`kind` claude/local, label, model), settings, tokens used this month |
+| PATCH | `/settings` | `workspace.update` (admin) | `{enabled?, retentionDays? (0–365), monthlyTokenBudget?, perUserPerMinute? (1–120), thresholds?: {noContactDays, dueSoonDays, decisionStaleDays, coolingRatio}}` |
+| GET | `/usage` | `audit.read` | Last 30 days grouped by feature/engine: calls, errors, tokens, cost (µ$), p50/p95 latency |
+| GET | `/meetings/:engagementId` | viewer | Latest analysis with proposals; `stale` when the notes changed since |
+| POST | `/meetings/:engagementId/analyze` | `engagement.create` | Extracts proposals from the notes (≥ 40, ≤ 60,000 chars). Replaces earlier *pending* proposals. 503 `ai_unavailable` on engine failure (nothing changed) |
+| PATCH | `/proposals/:id` | `engagement.create` | `{version, values}` edits a pending proposal; returns it with a new version |
+| POST | `/proposals/:id/accept` | permission of the record created (`commitment.create`, `decision.create`; `decision.update` to accept as anything other than Proposed) | `{version, values?}` → creates the record through the normal domain path, with activity and audit. 409 `stale_version` if edited or already decided |
+| POST | `/proposals/:id/reject` | `engagement.create` | `{version}` |
+| POST | `/proposals/:id/merge` | `engagement.create` | `{version, into}` marks it as a duplicate of an existing record |
+| GET | `/briefings/stakeholders/:id?mode=brief\|detailed\|prep` | viewer | Evidence-backed briefing: sections of items (`fact`, `metric` + `method`, `interpretation` (model only, cited), `recommendation` + `origin` rule/ai), `sources`, `unsupportedDropped`, `aiError?`. `fresh=1` bypasses the 15-minute cache |
+| GET | `/briefings/decisions/:id` | viewer | Same shape, for a decision |
+| GET | `/briefings/workspace` | viewer | Same shape, from the Home signals |
+| GET | `/paths?from&to` | viewer | Shortest chain of recorded person-to-person relationships (≤ 4 steps) visible to the caller |
+| POST | `/copilot` | viewer | `{message, conversationId?, context?}` → `text/event-stream` of `meta`, `status`, `text`, `sources`, `card`, `final {text, refs, followUps, unsupported}`, `error` |
+| GET | `/conversations` · `/conversations/:id` | own only | Copilot history; private to its author, expires per `retentionDays` |
+| DELETE | `/conversations/:id` · `/conversations` | own only | Delete one / all of your conversations |
+
+Rate limiting also applies to every `/api/w/*` request (600/min per user and workspace) and to auth endpoints.

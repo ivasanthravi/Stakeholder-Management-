@@ -5,6 +5,7 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, ty
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Archive, CalendarDays, CheckCircle2, Gavel, MapPin, MessagesSquare, MoreHorizontal, Pencil, Plus, Search, Sparkles, X } from 'lucide-react'
 import { useInvalidate, useLookups, useRecord } from '../../api/hooks'
+import { useMeetingAnalysis } from '../../api/ai'
 import { ApiError, errorMessage, request, ws } from '../../api/http'
 import type { CommitmentStatus, DecisionStatus, Stance } from '../../api/types'
 import { Avatar, Button, Kbd, Skeleton, StanceBadge } from '../../components/ui'
@@ -23,6 +24,7 @@ import { LoadError } from '../Home'
 import { ActivityList, CCheck, Floating, usePaged, useCommitmentToggle } from './Commitments'
 import { DecisionStatusDot } from './Decisions'
 import '../engagement/engagement.css'
+import '../engagement/intelligence.css'
 import './registers-b.css'
 
 const KINDS = Object.keys(ENGAGEMENT_KIND_LABEL)
@@ -326,13 +328,7 @@ export function EngagementPage() {
             {!d ? <div className="rb-hist-skel"><Skeleton w="60%" h={10} /><Skeleton h={10} /><Skeleton w="80%" h={10} /></div> : (
               <FollowThrough d={d} hover={hover} setHover={setHover} fresh={fresh} onCreate={create} />
             )}
-            <div className="eg-ai" role="note" aria-label="AI extraction preview — not available">
-              <Sparkles size={13} aria-hidden />
-              <div>
-                <p className="eg-ai-h">AI extraction · Preview</p>
-                <p className="t-small">Not available in this version. Nothing on this page is generated — commitments and decisions here were recorded by people.</p>
-              </div>
-            </div>
+            {d && <IntelligenceEntry d={d} />}
           </div>
         </aside>
       </div>
@@ -525,3 +521,32 @@ function FollowThrough({ d, hover, setHover, fresh, onCreate }: {
   )
 }
 
+/** Entry point to the meeting intelligence workspace: shows where review stands without generating anything here. */
+function IntelligenceEntry({ d }: { d: EngagementDetail }) {
+  const q = useMeetingAnalysis(d.id)
+  const a = q.data?.analysis ?? null
+  const short = (d.notes ?? '').trim().length < 40
+  const pending = a?.proposals.filter(p => p.status === 'pending').length ?? 0
+  const accepted = a?.proposals.filter(p => p.status === 'accepted').length ?? 0
+  const state: { label: string; tone: 'ai' | 'attention' | 'muted'; detail: string } =
+    q.isPending ? { label: 'Checking…', tone: 'muted', detail: '' }
+    : q.isError ? { label: 'Status unavailable', tone: 'muted', detail: 'Open the workspace to see the analysis.' }
+    : !a ? (short
+      ? { label: 'Not analysed · no notes yet', tone: 'muted', detail: 'Add notes or upload a transcript, then analyse them into proposed decisions, commitments and actions.' }
+      : { label: 'Not analysed yet', tone: 'muted', detail: 'Analyse the notes into proposed decisions, commitments and actions. You review each one; nothing is created automatically.' })
+    : a.stale ? { label: 'Analysis out of date', tone: 'attention', detail: `The notes changed after it ran.${pending ? ` ${pending} proposal${pending === 1 ? '' : 's'} still pending review.` : ''}` }
+    : pending ? { label: `${pending} proposal${pending === 1 ? '' : 's'} pending review`, tone: 'ai', detail: 'Nothing is saved until you accept it.' }
+    : a.proposals.length ? { label: 'All proposals reviewed', tone: 'muted', detail: `${accepted} accepted from ${a.proposals.length} proposed.` }
+    : { label: 'Analysed · nothing to propose', tone: 'muted', detail: 'No decisions, commitments or actions were found in the notes.' }
+  return (
+    <section className="ixe" aria-labelledby="ixe-h" data-tone={state.tone}>
+      <div className="ixe-top">
+        <Sparkles size={13} aria-hidden className="ixe-ico" />
+        <h3 id="ixe-h" className="ixe-h">Meeting intelligence</h3>
+      </div>
+      <p className="ixe-state" aria-live="polite">{state.tone === 'attention' && <span className="sr-only">Warning: </span>}{state.label}</p>
+      {state.detail && <p className="t-small c2">{state.detail}</p>}
+      <Link to={`/engagements/${d.id}/intelligence`} className="btn btn-secondary btn-sm ixe-btn"><span className="btn-label">Review meeting intelligence</span></Link>
+    </section>
+  )
+}

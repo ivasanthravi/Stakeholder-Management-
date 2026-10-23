@@ -1,8 +1,8 @@
 import { AnimatePresence, motion, LayoutGroup } from 'motion/react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
-  Bell, Building2, Check, ChevronsUpDown, Gavel, Handshake, Home, LogOut, MessagesSquare, Plus, Search, Settings, Target, Users, HelpCircle, WifiOff,
+  Bell, Building2, Check, ChevronsUpDown, Gavel, Handshake, Home, LogOut, MessageCircleQuestionMark, MessagesSquare, Plus, Search, Settings, Target, Users, HelpCircle, WifiOff,
 } from 'lucide-react'
 import { useApp } from './context'
 import { useHotkeys, MOD } from '../lib/hotkeys'
@@ -11,6 +11,7 @@ import { useLookups } from '../api/hooks'
 import { useSession } from '../session/session'
 import { ROLE_LABEL } from '../../shared/permissions'
 import { CommandPalette } from './CommandPalette'
+import { Copilot } from './Copilot'
 import { Toasts } from './Toasts'
 import { Avatar, Kbd } from '../components/ui'
 import { Menu } from '../components/Menu'
@@ -47,9 +48,12 @@ export function Shell() {
   const wsBtn = useRef<HTMLButtonElement>(null)
   const userBtn = useRef<HTMLButtonElement>(null)
   const [menu, setMenu] = useState<'ws' | 'user' | null>(null)
+  const [askOpen, setAskOpen] = useState(false)
+  const toggleAsk = useCallback(() => setAskOpen(o => !o), [])
 
   useHotkeys({
     'mod+k': () => openPalette(),
+    'mod+j': () => toggleAsk(),
     '/': () => openPalette(),
     ...Object.fromEntries(NAV.map(n => [`g ${n.key}`, () => { nav(n.to) }])),
     'g m': () => { nav('/stakeholders?view=map') },
@@ -60,7 +64,7 @@ export function Shell() {
     'c m': () => { if (can('commitment.create')) openCreate('commitment') },
     'c d': () => { if (can('decision.create')) openCreate('decision') },
     'c i': () => { if (can('initiative.create')) openCreate('initiative') },
-  }, [nav, openPalette, can, openCreate])
+  }, [nav, openPalette, can, openCreate, toggleAsk])
 
   const section = '/' + (loc.pathname.split('/')[1] ?? '')
   const initiatives = lookups.data?.initiatives ?? []
@@ -83,6 +87,7 @@ export function Shell() {
             <span className="grow truncate">Search…</span>
             <Kbd>{MOD}K</Kbd>
           </button>
+          <button className="side-bell" data-copilot-opener aria-label={`Ask copilot (${MOD} J)`} title={`Ask copilot · ${MOD} J`} aria-expanded={askOpen} onClick={toggleAsk}><MessageCircleQuestionMark size={15} /></button>
           <button className="side-bell" aria-label="Inbox (not built)" title="Inbox (not built)" onClick={() => toast('The inbox isn’t built yet')}><Bell size={15} /></button>
         </div>
 
@@ -150,6 +155,7 @@ export function Shell() {
         <NavLink to="/" end className="bn-item"><Home size={18} /><span>Home</span></NavLink>
         <NavLink to="/stakeholders" end className="bn-item"><Users size={18} /><span>People</span></NavLink>
         <button className="bn-item" onClick={() => openPalette()}><Search size={18} /><span>Search</span></button>
+        <button className="bn-item" aria-expanded={askOpen} onClick={toggleAsk}><MessageCircleQuestionMark size={18} /><span>Ask</span></button>
         <NavLink to="/commitments" className="bn-item"><Handshake size={18} /><span>Commitments</span></NavLink>
       </nav>
 
@@ -168,6 +174,7 @@ export function Shell() {
         onSelect={v => { if (v === 'settings') nav('/settings'); else void signOut() }} />
 
       <CommandPalette />
+      <Copilot open={askOpen} onOpenChange={setAskOpen} />
       <CreateDrawers />
       <Toasts />
       <div className="sr-only" role="status" aria-live="polite">{liveMessage}</div>

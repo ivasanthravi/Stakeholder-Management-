@@ -29,6 +29,8 @@ const engs = () => import('./screens/registers/Engagements')
 const decs = () => import('./screens/registers/Decisions')
 const coms = () => import('./screens/registers/Commitments')
 const settings = () => import('./screens/settings/Settings')
+const intel = () => import('./screens/engagement/Intelligence')
+const briefing = () => import('./screens/briefing/Briefing')
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -100,12 +102,14 @@ const router = createBrowserRouter([
                 { path: '/', element: <Home /> },
                 { path: '/stakeholders', element: <Stakeholders /> },
                 { path: '/stakeholders/:id', element: <Profile /> },
+                { path: '/stakeholders/:id/briefing', element: page(briefing, 'StakeholderBriefing') },
                 { path: '/organizations', element: page(orgs, 'Organizations') },
                 { path: '/organizations/:id', element: page(orgs, 'OrganizationPage') },
                 { path: '/initiatives', element: page(inits, 'Initiatives') },
                 { path: '/initiatives/:id', element: page(inits, 'InitiativePage') },
                 { path: '/engagements', element: page(engs, 'Engagements') },
                 { path: '/engagements/:id', element: page(engs, 'EngagementPage') },
+                { path: '/engagements/:id/intelligence', element: page(intel, 'MeetingIntelligence') },
                 { path: '/decisions', element: page(decs, 'Decisions') },
                 { path: '/commitments', element: page(coms, 'Commitments') },
                 { path: '/settings', element: page(settings, 'Settings') },

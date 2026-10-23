@@ -9,14 +9,14 @@
 | Database | Development and tests run on PGlite. Real PostgreSQL has not been run against here (no server available). Migrations, RLS and queries are standard SQL and should behave the same, but this is unverified |
 | Deployment | No hosting, TLS, backups, monitoring or error tracking configured. No deployment URL exists |
 | Security review | No independent review or penetration test |
-| Rate limiting | Better Auth limits auth endpoints in production. The data API has no rate limiting |
+| Rate limiting | Done in Phase 2: the data API is limited per user and workspace (in-memory, so per process). A multi-instance deployment needs a shared store such as Redis |
 | Secrets | `AUTH_SECRET` falls back to a fixed development value outside production (production refuses to start without it) |
 
 ## Product gaps (by decision, see ADR-012)
 - SSO/SAML/SCIM, MFA, account deletion and a user profile page are missing.
 - Custom field definitions, stakeholder groups UI, saved views, CSV import/export and bulk owner assignment are missing.
 - Configurable decision states are missing. The terminology overrides in Settings are stored but **not yet applied** to UI labels.
-- AI: the briefing is rule-assembled; AI extraction and "Ask" are labelled unavailable.
+- AI: superseded by Phase 2. See `docs/ai/known-limitations.md`.
 - Restricted-record **access lists** can be set via the API. The UI only toggles restriction.
 - Real-time updates: other users' changes appear on refetch (focus or navigation), not live.
 
