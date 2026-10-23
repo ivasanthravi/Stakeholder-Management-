@@ -20,14 +20,14 @@ export function createAuth(db: DB, env: Env, mailer: Mailer) {
       requireEmailVerification: env.REQUIRE_EMAIL_VERIFICATION,
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: async ({ user: u, url }) => {
-        await mailer.send({ to: u.email, subject: 'Reset your Meridian password', text: `Reset your password: ${url}\nThis link expires in 1 hour.`, url, kind: 'reset' })
+        await mailer.send({ to: u.email, userId: u.id, template: 'reset', data: { url } })
       },
     },
     emailVerification: {
       sendOnSignUp: true,
       autoSignInAfterVerification: true,
       sendVerificationEmail: async ({ user: u, url }) => {
-        await mailer.send({ to: u.email, subject: 'Verify your email for Meridian', text: `Confirm your email address: ${url}`, url, kind: 'verify' })
+        await mailer.send({ to: u.email, userId: u.id, template: 'verify', data: { url } })
       },
     },
     session: {

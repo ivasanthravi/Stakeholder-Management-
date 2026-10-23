@@ -30,6 +30,8 @@ const decs = () => import('./screens/registers/Decisions')
 const coms = () => import('./screens/registers/Commitments')
 const settings = () => import('./screens/settings/Settings')
 const intel = () => import('./screens/engagement/Intelligence')
+const site = () => import('./marketing/pages')
+const onboarding = () => import('./screens/onboarding/Onboarding')
 const briefing = () => import('./screens/briefing/Briefing')
 
 const queryClient = new QueryClient({
@@ -57,6 +59,8 @@ function RequireAuth() {
   const { status } = useSession()
   const loc = useLocation()
   if (status === 'loading') return <AppLoading />
+  // Signed-out visitors to the root see the marketing homepage; everything else in the app asks them to sign in.
+  if (status === 'anonymous' && loc.pathname === '/') return page(site, 'MarketingHome')
   if (status === 'anonymous') return <Navigate to={`/sign-in?next=${encodeURIComponent(loc.pathname + loc.search)}`} replace />
   return <Outlet />
 }
@@ -88,15 +92,24 @@ const router = createBrowserRouter([
         ],
       },
       { path: '/reset-password', element: page(auth, 'ResetPassword') },
+      // Public marketing site (same app and design system; lazy-loaded so it never weighs on the product).
+      { path: '/product', element: page(site, 'ProductPage') },
+      { path: '/features', element: page(site, 'FeaturesPage') },
+      { path: '/stakeholder-intelligence', element: page(site, 'StakeholderIntelligencePage') },
+      { path: '/relationship-mapping', element: page(site, 'RelationshipMappingPage') },
+      { path: '/ai', element: page(site, 'AIPage') },
+      { path: '/pricing', element: page(site, 'PricingPage') },
+      { path: '/security', element: page(site, 'SecurityPage') },
+      { path: '/contact', element: page(site, 'ContactPage') },
       { path: '/invite/:token', element: page(auth, 'AcceptInvite') },
       ...(import.meta.env.DEV ? [{ path: '/dev/mail', element: page(auth, 'DevMail') }] : []),
       {
         element: <RequireAuth />,
         children: [
-          { path: '/onboarding', element: page(auth, 'Onboarding') },
+          { path: '/onboarding', element: page(onboarding, 'CreateWorkspace') },
           {
             element: <RequireWorkspace />,
-            children: [{
+            children: [{ path: '/welcome', element: page(onboarding, 'Welcome') }, {
               element: <Shell />,
               children: [
                 { path: '/', element: <Home /> },

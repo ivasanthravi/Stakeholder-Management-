@@ -29,6 +29,27 @@
       "when": 1792769650654,
       "tag": "0003_ai_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792773183143,
+      "tag": "0004_commercial",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792773188452,
+      "tag": "0005_commercial_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792774745980,
+      "tag": "0006_data_requests",
+      "breakpoints": true
     }
   ]
 }

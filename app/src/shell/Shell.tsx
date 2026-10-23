@@ -1,8 +1,8 @@
 import { AnimatePresence, motion, LayoutGroup } from 'motion/react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
-  Bell, Building2, Check, ChevronsUpDown, Gavel, Handshake, Home, LogOut, MessageCircleQuestionMark, MessagesSquare, Plus, Search, Settings, Target, Users, HelpCircle, WifiOff,
+  Building2, Check, ChevronsUpDown, CreditCard, UserRound, Gavel, Handshake, Home, LogOut, MessageCircleQuestionMark, MessagesSquare, Plus, Search, Settings, Target, Users, HelpCircle, WifiOff,
 } from 'lucide-react'
 import { useApp } from './context'
 import { useHotkeys, MOD } from '../lib/hotkeys'
@@ -16,6 +16,10 @@ import { Toasts } from './Toasts'
 import { Avatar, Kbd } from '../components/ui'
 import { Menu } from '../components/Menu'
 import { CreateDrawers } from '../forms/RecordForms'
+import { useVocabulary } from '../lib/vocabulary'
+import { UpgradePromptHost } from '../components/UpgradePrompt'
+import { InboxButton } from './Inbox'
+import { AccessBanner } from './AccessBanner'
 import './shell.css'
 
 const NAV = [
@@ -41,7 +45,7 @@ function useOnline() {
 export function Shell() {
   const nav = useNavigate()
   const loc = useLocation()
-  const { openPalette, liveMessage, toast, openCreate } = useApp()
+  const { openPalette, liveMessage, openCreate } = useApp()
   const { me, workspace, switchWorkspace, signOut, can } = useSession()
   const lookups = useLookups()
   const online = useOnline()
@@ -50,6 +54,20 @@ export function Shell() {
   const [menu, setMenu] = useState<'ws' | 'user' | null>(null)
   const [askOpen, setAskOpen] = useState(false)
   const toggleAsk = useCallback(() => setAskOpen(o => !o), [])
+  const vocab = useVocabulary()
+  // Nav labels follow the workspace's vocabulary; routes stay the same.
+  const navLabel = (to: string, fallback: string) => (to === '/stakeholders' ? vocab.stakeholders : to === '/organizations' ? vocab.organizations : to === '/initiatives' ? vocab.initiatives : fallback)
+  // Banners (offline, access) sit above the page; the page is offset by their measured height.
+  const bannersRef = useRef<HTMLDivElement>(null)
+  const [bannerH, setBannerH] = useState(0)
+  useLayoutEffect(() => {
+    const el = bannersRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => setBannerH(el.offsetHeight))
+    ro.observe(el)
+    setBannerH(el.offsetHeight)
+    return () => ro.disconnect()
+  }, [])
 
   useHotkeys({
     'mod+k': () => openPalette(),
@@ -88,7 +106,7 @@ export function Shell() {
             <Kbd>{MOD}K</Kbd>
           </button>
           <button className="side-bell" data-copilot-opener aria-label={`Ask copilot (${MOD} J)`} title={`Ask copilot · ${MOD} J`} aria-expanded={askOpen} onClick={toggleAsk}><MessageCircleQuestionMark size={15} /></button>
-          <button className="side-bell" aria-label="Inbox (not built)" title="Inbox (not built)" onClick={() => toast('The inbox isn’t built yet')}><Bell size={15} /></button>
+          <InboxButton />
         </div>
 
         <LayoutGroup id="nav">
@@ -99,7 +117,7 @@ export function Shell() {
                 <NavLink key={n.to} to={n.to} end={n.end} className="nav-item" aria-current={active ? 'page' : undefined}>
                   {active && <motion.span layoutId="nav-active" className="nav-active" transition={t.indicator} />}
                   <n.icon size={16} strokeWidth={1.75} />
-                  <span className="grow">{n.label}</span>
+                  <span className="grow truncate">{navLabel(n.to, n.label)}</span>
                   <span className="nav-key" aria-hidden>G {n.key.toUpperCase()}</span>
                 </NavLink>
               )
@@ -109,7 +127,7 @@ export function Shell() {
 
         {initiatives.length > 0 && (
           <div className="side-section">
-            <div className="side-label">Initiatives</div>
+            <div className="side-label">{vocab.initiatives}</div>
             {initiatives.filter(i => i.status !== 'completed').slice(0, 8).map(i => (
               <Link key={i.id} to={`/stakeholders?view=map&initiative=${i.id}`} className="nav-item nav-sub" aria-current={currentInit === i.id ? 'page' : undefined}>
                 <span className="init-code mono">{i.code}</span>
@@ -130,18 +148,21 @@ export function Shell() {
       </aside>
 
       <main className="main">
-        <AnimatePresence>
-          {!online && (
-            <motion.div className="offline" role="status" initial={{ height: 0, opacity: 0 }} animate={{ height: 32, opacity: 1, transition: t.base }} exit={{ height: 0, opacity: 0, transition: t.exit }}>
-              <WifiOff size={13} /> You’re offline. You can keep reading; changes will fail until you reconnect.
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <div className="main-banners" ref={bannersRef}>
+          <AnimatePresence>
+            {!online && (
+              <motion.div className="offline" role="status" initial={{ height: 0, opacity: 0 }} animate={{ height: 32, opacity: 1, transition: t.base }} exit={{ height: 0, opacity: 0, transition: t.exit }}>
+                <WifiOff size={13} /> You’re offline. You can keep reading; changes will fail until you reconnect.
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <AccessBanner />
+        </div>
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={section}
             className="page"
-            style={!online ? { top: 32 } : undefined}
+            style={bannerH ? { top: bannerH } : undefined}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1, transition: { duration: 0.14, ease: [0.2, 0, 0, 1] } }}
             exit={{ opacity: 0, transition: { duration: 0.08 } }}
@@ -157,6 +178,7 @@ export function Shell() {
         <button className="bn-item" onClick={() => openPalette()}><Search size={18} /><span>Search</span></button>
         <button className="bn-item" aria-expanded={askOpen} onClick={toggleAsk}><MessageCircleQuestionMark size={18} /><span>Ask</span></button>
         <NavLink to="/commitments" className="bn-item"><Handshake size={18} /><span>Commitments</span></NavLink>
+        <InboxButton variant="bottom" />
       </nav>
 
       <Menu anchor={wsBtn.current} open={menu === 'ws'} onClose={() => setMenu(null)} label="Workspaces"
@@ -168,15 +190,18 @@ export function Shell() {
         onSelect={v => { if (v === '__new') nav('/onboarding'); else if (v !== workspace?.id) switchWorkspace(v) }} />
       <Menu anchor={userBtn.current} open={menu === 'user'} onClose={() => setMenu(null)} label="Account"
         options={[
+          { value: 'profile', label: 'Your profile', icon: <UserRound size={13} /> },
           { value: 'settings', label: 'Workspace settings', icon: <Settings size={13} /> },
+          ...(can('billing.read') ? [{ value: 'billing', label: 'Plan & billing', icon: <CreditCard size={13} /> }] : []),
           { value: 'signout', label: 'Sign out', icon: <LogOut size={13} />, hint: me?.user.email },
         ]}
-        onSelect={v => { if (v === 'settings') nav('/settings'); else void signOut() }} />
+        onSelect={v => { if (v === 'settings') nav('/settings'); else if (v === 'profile') nav('/settings/profile'); else if (v === 'billing') nav('/settings/billing'); else void signOut() }} />
 
       <CommandPalette />
       <Copilot open={askOpen} onOpenChange={setAskOpen} />
       <CreateDrawers />
       <Toasts />
+      <UpgradePromptHost />
       <div className="sr-only" role="status" aria-live="polite">{liveMessage}</div>
     </div>
   )

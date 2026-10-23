@@ -1,0 +1,688 @@
+[
+  {
+    "tag": "desktop",
+    "name": "home",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "stakeholders",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "stakeholder-peek",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "profile",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "profile-relationships",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "profile-history",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "map",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "map-selected",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "organizations",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "organization",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "initiatives",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "initiative",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "engagements",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "engagement",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "decisions",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "commitments",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "settings-members",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "settings-audit",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "create-stakeholder",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "create-engagement",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "palette",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "not-found",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "ai-intelligence",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "ai-briefing",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "ai-briefing-prep",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "ai-decision-briefing",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "ai-copilot",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "ai-home-signal",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "ai-settings",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "ai-map-path",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "settings-profile",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "settings-notifications",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "settings-security",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "settings-members",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "settings-roles",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "settings-billing",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "settings-invoices",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "settings-usage",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "settings-data",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "inbox",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "sign-in",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "sign-up",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "forgot-password",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "site-home",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "site-product",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "site-features",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "site-stakeholders",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "site-mapping",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "site-ai",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "site-pricing",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "site-security",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "desktop",
+    "name": "site-contact",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "home",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "stakeholders",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "profile",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "map",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "map-selected",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "organizations",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "organization",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "initiatives",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "initiative",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "engagements",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "engagement",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "decisions",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "commitments",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "settings-members",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "settings-audit",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "not-found",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "ai-intelligence",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "ai-briefing",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "ai-briefing-prep",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "ai-decision-briefing",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "ai-copilot",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "ai-home-signal",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "ai-settings",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "ai-map-path",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "settings-profile",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "settings-notifications",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "settings-security",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "settings-members",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "settings-roles",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "settings-billing",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "settings-invoices",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "settings-usage",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "settings-data",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "inbox",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "sign-in",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "sign-up",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "forgot-password",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "site-home",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "site-product",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "site-features",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "site-stakeholders",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "site-mapping",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "site-ai",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "site-pricing",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "site-security",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  },
+  {
+    "tag": "mobile",
+    "name": "site-contact",
+    "errors": [],
+    "violations": [],
+    "overflowX": false
+  }
+]

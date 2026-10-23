@@ -2,7 +2,7 @@
 // Postgres row-level security (see migrations/0001_rls.sql) in addition to application checks.
 import { sql } from 'drizzle-orm'
 import {
-  bigserial, boolean, check, date, foreignKey, index, integer, jsonb, pgTable, primaryKey, smallint, text, timestamp, unique, uniqueIndex, uuid,
+  bigint, bigserial, boolean, check, date, foreignKey, index, integer, jsonb, pgTable, primaryKey, smallint, text, timestamp, unique, uniqueIndex, uuid,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core'
 
@@ -550,3 +550,142 @@ export const aiCache = pgTable('ai_cache', {
   value: jsonb('value').notNull(),
   expiresAt: ts('expires_at').notNull(),
 }, t => [primaryKey({ columns: [t.workspaceId, t.userId, t.key] })])
+
+// ── Commercial (Phase 3) ─────────────────────────────────────────────────────
+// System tables (subscription state, billing events, jobs, allowances, email log, analytics) are written only by the
+// server's owner connection. Tenants can read their own subscription through RLS; nothing else is exposed to app_user.
+
+/** One subscription per workspace. Updated only from verified provider webhooks or reconciliation — never from a redirect. */
+export const subscription = pgTable('subscription', {
+  workspaceId: uuid('workspace_id').primaryKey().references(() => workspace.id, { onDelete: 'cascade' }),
+  plan: text('plan', { enum: ['starter', 'professional', 'enterprise'] }).notNull(),
+  status: text('status', { enum: ['trialing', 'active', 'past_due', 'canceled', 'expired', 'suspended', 'incomplete'] }).notNull(),
+  interval: text('interval', { enum: ['month', 'year'] }),
+  seats: integer('seats').notNull().default(1),
+  /** 'none' = trial with no provider record yet; 'manual' = contract managed by staff; 'simulator' = development only. */
+  provider: text('provider', { enum: ['none', 'stripe', 'paddle', 'simulator', 'manual'] }).notNull().default('none'),
+  providerCustomerId: text('provider_customer_id'),
+  providerSubscriptionId: text('provider_subscription_id').unique(),
+  trialEndsAt: ts('trial_ends_at'),
+  currentPeriodStart: ts('current_period_start'),
+  currentPeriodEnd: ts('current_period_end'),
+  cancelAtPeriodEnd: boolean('cancel_at_period_end').notNull().default(false),
+  pastDueSince: ts('past_due_since'),
+  endedAt: ts('ended_at'),
+  /** Provider-side timestamp of the state we hold; older snapshots are ignored (out-of-order delivery). */
+  providerUpdatedAt: ts('provider_updated_at'),
+  /** Card brand and last four only, as reported by the provider. Never a card number. */
+  paymentMethodSummary: text('payment_method_summary'),
+  trialStartedBy: text('trial_started_by').references(() => user.id, { onDelete: 'set null' }),
+  createdAt: ts('created_at').notNull().defaultNow(),
+  updatedAt: ts('updated_at').notNull().defaultNow(),
+}, t => [index('subscription_customer_idx').on(t.providerCustomerId), index('subscription_trial_by_idx').on(t.trialStartedBy)])
+
+/** Every webhook we accepted (after signature verification). The unique key makes processing idempotent. No payloads are stored. */
+export const billingEvent = pgTable('billing_event', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  provider: text('provider').notNull(),
+  eventId: text('event_id').notNull(),
+  type: text('type').notNull(),
+  objectId: text('object_id'),
+  workspaceId: uuid('workspace_id'),
+  providerCreatedAt: ts('provider_created_at'),
+  status: text('status', { enum: ['received', 'processed', 'ignored', 'failed'] }).notNull().default('received'),
+  error: text('error'),
+  receivedAt: ts('received_at').notNull().defaultNow(),
+  processedAt: ts('processed_at'),
+}, t => [unique('billing_event_uq').on(t.provider, t.eventId), index('billing_event_ws_idx').on(t.workspaceId)])
+
+/** Durable background jobs (FOR UPDATE SKIP LOCKED). A dedupe key collapses repeats of the same work. */
+export const job = pgTable('job', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  kind: text('kind').notNull(),
+  payload: jsonb('payload').$type<Record<string, unknown>>().notNull().default({}),
+  dedupeKey: text('dedupe_key'),
+  status: text('status', { enum: ['queued', 'running', 'done', 'dead'] }).notNull().default('queued'),
+  attempts: integer('attempts').notNull().default(0),
+  maxAttempts: integer('max_attempts').notNull().default(6),
+  runAt: ts('run_at').notNull().defaultNow(),
+  lockedAt: ts('locked_at'),
+  lastError: text('last_error'),
+  createdAt: ts('created_at').notNull().defaultNow(),
+  finishedAt: ts('finished_at'),
+}, t => [index('job_ready_idx').on(t.status, t.runAt), uniqueIndex('job_dedupe_uq').on(t.dedupeKey).where(sql`status in ('queued','running')`)])
+
+/** AI allowance ledger per workspace and calendar month. Reservations make concurrent requests unable to overshoot. */
+export const aiAllowance = pgTable('ai_allowance', {
+  workspaceId: uuid('workspace_id').notNull().references(() => workspace.id, { onDelete: 'cascade' }),
+  period: text('period').notNull(),
+  used: bigint('used', { mode: 'number' }).notNull().default(0),
+  reserved: bigint('reserved', { mode: 'number' }).notNull().default(0),
+}, t => [primaryKey({ columns: [t.workspaceId, t.period] })])
+
+/** Delivery log for every email. Holds the template and recipient, never message bodies or links (which may carry tokens). */
+export const emailMessage = pgTable('email_message', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  to: text('to').notNull(),
+  userId: text('user_id').references(() => user.id, { onDelete: 'set null' }),
+  workspaceId: uuid('workspace_id').references(() => workspace.id, { onDelete: 'set null' }),
+  template: text('template').notNull(),
+  category: text('category', { enum: ['account', 'billing', 'notification'] }).notNull(),
+  subject: text('subject').notNull(),
+  status: text('status', { enum: ['queued', 'sent', 'failed', 'suppressed'] }).notNull().default('queued'),
+  transport: text('transport').notNull(),
+  providerMessageId: text('provider_message_id'),
+  attempts: integer('attempts').notNull().default(0),
+  error: text('error'),
+  createdAt: ts('created_at').notNull().defaultNow(),
+  sentAt: ts('sent_at'),
+}, t => [index('email_user_idx').on(t.userId, t.createdAt)])
+
+/** Per-user preferences: notification channels, analytics opt-out, and the unsubscribe token. */
+export const userPreference = pgTable('user_preference', {
+  userId: text('user_id').primaryKey().references(() => user.id, { onDelete: 'cascade' }),
+  notifications: jsonb('notifications').$type<Record<string, { email: boolean; inApp: boolean }>>().notNull().default({}),
+  analyticsOptOut: boolean('analytics_opt_out').notNull().default(false),
+  unsubscribeTokenHash: text('unsubscribe_token_hash'),
+  updatedAt: ts('updated_at').notNull().defaultNow(),
+})
+
+/** In-app notification history. Titles never contain stakeholder details beyond what the recipient can already see. */
+export const notification = pgTable('notification', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  workspaceId: tenant(),
+  userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  kind: text('kind').notNull(),
+  title: text('title').notNull(),
+  href: text('href'),
+  dedupeKey: text('dedupe_key'),
+  readAt: ts('read_at'),
+  emailed: boolean('emailed').notNull().default(false),
+  createdAt: ts('created_at').notNull().defaultNow(),
+}, t => [index('notification_user_idx').on(t.userId, t.createdAt), uniqueIndex('notification_dedupe_uq').on(t.userId, t.dedupeKey)])
+
+/** First-party product analytics. Allow-listed properties only; no stakeholder content. */
+export const analyticsEvent = pgTable('analytics_event', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  name: text('name').notNull(),
+  userId: text('user_id'),
+  workspaceId: uuid('workspace_id'),
+  props: jsonb('props').$type<Record<string, string | number | boolean>>().notNull().default({}),
+  createdAt: ts('created_at').notNull().defaultNow(),
+}, t => [index('analytics_name_idx').on(t.name, t.createdAt), index('analytics_ws_idx').on(t.workspaceId, t.name)])
+
+/** Export, deletion and closure requests, with their lifecycle. Exports are stored briefly, then purged. */
+export const dataRequest = pgTable('data_request', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  kind: text('kind', { enum: ['workspace_export', 'user_export', 'workspace_deletion', 'account_closure'] }).notNull(),
+  workspaceId: uuid('workspace_id').references(() => workspace.id, { onDelete: 'set null' }),
+  userId: text('user_id').references(() => user.id, { onDelete: 'set null' }),
+  status: text('status', { enum: ['requested', 'scheduled', 'processing', 'ready', 'completed', 'canceled', 'failed'] }).notNull().default('requested'),
+  /** What the request is about (e.g. the workspace name), kept after the workspace itself is deleted. */
+  label: text('label'),
+  requestedBy: text('requested_by'),
+  /** Deletions run after a cooling-off period and can be canceled until then. */
+  scheduledFor: ts('scheduled_for'),
+  file: text('file'),
+  fileExpiresAt: ts('file_expires_at'),
+  error: text('error'),
+  createdAt: ts('created_at').notNull().defaultNow(),
+  completedAt: ts('completed_at'),
+}, t => [index('data_request_ws_idx').on(t.workspaceId), index('data_request_user_idx').on(t.userId)])

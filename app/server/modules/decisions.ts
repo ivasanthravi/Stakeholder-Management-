@@ -4,6 +4,8 @@ import { decision, decisionStakeholder, engagement, initiative, stakeholder, use
 import type { TenantContext, Tx } from '../db/client'
 import type { z } from 'zod'
 import { jsonBody, patchBody, need, query, tx, type AppEnv } from '../context'
+import { notify } from '../notify'
+import type { Ctx } from '../context'
 import { diff, nextKey, recordActivity } from '../history'
 import { csv, getOr404, rowsOf, versionedUpdate } from './_shared'
 import { assertMember } from './stakeholders'
@@ -38,8 +40,9 @@ export const decisionRoutes = new Hono<AppEnv>()
     const tn = c.var.tenant
     // Contributors may propose; only managers+ can create a decision in a decided state.
     if (input.status !== 'proposed') need(c, 'decision.update')
-    const id = await tx(c, async t => (await createDecision(t, tn, input)).id)
-    return c.json(await tx(c, t => decisionDetail(t, id)), 201)
+    const d = await tx(c, t => createDecision(t, tn, input))
+    if (d.ownerId && d.ownerId !== tn.userId) await notifyDecisionOwner(c, d.ownerId as string, d.key as string, d.id as string)
+    return c.json(await tx(c, t => decisionDetail(t, d.id as string)), 201)
   })
 
   .get('/:id', async c => c.json(await tx(c, t => decisionDetail(t, c.req.param('id')))))
@@ -48,7 +51,7 @@ export const decisionRoutes = new Hono<AppEnv>()
     need(c, 'decision.update')
     const input = await patchBody(c, decisionUpdateSchema)
     const tn = c.var.tenant
-    await tx(c, async t => {
+    const assigned = await tx(c, async t => {
       const before = await getOr404(t, decision, c.req.param('id'), 'Decision', isNull(decision.archivedAt))
       if (input.ownerId !== undefined) await assertMember(t, input.ownerId)
       const { version, stakeholders, ...rest } = input
@@ -60,7 +63,9 @@ export const decisionRoutes = new Hono<AppEnv>()
       if (changes.status) await recordActivity(t, tn, { entityType: 'decision', entityId: before.id as string, verb: 'status_changed', summary: `${before.key} ${STATUS_LABEL[changes.status.from as string]} → ${STATUS_LABEL[changes.status.to as string]}`, changes: { status: changes.status } })
       delete changes.status
       if (Object.keys(changes).length || stakeholders) await recordActivity(t, tn, { entityType: 'decision', entityId: before.id as string, verb: 'updated', summary: `Updated ${[...Object.keys(changes), ...(stakeholders ? ['stakeholders'] : [])].join(', ')}`, changes })
+      return input.ownerId && input.ownerId !== before.ownerId && input.ownerId !== tn.userId ? { ownerId: input.ownerId, key: before.key as string, id: before.id as string } : null
     })
+    if (assigned) await notifyDecisionOwner(c, assigned.ownerId, assigned.key, assigned.id)
     return c.json(await tx(c, t => decisionDetail(t, c.req.param('id'))))
   })
 
@@ -106,4 +111,11 @@ export async function decisionDetail(t: Tx, id: string) {
   const init = d.initiativeId ? (await t.select({ id: initiative.id, code: initiative.code, name: initiative.name }).from(initiative).where(eq(initiative.id, d.initiativeId as string)))[0] ?? null : null
   const source = d.sourceEngagementId ? (await t.select({ id: engagement.id, key: engagement.key, title: engagement.title }).from(engagement).where(and(eq(engagement.id, d.sourceEngagementId as string))))[0] ?? null : null
   return { ...d, stakeholders, owner, initiative: init, sourceEngagement: source }
+}
+
+/** The title and email name the decision by key only; details stay in the app. */
+async function notifyDecisionOwner(c: Ctx, ownerId: string, key: string, id: string) {
+  const tn = c.var.tenant
+  await notify(c.var.deps, { userId: ownerId, workspaceId: tn.workspaceId, type: 'decision_assigned', title: `You own decision ${key}`, href: `/decisions?open=${id}`,
+    email: { template: 'decision_assigned', data: { actorName: c.var.user?.name ?? 'A teammate', decisionKey: key, workspaceName: tn.workspaceName, url: `${c.var.deps.env.APP_URL}/decisions?open=${id}` } } })
 }

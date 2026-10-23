@@ -6,6 +6,8 @@ import {
 } from '../db/schema'
 import type { Tx } from '../db/client'
 import { jsonBody, patchBody, meta, need, query, tx, type AppEnv, type Ctx } from '../context'
+import { trackFirst } from '../analytics'
+import { requireFeature } from '../billing/entitlements'
 import { ApiError } from '../http'
 import { diff, recordActivity, recordAudit } from '../history'
 import { csv, getOr404, rowsOf, STANCE_LABEL, versionedUpdate } from './_shared'
@@ -122,6 +124,7 @@ export const stakeholderRoutes = new Hono<AppEnv>()
       await recordActivity(t, tn, { entityType: 'stakeholder', entityId: s.id, verb: 'created', summary: `Added ${s.name}` })
       return s
     })
+    await trackFirst(c.var.deps.db, 'first_stakeholder_added', tn.workspaceId, tn.userId)
     return c.json(await tx(c, t => detail(t, created.id)), 201)
   })
 
@@ -132,6 +135,8 @@ export const stakeholderRoutes = new Hono<AppEnv>()
     const tn = c.var.tenant
     need(c, 'stakeholder.update')
     if (input.restricted !== undefined) need(c, 'stakeholder.restrict')
+    // Restricting needs the plan feature; lifting a restriction is always allowed (e.g. after a downgrade).
+    if (input.restricted === true) requireFeature(c.var.entitlements, 'records.restricted')
     await tx(c, async t => {
       const before = await getOr404(t, stakeholder, c.req.param('id'), 'Stakeholder', isNull(stakeholder.archivedAt))
       if (input.ownerId !== undefined) await assertMember(t, input.ownerId)
@@ -184,6 +189,7 @@ export const stakeholderRoutes = new Hono<AppEnv>()
 
   .put('/:id/access', async c => {
     need(c, 'stakeholder.restrict')
+    requireFeature(c.var.entitlements, 'records.restricted')
     const { userIds } = await jsonBody(c, z.object({ userIds: z.array(z.string().min(1)).max(200) }))
     const tn = c.var.tenant
     await tx(c, async t => {

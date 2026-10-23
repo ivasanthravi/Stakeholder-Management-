@@ -49,11 +49,21 @@ Copilot (⌘J), meeting intelligence (engagement → *Review meeting intelligenc
 - **Nothing is written without approval.** Extracted items are proposals; a person accepts, edits, rejects or merges each one.
 - **Further reading.** Architecture, model strategy, costs, eval results and limitations are in `docs/ai/`.
 
+## Commercial features (Phase 3)
+Marketing site at `/` (signed out), `/pricing`, `/product` and the other public pages. Sign-up leads to workspace creation with an industry template, then guided setup at `/welcome`. Subscription billing, entitlements, invitations, email, notifications and data management are all built in.
+
+- **Billing in development.** Uses a **simulator** (`BILLING_PROVIDER` unset): checkout opens a page labelled *no real payment*, and its webhooks are HMAC-signed and delivered through the real `/api/billing/webhooks/simulator` endpoint. Stripe and Paddle adapters are selected with `BILLING_PROVIDER=stripe|paddle` plus sandbox keys. Live keys are refused without `BILLING_LIVE_APPROVED=true`.
+- **Trials.** Every new workspace starts a 14-day Professional trial (no card, up to 10 people). Plans, features and limits are in `shared/plans.ts`. **Prices are not approved**, so the UI shows "Pricing on request" (`shared/pricing.ts`).
+- **Email in development.** Stored in the dev outbox (`/dev/mail`). Template previews are at `/api/dev/email-preview/<template>`. Production uses Postmark (`MAIL_TRANSPORT=postmark`).
+- **Background jobs** (webhook sync, email retries, digests, trials, exports, deletions) run in-process from a Postgres queue. Set `JOBS_ENABLED=false` on web-only replicas.
+- **More detail:** `docs/commercial/`, including billing architecture, pricing strategy, notifications, deployment and launch blockers.
+
 ## Database & migrations
 - The schema is in `server/db/schema.ts`. Migrations live in `server/db/migrations/`:
   - `0000_init.sql` is generated.
   - `0001_rls.sql` is hand-written: row-level security, the `app_user` role, and append-only audit.
   - `0002_ai_layer.sql` (generated) and `0003_ai_rls.sql` (hand-written) add the AI tables and their policies.
+  - `0004_commercial.sql`, `0006_data_requests.sql` (generated) and `0005_commercial_rls.sql` (hand-written; also backfills trials) add the commercial tables.
 - **Migrations run automatically** on server start (`migrate()` is idempotent and tracked in `drizzle.__drizzle_migrations`). `npm run db:migrate` runs them explicitly.
 - **Rollback.** Migrations are forward-only. To roll back, write a new migration that reverses the change. Never edit an applied migration. Take a backup (`pg_dump`) before applying migrations in production.
 - **Recovery.** Production should use managed Postgres with point-in-time recovery. PGlite data in `.data/` is for development only and is safe to delete (`npm run db:reset`).
@@ -77,7 +87,7 @@ npm start
 
 This serves `/api/*` and the built client on `PORT` (default 8787) behind a TLS-terminating proxy.
 
-**Not yet production-ready.** There is no email transport (only the dev log mailer), and the deployment has not been security-reviewed. See [`../docs/implementation/known-limitations.md`](../docs/implementation/known-limitations.md).
+**Not yet production-ready.** See [`../docs/commercial/launch-blockers.md`](../docs/commercial/launch-blockers.md) and [`../docs/commercial/deployment.md`](../docs/commercial/deployment.md). See [`../docs/implementation/known-limitations.md`](../docs/implementation/known-limitations.md).
 
 ## Layout
 ```

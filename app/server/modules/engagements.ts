@@ -3,6 +3,7 @@ import { and, desc, eq, isNull, sql } from 'drizzle-orm'
 import { commitment, decision, engagement, engagementParticipant, initiative, stakeholder, user } from '../db/schema'
 import type { Tx } from '../db/client'
 import { jsonBody, patchBody, need, query, tx, type AppEnv } from '../context'
+import { trackFirst } from '../analytics'
 import { diff, nextKey, recordActivity } from '../history'
 import { csv, getOr404, rowsOf, versionedUpdate } from './_shared'
 import { assertMember } from './stakeholders'
@@ -43,6 +44,7 @@ export const engagementRoutes = new Hono<AppEnv>()
       for (const sid of participantIds) await recordActivity(t, tn, { entityType: 'stakeholder', entityId: sid, verb: 'engaged', summary: `${e.kind[0].toUpperCase() + e.kind.slice(1).replace('_', ' ')}: ${e.title}` })
       return e.id
     })
+    await trackFirst(c.var.deps.db, 'first_engagement_recorded', c.var.tenant.workspaceId, c.var.tenant.userId)
     return c.json(await tx(c, t => engagementDetail(t, id)), 201)
   })
 

@@ -3,6 +3,7 @@ import { and, desc, eq, isNull, sql } from 'drizzle-orm'
 import { commitment, decision, initiative, initiativeStakeholder, stakeholder, user } from '../db/schema'
 import type { Tx } from '../db/client'
 import { jsonBody, patchBody, need, query, tx, type AppEnv, type Ctx } from '../context'
+import { trackFirst } from '../analytics'
 import { ApiError } from '../http'
 import { diff, recordActivity } from '../history'
 import { getOr404, rowsOf, versionedUpdate } from './_shared'
@@ -38,6 +39,7 @@ export const initiativeRoutes = new Hono<AppEnv>()
       await recordActivity(t, tn, { entityType: 'initiative', entityId: i.id, verb: 'created', summary: `Created ${i.code} ${i.name}` })
       return i
     })
+    await trackFirst(c.var.deps.db, 'first_initiative_created', c.var.tenant.workspaceId, c.var.tenant.userId)
     return c.json(row, 201)
   })
 

@@ -5,6 +5,9 @@ import { withTenant } from '../db/client'
 import { aiUsage, workspace } from '../db/schema'
 import { ApiError } from '../http'
 import type { Limiter } from '../ratelimit'
+import { entitlementsFor, requireFeature, reserveAi, settleAi, subscriptionInactive, type AiReservation } from '../billing/entitlements'
+import type { Feature } from '../../shared/plans'
+import { track } from '../analytics'
 
 /** Published first-party prices per million tokens (USD), from the model table used in docs/ai/model-strategy.md. */
 export const PRICES: Record<string, { input: number; output: number; cacheRead: number }> = {
@@ -56,16 +59,27 @@ export async function monthTokens(db: DB, workspaceId: string) {
  * Gate before any AI work: feature enabled, per-user rate, and (for model calls) the monthly budget.
  * The local engine costs nothing, so the budget only applies when a model would be called.
  */
-export async function assertAIAllowed(db: DB, limiter: Limiter, workspaceId: string, userId: string, usesModel: boolean) {
+export async function assertAIAllowed(db: DB, limiter: Limiter, workspaceId: string, userId: string, usesModel: boolean, opts: { feature: Feature; estimate: number }) {
+  // Plan first: access level (read-only workspaces can't run AI) and whether the plan includes this feature.
+  const e = await entitlementsFor(db, workspaceId)
+  if (e.access.level !== 'full') throw subscriptionInactive(e)
+  requireFeature(e, opts.feature)
   const s = await aiSettings(db, workspaceId)
   if (!s.enabled) throw new ApiError(403, 'ai_disabled', 'AI features are turned off for this workspace')
   const wait = limiter.take(`ai:${workspaceId}:${userId}`, { windowMs: 60_000, max: s.perUserPerMinute })
   if (wait) throw new ApiError(429, 'rate_limited', `You’ve reached the AI request limit. Try again in ${wait}s.`, { retryAfter: wait })
+  let reservation: AiReservation | null = null
   if (usesModel) {
-    const used = await monthTokens(db, workspaceId)
-    if (used.tokens >= s.monthlyTokenBudget) throw new ApiError(429, 'quota_exceeded', 'This workspace has used its monthly AI budget. An administrator can raise it in Settings › AI.')
+    // The effective allowance is the plan's, or the admin's lower spending cap. Reservation is atomic, so concurrent
+    // requests can't jointly exceed it. No overage is ever charged.
+    try {
+      reservation = await reserveAi(db, workspaceId, Math.min(e.aiTokenAllowance, s.monthlyTokenBudget), opts.estimate)
+    } catch (err) {
+      await track(db, 'ai_limit_reached', { userId, workspaceId, props: { feature: opts.feature } })
+      throw err
+    }
   }
-  return s
+  return { settings: s, reservation }
 }
 
 export interface UsageRecord {
@@ -74,8 +88,9 @@ export interface UsageRecord {
   status: 'ok' | 'error' | 'refused' | 'cancelled' | 'quota_exceeded'; errorCode?: string
 }
 
-export async function recordUsage(db: DB, ctx: { workspaceId: string; userId: string; role: string }, u: UsageRecord) {
+export async function recordUsage(db: DB, ctx: { workspaceId: string; userId: string; role: string }, u: UsageRecord, reservation?: AiReservation | null) {
   const input = u.input ?? 0, output = u.output ?? 0, cacheRead = u.cacheRead ?? 0
+  if (reservation) await settleAi(db, reservation, input + output)
   await withTenant(db, ctx, t => t.insert(aiUsage).values({
     workspaceId: ctx.workspaceId, userId: ctx.userId, feature: u.feature, engine: u.engine, model: u.model,
     inputTokens: input, outputTokens: output, cacheReadTokens: cacheRead, costMicros: costMicros(u.model, { input, output, cacheRead }),

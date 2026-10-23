@@ -211,6 +211,38 @@ AI is not a separate visual system. It reuses the tokens above, plus one rule: *
 
 Copy rules: say "recorded relationships", never "influence paths". Say "rule" or "AI" for every recommendation. Never describe a person's personality, loyalty or trustworthiness.
 
+### 7.13 Commercial surfaces (Phase 3)
+The marketing site, onboarding, billing and account screens use the same tokens, type and components as the product. Nothing is a separate theme.
+
+**Marketing site (`src/marketing/`)**
+- **Layout.** Light-first. Display headlines in Inter (tight tracking), with a Newsreader italic phrase for voice. Generous section rhythm (alternating `bg-surface` / `slate-50` bands, plus one dark AI band).
+- **Product visuals.** Real product screenshots inside a quiet browser frame, labelled "Sample workspace — fictional data". Numbered pins with a legend; pins are hidden on phones, where the legend carries the meaning.
+- **Motion.** Sections reveal once on enter (opacity plus 18 px lift, emphasized ease, 420 ms). Product frames drift slightly with scroll. All of this is disabled or reduced under `prefers-reduced-motion`. No scroll-jacking.
+- **No decorative 3D, gradients-as-content or stock illustration.**
+- **Honest commerce.** Prices render only when approved ("Pricing on request" otherwise). Planned features show a clock icon and a "Planned" chip.
+
+**Onboarding (`/onboarding`, `/welcome`)**
+- **Layout.** Centered single column. Desktop has a progress rail; mobile has a segmented bar.
+- **Templates.** Template cards are a radio group with a live preview panel.
+- **Steps.** Steps slide horizontally at standard motion tokens. Focus moves to the step heading on change.
+- **Controls.** Footers hold Back (ghost), Skip (ghost) and Continue (primary, trailing arrow).
+
+**Billing & account (`/settings/*`)**
+- **Status.** Status pills reuse the badge tokens: trial (accent subtle), active (positive), past due (warning), ended (neutral).
+- **Meters.** Seats and AI use the shared meter: 4 px track, accent fill, warning at 85% or above.
+- **Plan cards.** Built on subgrid so rows align. Only the current or trial plan uses the primary button.
+- **Destructive actions** (cancel, delete workspace, close account) use `alertdialog` with typed confirmation where the action can't be undone.
+- **Payment security.** Payment details appear only as provider-reported brand and last 4. A "Test mode" badge shows for sandbox providers.
+
+**Shell additions**
+- **Inbox popover.** Bell icon with an unread dot. Arrow keys move between items; Esc closes the popover and returns focus to the bell.
+- **Access banner.** A slim bar above the content. Tones: info (trial ending, dismissible), warning (past-due grace), critical (read-only or locked).
+- **Upgrade prompt.** One non-blocking card for 402 responses, debounced. Never a modal and never repeated.
+
+**Email**
+- **Layout.** 560 px table layout. Wordmark with a teal square, a white card on `slate-50`, one teal button and a muted footer.
+- **Copy.** Text alternatives carry link URLs. No stakeholder names in subjects or previews.
+
 ## 8. Motion tokens
 
 | Token | Duration | Easing | Use |

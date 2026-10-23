@@ -9,11 +9,22 @@ import { ApiError, forbidden, notFound, unauthorized } from './http'
 import { can, type Action, type Role } from '../shared/permissions'
 import type { RequestMeta } from './history'
 
-export interface Deps { db: DB; auth: Auth; env: Env; mailer: Mailer; limiter?: import('./ratelimit').Limiter; ai?: import('./ai/engine').AIEngine }
+export interface Deps {
+  db: DB; auth: Auth; env: Env; mailer: Mailer
+  limiter?: import('./ratelimit').Limiter
+  ai?: import('./ai/engine').AIEngine
+  jobs?: import('./jobs').Jobs
+  /** Active billing provider; null when billing isn't configured (trials still work). */
+  billing?: import('./billing/provider').BillingProvider | null
+  /** Development/test only. */
+  simulator?: import('./billing/simulator').Simulator | null
+  /** Turns subscription transitions into owner emails and inbox entries. */
+  billingNotify?: (n: import('./billing/sync').BillingNotice) => Promise<void>
+}
 export interface SessionUser { id: string; email: string; name: string; emailVerified: boolean }
 export interface Tenant extends TenantContext { role: Role; workspaceName: string; membershipId: string }
 
-export type AppEnv = { Variables: { deps: Deps; user: SessionUser | null; tenant: Tenant } }
+export type AppEnv = { Variables: { deps: Deps; user: SessionUser | null; tenant: Tenant; entitlements: import('./billing/entitlements').Entitlements } }
 export type Ctx = Context<AppEnv>
 
 export const meta = (c: Ctx): RequestMeta => ({

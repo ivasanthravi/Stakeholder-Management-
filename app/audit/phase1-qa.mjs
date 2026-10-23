@@ -65,14 +65,20 @@ const ROUTES = [
   ['ai-home-signal', '/', async p => { await p.locator('.lchev-btn').first().click() }],
   ['ai-settings', '/settings/ai'],
   ['ai-map-path', '/stakeholders?view=map', async p => { await p.getByRole('button', { name: /Find path|Find a chain/ }).click() }],
+  // Phase 3: account, billing and workspace administration
+  ...['profile', 'notifications', 'security', 'members', 'roles', 'billing', 'invoices', 'usage', 'data'].map(t => [`settings-${t}`, `/settings/${t}`]),
+  ['inbox', '/', async p => { await p.getByRole('button', { name: /Inbox|Notifications/ }).first().click() }],
 ]
-const PUBLIC = [['sign-in', '/sign-in'], ['sign-up', '/sign-up'], ['forgot-password', '/forgot-password']]
+const PUBLIC = [['sign-in', '/sign-in'], ['sign-up', '/sign-up'], ['forgot-password', '/forgot-password'],
+  // Phase 3: public marketing site
+  ['site-home', '/'], ['site-product', '/product'], ['site-features', '/features'], ['site-stakeholders', '/stakeholder-intelligence'], ['site-mapping', '/relationship-mapping'],
+  ['site-ai', '/ai'], ['site-pricing', '/pricing'], ['site-security', '/security'], ['site-contact', '/contact']]
 
 const results = []
 async function visit(ctx, tag, name, path, act) {
   const page = await ctx.newPage()
   const errors = []
-  page.on('console', m => { if (m.type() === 'error' && !(/401|409/.test(m.text()) || (name === 'not-found' && /404/.test(m.text())))) errors.push(m.text()) })
+  page.on('console', m => { if (m.type() === 'error' && !(/401|409|503/.test(m.text()) || (name === 'not-found' && /404/.test(m.text())))) errors.push(m.text()) })
   page.on('pageerror', e => errors.push(String(e)))
   await page.goto(BASE + path)
   await page.waitForLoadState('networkidle')

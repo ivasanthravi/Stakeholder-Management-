@@ -145,3 +145,7 @@
 .user-btn .t-strong { display: block; font-size: 12.5px; line-height: 16px; }
 .offline { position: absolute; top: 0; left: 0; right: 0; z-index: 6; display: flex; align-items: center; justify-content: center; gap: 8px; overflow: hidden; background: var(--slate-900); color: #fff; font: var(--text-small); }
 .toast[data-tone="error"] { background: var(--red-700); }
+
+/* ── Banners above the page (offline, access) ───────────── */
+.main-banners { position: absolute; top: 0; left: 0; right: 0; z-index: 6; }
+.main-banners .offline { position: relative; }

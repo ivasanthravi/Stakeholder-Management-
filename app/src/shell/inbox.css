@@ -1,0 +1,42 @@
+.inbox-badge {
+  position: absolute; top: 3px; right: 2px; min-width: 15px; height: 15px; padding: 0 4px;
+  display: grid; place-items: center; border-radius: 8px;
+  background: var(--accent); color: var(--text-on-accent); font: 600 9.5px/1 var(--font-sans);
+  box-shadow: 0 0 0 2px var(--bg-canvas);
+}
+.bn-ico { position: relative; display: inline-grid; }
+.bn-ico .inbox-badge { top: -5px; right: -9px; box-shadow: 0 0 0 2px var(--bg-surface); }
+
+.inbox {
+  position: fixed; z-index: 70; width: 360px; max-height: min(520px, calc(100vh - 80px));
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--bg-raised); border-radius: var(--radius-md);
+  box-shadow: var(--elev-2), 0 12px 28px -6px rgb(16 24 40 / .14);
+  transform-origin: 20px 0;
+}
+.inbox:focus-visible { outline: none; }
+.inbox[data-variant="bottom"] { left: 8px; right: 8px; bottom: 64px; width: auto; transform-origin: 50% 100%; max-height: min(70vh, 520px); }
+.inbox-head { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 8px 6px 14px; border-bottom: 1px solid var(--border-soft); }
+.inbox-all, .inbox-link {
+  display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 8px; border-radius: var(--radius-sm);
+  font: var(--text-small); font-weight: 500; color: var(--accent);
+  transition: background-color var(--dur-instant) linear;
+}
+.inbox-all:hover, .inbox-link:hover { background: var(--bg-hover); }
+.inbox-list { list-style: none; margin: 0; padding: 4px; overflow-y: auto; flex: 1; min-height: 0; }
+.inbox-item {
+  display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 8px 10px; border-radius: var(--radius-sm); text-align: left;
+  transition: background-color var(--dur-instant) linear;
+}
+.inbox-item:hover { background: var(--bg-hover); }
+.inbox-item:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.inbox-ico { flex: none; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: var(--bg-subtle); color: var(--text-2); box-shadow: inset 0 0 0 1px var(--border-soft); }
+.inbox-item[data-unread] .inbox-ico { background: var(--accent-subtle); color: var(--accent); }
+.inbox-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.inbox-title { font: var(--text-body); color: var(--text-2); overflow-wrap: anywhere; }
+.inbox-item[data-unread] .inbox-title { color: var(--text-1); font-weight: 550; }
+.inbox-dot { flex: none; width: 7px; height: 7px; margin-top: 7px; border-radius: 50%; background: var(--accent); }
+.inbox-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding: 28px 20px; }
+.inbox-empty svg { margin-bottom: 4px; }
+.inbox-foot { display: flex; justify-content: flex-end; padding: 4px 6px; border-top: 1px solid var(--border-soft); }
+.inbox-foot .inbox-link { color: var(--text-2); }

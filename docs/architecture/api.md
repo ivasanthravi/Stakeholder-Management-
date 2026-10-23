@@ -89,3 +89,59 @@ Everything here runs behind the same tenant gate and RLS as the record APIs. Mod
 | DELETE | `/conversations/:id` · `/conversations` | own only | Delete one / all of your conversations |
 
 Rate limiting also applies to every `/api/w/*` request (600/min per user and workspace) and to auth endpoints.
+
+## Commercial layer (Phase 3)
+New error codes:
+| Status | Code | Meaning |
+|---|---|---|
+| 402 | `plan_required` | The workspace's plan doesn't include this feature. `feature` and `plan` (the lowest plan that has it) are included |
+| 402 | `subscription_inactive` | The workspace is read-only or locked (trial ended, canceled, unpaid past grace, suspended). `access` is included |
+| 402 | `seat_limit` | All seats are used or held by pending invitations. `seatLimit` and `used` are included |
+| 429 | `quota_exceeded` | Monthly AI allowance reached (plan allowance or the admin's lower cap). No overage is charged |
+
+Every `/api/w/:id/*` request passes the entitlement middleware. While access isn't `full`, writes are refused (402), except billing, member/invitation removal, notifications, data and copilot-history routes.
+
+### Billing — `/api/w/:workspaceId/billing`
+| Method | Path | Permission | Notes |
+|---|---|---|---|
+| GET | `/` | member | Entitlements, seats, AI allowance/usage, plan catalog. `billing` (period, payment-method summary) only for admins and owners |
+| GET | `/invoices` | `billing.read` (admin) | Provider-hosted invoice list; never generated locally |
+| POST | `/checkout` | `billing.manage` (owner) | `{plan, interval, seats}` → `{url}` for provider-hosted checkout. Seats must be ≥ current usage |
+| POST | `/portal` | owner | → `{url}` of the provider's customer portal |
+| POST | `/change` | owner | `{plan, interval, seats}` → prorated update, then a re-sync from the provider |
+| POST | `/cancel` | owner | `{reason?}` → cancel at period end |
+| POST | `/resume` | owner | Undo a scheduled cancellation |
+| POST | `/refresh` | admin | Re-reads state from the provider (used while confirming a checkout) |
+
+### Public
+| Method | Path | Notes |
+|---|---|---|
+| POST | `/api/billing/webhooks/:provider` | Signature-verified provider webhooks (`stripe`, `paddle`, `simulator`). 400 on invalid signature; `{duplicate:true}` on redelivery |
+| GET | `/api/billing/plans` | Plan catalog, approved display prices only, trial terms |
+| GET, POST | `/api/billing/simulator/checkout/:id` | Development simulator's hosted checkout. 404 in production |
+| GET, POST | `/api/notifications/unsubscribe?token=` | GET confirms; POST unsubscribes (RFC 8058 one-click) |
+| POST | `/api/contact` | `{name, email, company?, teamSize?, topic, message, website(honeypot)}`. 5/hour/IP. 503 until `SALES_EMAIL` is set |
+
+### Account — `/api/me`
+| Method | Path | Notes |
+|---|---|---|
+| GET, PUT | `/preferences` | Notification channels per type, analytics opt-out |
+| PATCH | `/profile` | `{name}` |
+| GET | `/export` | Personal data export (JSON download) |
+| POST | `/close` | `{confirmEmail}`. 409 lists workspaces where you're the only owner. Deletes the user; shared records remain |
+
+### Workspace extras — `/api/w/:workspaceId`
+| Method | Path | Permission | Notes |
+|---|---|---|---|
+| POST | `/invitations/:id/resend` | admin | New token and expiry; the old link stops working. 1/min per invitation |
+| GET | `/notifications` · POST `/notifications/read {ids?}` | own | Inbox |
+| GET, PATCH | `/onboarding` | read: member · write: admin | Progress derived from data; `{complete, dismissed}` |
+| GET | `/data/requests` | `data.export` (admin) | Export and deletion requests |
+| POST | `/data/export` | admin | Background JSON export (202); emailed when ready; kept 7 days |
+| GET | `/data/exports/:id` | admin | Download |
+| POST, DELETE | `/data/deletion` | owner | `{confirmName}` schedules deletion in 14 days; DELETE cancels |
+
+`POST /api/workspaces` now accepts `{name, template?}` and returns `trial` (whether a no-card trial started).
+
+### Operator
+`GET /api/operator/metrics?days=30`: aggregate funnel (event counts, activation rate, trial conversion, median time to first value). Restricted to `OPERATOR_EMAILS`.

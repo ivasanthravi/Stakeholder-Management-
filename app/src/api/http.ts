@@ -7,6 +7,8 @@ export class ApiError extends Error {
     message: string,
     public fields: Record<string, string> = {},
     public current?: Record<string, unknown>,
+    /** Every other field the server put in the error envelope (e.g. `workspaces`, `feature`, `seatLimit`). */
+    public details: Record<string, unknown> = {},
   ) { super(message) }
   get isConflict() { return this.code === 'stale_version' }
 }
@@ -22,6 +24,11 @@ type Listener = () => void
 const unauthorizedListeners = new Set<Listener>()
 /** Called when any request comes back 401 (session expired or signed out elsewhere). */
 export const onUnauthorized = (l: Listener) => { unauthorizedListeners.add(l); return () => { unauthorizedListeners.delete(l) } }
+
+/** 402 responses: a plan feature, an inactive subscription or a seat limit. The shell shows one calm prompt for these. */
+export interface PaymentRequired { code: 'plan_required' | 'subscription_inactive' | 'seat_limit' | string; message: string; feature?: string; plan?: string }
+const paymentListeners = new Set<(p: PaymentRequired) => void>()
+export const onPaymentRequired = (l: (p: PaymentRequired) => void) => { paymentListeners.add(l); return () => { paymentListeners.delete(l) } }
 
 export interface RequestOptions { method?: string; body?: unknown; idempotencyKey?: string; signal?: AbortSignal }
 
@@ -47,7 +54,8 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
   if (!res.ok) {
     const err = (data as { error?: { code?: string; message?: string; fields?: Record<string, string>; current?: Record<string, unknown> } } | null)?.error
     if (res.status === 401) unauthorizedListeners.forEach(l => l())
-    throw new ApiError(res.status, err?.code ?? 'http_' + res.status, err?.message ?? 'Something went wrong. Please try again.', err?.fields ?? {}, err?.current)
+    if (res.status === 402) paymentListeners.forEach(l => l({ code: err?.code ?? 'payment_required', message: err?.message ?? '', ...(data as { error?: object })?.error }))
+    throw new ApiError(res.status, err?.code ?? 'http_' + res.status, err?.message ?? 'Something went wrong. Please try again.', err?.fields ?? {}, err?.current, (err ?? {}) as Record<string, unknown>)
   }
   return data as T
 }

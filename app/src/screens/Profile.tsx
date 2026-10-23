@@ -91,7 +91,8 @@ export function Profile() {
   const toggleRestricted = async () => {
     if (!s) return
     try { await request(ws(`/stakeholders/${id}`), { method: 'PATCH', body: { restricted: !s.restricted, version: s.version } }); await invalidate(); toast(s.restricted ? 'Visible to everyone in the workspace' : 'Restricted to owners, admins and the access list') }
-    catch (e) { toast(errorMessage(e), undefined, 'error') }
+    // A 402 (plan doesn't include restricted records) is explained once by the shell's upgrade prompt.
+    catch (e) { if (!(e instanceof ApiError && e.status === 402)) toast(errorMessage(e), undefined, 'error') }
   }
 
   const org = s?.organizations.find(o => !o.validTo && o.isPrimary) ?? s?.organizations.find(o => !o.validTo)

@@ -15,8 +15,17 @@
 .notice { color: var(--amber-700); }
 .notice-box { background: var(--attention-subtle); color: var(--amber-700); box-shadow: inset 0 0 0 1px var(--amber-100); }
 .notice-box .inline-link { color: inherit; }
-.auth-invites { display: flex; flex-direction: column; gap: 6px; padding-top: 14px; border-top: 1px solid var(--border-soft); }
-.auth-invite { display: flex; align-items: center; gap: 8px; font: var(--text-small); }
+.auth-actions { display: flex; flex-direction: column; gap: 12px; }
+.auth-actions .auth-submit { width: 100%; }
+a.auth-submit { gap: 8px; }
+.auth-fit { align-self: flex-start; }
+.auth-icon-end svg { order: 2; }
+/* Invitation summary */
+.invite-card { display: flex; align-items: flex-start; gap: 14px; padding: 16px; border-radius: var(--radius-lg); background: var(--bg-surface); box-shadow: var(--elev-2); min-width: 0; }
+.invite-ws { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: var(--slate-900); color: #fff; font: 600 17px/1 var(--font-sans); position: relative; overflow: hidden; }
+.invite-ws::after { content: ""; position: absolute; top: 0; bottom: 0; left: 62%; width: 1px; background: var(--teal-400); opacity: .7; }
+.invite-meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.invite-meta strong { font-weight: 550; color: var(--text-1); }
 .devmail { display: flex; flex-direction: column; gap: 10px; }
 .devmail li { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: var(--radius-md); background: var(--bg-surface); box-shadow: 0 0 0 1px var(--border); min-width: 0; }
 button.inline-link { font: inherit; }

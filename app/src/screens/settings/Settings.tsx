@@ -1,11 +1,11 @@
-// Workspace settings: General (name, vocabulary, your access, danger zone), Members (roles, invitations),
-// Audit (admin-only security log). Tabs are routes (/settings/:tab) so they deep-link and survive reloads.
+// Settings, grouped as Account (profile, notifications & privacy, security) and Workspace (general, members, roles,
+// subscription, billing history, usage, AI, audit, data). Tabs are routes (/settings/:tab) so they deep-link and survive reloads.
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react'
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
-import { Check, ChevronDown, Copy, History, Lock, LogOut, Mail, Settings2, Sparkle, Trash2, UserPlus, Users, X } from 'lucide-react'
+import { Bell, Check, ChevronDown, Copy, CreditCard, Database, Gauge, History, KeyRound, Lock, LogOut, Mail, ReceiptText, RotateCw, Settings2, Shield, Sparkle, Trash2, UserPlus, UserRound, Users, X, type LucideIcon } from 'lucide-react'
 import { useAIStatus, useAIUsage, useUpdateAISettings, type AISettings, type AIStatus } from '../../api/ai'
 import { useInvalidate, useWorkspace, wk } from '../../api/hooks'
 import { ApiError, errorMessage, request, ws } from '../../api/http'
@@ -16,42 +16,40 @@ import { ConfirmDialog } from '../../components/Drawer'
 import { FormError, SelectField, TextField, useForm } from '../../components/form'
 import { useSession } from '../../session/session'
 import { useApp } from '../../shell/context'
-import { canChangeRole, ROLE_DESCRIPTION, ROLE_LABEL, ROLES, type Role } from '../../../shared/permissions'
+import { canChangeRole, ROLE_DESCRIPTION, ROLE_LABEL, ROLES, type Action, type Role } from '../../../shared/permissions'
 import { inviteSchema, workspaceSettingsSchema } from '../../../shared/schemas'
 import { t } from '../../lib/motion'
 import { daysFromToday, fmtDate } from '../../lib/format'
 import { LoadError } from '../Home'
+import { useBilling, useResendInvite } from '../../api/commercial'
+import { UpgradePrompt, useHandlesPaymentRequired } from '../../components/UpgradePrompt'
+import { absTime, Meter, PageTitle, relTime, SectionHead, useMembers, type Invitation, type Member, type MembersData } from './common'
+import { ProfileTab, NotificationsTab, SecurityTab } from './Account'
+import { SubscriptionTab, BillingHistoryTab, UsageTab } from './Billing'
+import { RolesTab } from './Roles'
+import { DataTab } from './DataTab'
 import './settings.css'
 
-// ── Types & data ──────────────────────────────────────────────────────────────
-interface Member { id: string; userId: string; name: string; email: string; role: Role; joinedAt: string }
-interface Invitation { id: string; email: string; role: Role; expiresAt: string; createdAt: string }
-interface MembersData { members: Member[]; invitations: Invitation[] }
+// ── Tabs ──────────────────────────────────────────────────────────────────────
 interface AuditEvent { id: number; action: string; entityType: string | null; entityId: string | null; metadata: Record<string, unknown> | null; createdAt: string; actor: string | null }
 interface AuditPage { events: AuditEvent[]; next: number | null }
 
-const useMembers = () => useQuery({ queryKey: wk('members'), queryFn: () => request<MembersData>(ws('/members')), staleTime: 15_000 })
-
-type TabId = 'general' | 'members' | 'ai' | 'audit'
-const TABS: { id: TabId; label: string; icon: typeof Users }[] = [
-  { id: 'general', label: 'General', icon: Settings2 },
-  { id: 'members', label: 'Members', icon: Users },
-  { id: 'ai', label: 'AI', icon: Sparkle },
-  { id: 'audit', label: 'Audit log', icon: History },
+type TabId = 'profile' | 'notifications' | 'security' | 'general' | 'members' | 'roles' | 'billing' | 'invoices' | 'usage' | 'ai' | 'audit' | 'data'
+interface TabDef { id: TabId; label: string; icon: LucideIcon; group: 'Account' | 'Workspace'; visible?: (can: (a: Action) => boolean) => boolean }
+const TABS: TabDef[] = [
+  { id: 'profile', label: 'My profile', icon: UserRound, group: 'Account' },
+  { id: 'notifications', label: 'Notifications & privacy', icon: Bell, group: 'Account' },
+  { id: 'security', label: 'Security', icon: Shield, group: 'Account' },
+  { id: 'general', label: 'General', icon: Settings2, group: 'Workspace' },
+  { id: 'members', label: 'Members', icon: Users, group: 'Workspace' },
+  { id: 'roles', label: 'Roles & permissions', icon: KeyRound, group: 'Workspace' },
+  { id: 'billing', label: 'Subscription', icon: CreditCard, group: 'Workspace', visible: c => c('billing.read') },
+  { id: 'invoices', label: 'Billing history', icon: ReceiptText, group: 'Workspace', visible: c => c('billing.read') },
+  { id: 'usage', label: 'Usage', icon: Gauge, group: 'Workspace', visible: c => c('billing.read') },
+  { id: 'ai', label: 'AI', icon: Sparkle, group: 'Workspace' },
+  { id: 'audit', label: 'Audit log', icon: History, group: 'Workspace' },
+  { id: 'data', label: 'Data management', icon: Database, group: 'Workspace' },
 ]
-
-const absTime = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-/** Finer-grained than fmtRelative: minutes/hours for today. */
-function relTime(iso: string, now = Date.now()) {
-  const s = Math.max(0, (now - Date.parse(iso)) / 1000)
-  if (s < 60) return 'Just now'
-  if (s < 3600) return `${Math.floor(s / 60)}m ago`
-  if (s < 86_400) return `${Math.floor(s / 3600)}h ago`
-  const d = Math.floor(s / 86_400)
-  if (d < 7) return `${d}d ago`
-  if (d < 60) return `${Math.floor(d / 7)}w ago`
-  return fmtDate(iso, { day: 'numeric', month: 'short', year: 'numeric' })
-}
 
 let focusTabAfterNav = false
 
@@ -61,14 +59,18 @@ export function Settings() {
   const nav = useNavigate()
   const tab = (raw ?? 'general') as TabId
   const navRef = useRef<HTMLDivElement>(null)
-  const { workspace } = useSession()
+  const { workspace, can } = useSession()
+  const visible = TABS.filter(x => x.id === tab || !x.visible || x.visible(can))
 
   // /settings and /settings/:tab are separate routes, so keyboard tab switches remount this screen;
   // a module flag carries "keep focus on the tab list" across that remount.
   useEffect(() => {
+    const el = navRef.current?.querySelector<HTMLElement>(`#set-tab-${tab}`)
+    // On narrow screens the tab strip scrolls horizontally: keep the active tab in view.
+    el?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
     if (!focusTabAfterNav) return
     focusTabAfterNav = false
-    navRef.current?.querySelector<HTMLElement>(`#set-tab-${tab}`)?.focus()
+    el?.focus()
   }, [tab])
 
   if (!TABS.some(x => x.id === tab)) return <Navigate to="/settings" replace />
@@ -77,16 +79,16 @@ export function Settings() {
 
   // Roving focus across tabs: ↑/↓ (vertical) and ←/→ (horizontal on narrow screens), Home/End.
   const onKey = (e: KeyboardEvent) => {
-    const i = TABS.findIndex(x => x.id === tab)
+    const i = visible.findIndex(x => x.id === tab)
     const step = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0
     let n = i
-    if (step) n = (i + step + TABS.length) % TABS.length
+    if (step) n = (i + step + visible.length) % visible.length
     else if (e.key === 'Home') n = 0
-    else if (e.key === 'End') n = TABS.length - 1
+    else if (e.key === 'End') n = visible.length - 1
     else return
     e.preventDefault()
     focusTabAfterNav = true
-    go(TABS[n].id)
+    go(visible[n].id)
   }
 
   return (
@@ -102,54 +104,43 @@ export function Settings() {
       <div className="set-body">
         <LayoutGroup id="set-tabs">
           <div className="set-nav" role="tablist" aria-label="Settings sections" aria-orientation="vertical" ref={navRef} onKeyDown={onKey}>
-            <p className="set-nav-label t-caption c3">Workspace</p>
-            {TABS.map(x => {
+            {visible.map((x, i) => {
               const on = x.id === tab
               return (
-                <button key={x.id} id={`set-tab-${x.id}`} role="tab" aria-selected={on} aria-controls="set-panel" tabIndex={on ? 0 : -1}
-                  className="set-tab" onClick={() => go(x.id)}>
-                  {on && <motion.span layoutId="set-tab-ind" className="set-tab-ind" transition={t.indicator} />}
-                  <x.icon size={14} strokeWidth={1.9} aria-hidden />
-                  <span>{x.label}</span>
-                </button>
+                <Fragment key={x.id}>
+                  {(i === 0 || visible[i - 1].group !== x.group) && <p className="set-nav-label t-caption c3" role="presentation">{x.group}</p>}
+                  <button id={`set-tab-${x.id}`} role="tab" aria-selected={on} aria-controls="set-panel" tabIndex={on ? 0 : -1}
+                    className="set-tab" onClick={() => go(x.id)}>
+                    {on && <motion.span layoutId="set-tab-ind" className="set-tab-ind" transition={t.indicator} />}
+                    <x.icon size={14} strokeWidth={1.9} aria-hidden />
+                    <span className="truncate">{x.label}</span>
+                  </button>
+                </Fragment>
               )
             })}
           </div>
         </LayoutGroup>
-        <div className="set-scroll">
+        <div className="set-scroll" tabIndex={0} role="region" aria-label="Settings content">
           <div className="set-content" role="tabpanel" id="set-panel" aria-labelledby={`set-tab-${tab}`}>
             <AnimatePresence mode="wait" initial={false}>
               <motion.div key={tab} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0, transition: t.fast }} exit={{ opacity: 0, transition: { duration: 0.07 } }}>
+                {tab === 'profile' && <ProfileTab />}
+                {tab === 'notifications' && <NotificationsTab />}
+                {tab === 'security' && <SecurityTab />}
                 {tab === 'general' && <GeneralTab />}
                 {tab === 'members' && <MembersTab />}
+                {tab === 'roles' && <RolesTab />}
+                {tab === 'billing' && <SubscriptionTab />}
+                {tab === 'invoices' && <BillingHistoryTab />}
+                {tab === 'usage' && <UsageTab />}
                 {tab === 'ai' && <AITab />}
                 {tab === 'audit' && <AuditTab />}
+                {tab === 'data' && <DataTab />}
               </motion.div>
             </AnimatePresence>
           </div>
         </div>
       </div>
-    </div>
-  )
-}
-
-function SectionHead({ title, sub, aside }: { title: string; sub?: ReactNode; aside?: ReactNode }) {
-  return (
-    <div className="set-sec-head">
-      <div className="grow">
-        <h2 className="t-heading">{title}</h2>
-        {sub && <p className="t-small c2 set-sec-sub">{sub}</p>}
-      </div>
-      {aside}
-    </div>
-  )
-}
-
-function PageTitle({ title, sub }: { title: string; sub: ReactNode }) {
-  return (
-    <div className="set-title">
-      <h1 className="t-title">{title}</h1>
-      <p className="c2">{sub}</p>
     </div>
   )
 }
@@ -354,6 +345,7 @@ function MembersTab() {
   return (
     <>
       <PageTitle title="Members" sub="Who has access to this workspace and what they can do." />
+      <SeatUsage />
       {can('members.invite') && <InviteForm />}
       <section className="set-section" aria-labelledby="set-members">
         <SectionHead title="People" aside={n != null ? <span className="t-small c3 num" id="set-members-count">{n} member{n === 1 ? '' : 's'}</span> : undefined} />
@@ -365,6 +357,30 @@ function MembersTab() {
       {can('members.invite') && q.data && <Invitations items={q.data.invitations} />}
       <RoleLegend mine={myRole} />
     </>
+  )
+}
+
+/** Seats in use (members + pending invitations) against the plan's limit. */
+function SeatUsage() {
+  const b = useBilling()
+  if (!b.data) return null
+  const { seats, entitlements: e, canManage } = b.data
+  const limit = e.seatLimit
+  const full = limit != null && seats.used >= limit
+  return (
+    <section className="set-section" aria-label="Seats">
+      <div className="set-card seat-card">
+        <div className="grow">
+          <p className="row gap-2"><span className="t-strong num">{seats.used} of {limit ?? 'unlimited'} seats used</span>{full && <Pill tone="attention">All in use</Pill>}</p>
+          {limit != null && <Meter value={seats.used} max={limit} label="Seats used" />}
+          <p className="t-small c2">
+            {seats.members} member{seats.members === 1 ? '' : 's'} · {seats.pending} pending invitation{seats.pending === 1 ? '' : 's'}
+            {e.status === 'trialing' ? ` · trials include ${limit} seats` : ''}. Pending invitations hold a seat until accepted, revoked or expired.
+          </p>
+        </div>
+        {canManage && limit != null && <Link to="/settings/billing" className="btn btn-secondary btn-sm">{e.status === 'trialing' ? 'See plans' : 'Add seats'}</Link>}
+      </div>
+    </section>
   )
 }
 
@@ -384,22 +400,29 @@ function InviteForm() {
   const qc = useQueryClient()
   const form = useForm(inviteSchema, { email: '', role: 'contributor' })
   const conflictRef = useRef(false)
+  const [seatMsg, setSeatMsg] = useState<string | null>(null)
+  const { can } = useSession()
+  useHandlesPaymentRequired('seat_limit')
   const roles = ROLES.filter(r => r !== 'owner' && canChangeRole(myRole!, 'viewer', r))
   const sel = form.values.role as Role
 
   const send = async () => {
     conflictRef.current = false
+    setSeatMsg(null)
+    let seatLimited = false
     const ok = await form.submit(async v => {
       try {
         await request(ws('/invitations'), { method: 'POST', body: v })
       } catch (e) {
         // "Already a member" belongs to the email field, not a banner.
         if (e instanceof ApiError && e.status === 409) { conflictRef.current = true; throw new ApiError(409, e.code, e.message, { email: e.message }) }
+        if (e instanceof ApiError && e.status === 402 && e.code === 'seat_limit') { seatLimited = true; setSeatMsg(e.message) }
         throw e
       }
       toast(`Invitation sent to ${v.email}`)
     })
-    if (!ok && conflictRef.current) form.setFormError(null)
+    if (!ok && (conflictRef.current || seatLimited)) form.setFormError(null)
+    if (seatLimited) void qc.invalidateQueries({ queryKey: wk('billing') })
     if (ok) {
       form.reset({ email: '', role: sel as Exclude<Role, 'owner'> })
       void qc.invalidateQueries({ queryKey: wk('members') })
@@ -420,6 +443,13 @@ function InviteForm() {
         </div>
         <p className="t-small c2 set-role-hint"><span className="t-strong">{ROLE_LABEL[sel]}</span> — {ROLE_DESCRIPTION[sel]}</p>
         <FormError form={form} />
+        {seatMsg && (
+          <div className="set-seat-msg" role="alert">
+            <Users size={14} aria-hidden />
+            <span className="grow">{seatMsg}{!can('billing.manage') && ' Ask a workspace owner to add seats.'}</span>
+            {can('billing.manage') && <Link to="/settings/billing" className="btn btn-secondary btn-sm">Add seats</Link>}
+          </div>
+        )}
         <p className="t-small c3 set-invite-foot">
           <Mail size={12} aria-hidden /> Invitations expire after 7 days. Re-inviting an address replaces its pending invitation.
           {import.meta.env.DEV && <> <Link to="/dev/mail" className="set-link">Dev mailbox</Link></>}
@@ -529,6 +559,15 @@ function MembersTable({ members, myRole }: { members: Member[]; myRole: Role }) 
 function Invitations({ items }: { items: Invitation[] }) {
   const { toast } = useApp()
   const qc = useQueryClient()
+  const resend = useResendInvite()
+  const doResend = (i: Invitation) => resend.mutate({ _id: i.id }, {
+    onSuccess: r => {
+      qc.setQueryData<MembersData>(wk('members'), d => d && ({ ...d, invitations: d.invitations.map(x => (x.id === i.id ? { ...x, expiresAt: r.expiresAt } : x)) }))
+      toast(`Invitation sent again to ${i.email}. The previous link no longer works.`)
+    },
+    // 429: resent moments ago — the server says when to try again.
+    onError: e => toast(errorMessage(e), undefined, 'error'),
+  })
   const revoke = useMutation({
     mutationFn: (i: Invitation) => request(ws(`/invitations/${i.id}`), { method: 'DELETE' }),
     onSuccess: (_r, i) => {
@@ -550,6 +589,7 @@ function Invitations({ items }: { items: Invitation[] }) {
             {items.map(i => {
               const d = daysFromToday(i.expiresAt)
               const busy = revoke.isPending && revoke.variables?.id === i.id
+              const resending = resend.isPending && resend.variables?._id === i.id
               return (
                 <motion.li key={i.id} className="inv-row" layout="position" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: t.fast }} exit={{ opacity: 0, height: 0, transition: t.exit }} data-busy={busy || undefined}>
                   <span className="inv-ico" aria-hidden><Mail size={13} /></span>
@@ -559,7 +599,10 @@ function Invitations({ items }: { items: Invitation[] }) {
                       {ROLE_LABEL[i.role]} · <span title={absTime(i.createdAt)}>sent {relTime(i.createdAt).toLowerCase()}</span> · <span title={absTime(i.expiresAt)} className={d <= 1 ? 'set-warn' : undefined}>{d <= 0 ? 'expires today' : `expires in ${d} day${d === 1 ? '' : 's'}`}</span>
                     </p>
                   </div>
-                  <Button variant="ghost" size="sm" icon={<X size={13} />} loading={busy} onClick={() => revoke.mutate(i)} aria-label={`Revoke invitation to ${i.email}`}>Revoke</Button>
+                  <div className="inv-acts">
+                    <Button variant="ghost" size="sm" icon={<RotateCw size={13} />} loading={resending} disabled={busy} onClick={() => doResend(i)} aria-label={`Resend invitation to ${i.email}`}>Resend</Button>
+                    <Button variant="ghost" size="sm" icon={<X size={13} />} loading={busy} disabled={resending} onClick={() => revoke.mutate(i)} aria-label={`Revoke invitation to ${i.email}`}>Revoke</Button>
+                  </div>
                 </motion.li>
               )
             })}
@@ -573,7 +616,7 @@ function Invitations({ items }: { items: Invitation[] }) {
 function RoleLegend({ mine }: { mine: Role | null }) {
   return (
     <section className="set-section" aria-labelledby="set-roles">
-      <div className="set-sec-head"><h2 className="t-heading" id="set-roles">Roles</h2></div>
+      <div className="set-sec-head"><h2 className="t-heading grow" id="set-roles">Roles</h2><Link to="/settings/roles" className="t-small set-link">Full permissions table</Link></div>
       <dl className="set-card legend-list">
         {ROLES.map(r => (
           <div key={r} className="legend-row" data-mine={r === mine || undefined}>
@@ -822,6 +865,8 @@ function UsageSection() {
 // ── Audit ─────────────────────────────────────────────────────────────────────
 function AuditTab() {
   const { can } = useSession()
+  // The audit log is a plan feature: this tab explains a 402 inline, so the shell's prompt stays quiet.
+  useHandlesPaymentRequired('plan_required:audit.log')
   return (
     <>
       <PageTitle title="Audit log" sub="Security-relevant events in this workspace: access, membership and settings changes." />
@@ -886,6 +931,7 @@ function AuditList() {
       {Array.from({ length: 7 }, (_, i) => <div key={i} className="aud-row"><Skeleton w={20} h={20} r={10} /><div className="grow col-gap"><Skeleton w={`${50 + (i * 13) % 35}%`} h={11} /><Skeleton w={120} h={10} /></div><Skeleton w={48} h={10} /></div>)}
     </div>
   )
+  if (q.isError && q.error instanceof ApiError && q.error.status === 402 && q.error.code === 'plan_required') return <UpgradePrompt feature="audit.log" />
   if (q.isError) return <LoadError error={q.error} onRetry={() => void q.refetch()} />
   if (!groups.length) return <div className="set-card set-empty"><p className="t-strong">No events yet</p><p className="t-small c2">Membership, access and settings changes will appear here.</p></div>
 

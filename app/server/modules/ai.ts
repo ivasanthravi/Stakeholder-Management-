@@ -18,6 +18,8 @@ import { acceptProposal, editProposal, mergeProposal, proposalEditSchema, reject
 import { completeBriefing, decisionBriefing, stakeholderBriefing, workspaceBriefing, type Briefing, type Lookup } from '../ai/services/briefings'
 import { runCopilot, type CopilotEvent } from '../ai/copilot/run'
 import { relationshipPath } from '../ai/copilot/tools'
+import { requireFeature, settleAi } from '../billing/entitlements'
+import { trackFirst } from '../analytics'
 
 const engineOf = (c: Ctx): AIEngine => c.var.deps.ai ?? (c.var.deps.ai = createLocalEngine())
 const limiterOf = (c: Ctx) => c.var.deps.limiter!
@@ -39,13 +41,15 @@ const settingsSchema = z.object({
 async function cachedBriefing(c: Ctx, feature: string, build: (lookup: Lookup) => Promise<{ briefing: Briefing; usage: { input: number; output: number; cacheRead: number; model: string | null; latencyMs: number } | null; key: string; cached: boolean }>) {
   const tn = c.var.tenant
   const engine = engineOf(c)
-  await assertAIAllowed(c.var.deps.db, limiterOf(c), tn.workspaceId, tn.userId, engine.kind === 'claude')
+  const { reservation } = await assertAIAllowed(c.var.deps.db, limiterOf(c), tn.workspaceId, tn.userId, engine.kind === 'claude', { feature: 'ai.briefings', estimate: 6_000 })
   const fresh = c.req.query('fresh') === '1'
   const lookup: Lookup = async key => fresh ? null : tx(c, async t => ((await t.select().from(aiCache).where(and(eq(aiCache.key, key), gt(aiCache.expiresAt, new Date()))).limit(1))[0]?.value as Briefing) ?? null)
   const t0 = performance.now()
-  const res = await build(lookup)
-  if (res.cached) return c.json({ ...res.briefing, cached: true })
-  await recordUsage(c.var.deps.db, tn, { feature, engine: engine.kind, model: res.usage?.model ?? engine.model, input: res.usage?.input, output: res.usage?.output, cacheRead: res.usage?.cacheRead, latencyMs: Math.round(performance.now() - t0), status: res.briefing.aiError ? 'error' : 'ok' })
+  let res
+  try { res = await build(lookup) } catch (e) { if (reservation) await settleAi(c.var.deps.db, reservation, 0); throw e }
+  if (res.cached) { if (reservation) await settleAi(c.var.deps.db, reservation, 0); return c.json({ ...res.briefing, cached: true }) }
+  await recordUsage(c.var.deps.db, tn, { feature, engine: engine.kind, model: res.usage?.model ?? engine.model, input: res.usage?.input, output: res.usage?.output, cacheRead: res.usage?.cacheRead, latencyMs: Math.round(performance.now() - t0), status: res.briefing.aiError ? 'error' : 'ok' }, reservation)
+  await trackFirst(c.var.deps.db, 'first_ai_briefing_generated', tn.workspaceId, tn.userId, { engine: engine.kind })
   if (engine.kind === 'claude' && !res.briefing.aiError) {
     await tx(c, t => t.insert(aiCache).values({ workspaceId: tn.workspaceId, userId: tn.userId, key: res.key, value: res.briefing, expiresAt: new Date(Date.now() + 15 * 60_000) })
       .onConflictDoUpdate({ target: [aiCache.workspaceId, aiCache.userId, aiCache.key], set: { value: res.briefing, expiresAt: new Date(Date.now() + 15 * 60_000) } }))
@@ -99,7 +103,7 @@ export const aiRoutes = new Hono<AppEnv>()
     need(c, 'engagement.create')
     const tn = c.var.tenant
     const engine = engineOf(c)
-    await assertAIAllowed(c.var.deps.db, limiterOf(c), tn.workspaceId, tn.userId, engine.kind === 'claude')
+    const { reservation } = await assertAIAllowed(c.var.deps.db, limiterOf(c), tn.workspaceId, tn.userId, engine.kind === 'claude', { feature: 'ai.meeting_intelligence', estimate: 12_000 })
     const id = c.req.param('engagementId')
     const ctx = await tx(c, t => loadMeetingContext(t, id))
     const notes = assertAnalysable(ctx.e.notes as string | null)
@@ -111,11 +115,11 @@ export const aiRoutes = new Hono<AppEnv>()
         participants: ctx.participants, members: ctx.members, knownPeople: ctx.known.slice(0, 400),
       }, c.req.raw.signal)
     } catch (e) {
-      await recordUsage(c.var.deps.db, tn, { feature: 'meeting_extraction', engine: engine.kind, model: engine.model, latencyMs: Math.round(performance.now() - t0), status: (e as Error).name === 'AbortError' ? 'cancelled' : 'error', errorCode: (e as { status?: number }).status ? String((e as { status?: number }).status) : (e as Error).name })
+      await recordUsage(c.var.deps.db, tn, { feature: 'meeting_extraction', engine: engine.kind, model: engine.model, latencyMs: Math.round(performance.now() - t0), status: (e as Error).name === 'AbortError' ? 'cancelled' : 'error', errorCode: (e as { status?: number }).status ? String((e as { status?: number }).status) : (e as Error).name }, reservation)
       throw new ApiError(503, 'ai_unavailable', 'Analysis failed. Nothing was changed — try again.')
     }
     const out = await tx(c, t => analyseMeeting(t, tn, engine, ctx, raw, notes))
-    await recordUsage(c.var.deps.db, tn, { feature: 'meeting_extraction', engine: engine.kind, model: raw.usage.model, input: raw.usage.input, output: raw.usage.output, cacheRead: raw.usage.cacheRead, latencyMs: Math.round(performance.now() - t0), status: raw.refused ? 'refused' : 'ok' })
+    await recordUsage(c.var.deps.db, tn, { feature: 'meeting_extraction', engine: engine.kind, model: raw.usage.model, input: raw.usage.input, output: raw.usage.output, cacheRead: raw.usage.cacheRead, latencyMs: Math.round(performance.now() - t0), status: raw.refused ? 'refused' : 'ok' }, reservation)
     await recordAudit(c.var.deps.db, { workspaceId: tn.workspaceId, actorId: tn.userId, action: 'ai.meeting_analyzed', entityType: 'engagement', entityId: id, metadata: { engine: engine.kind, ...out.counts } }, meta(c))
     return c.json(await tx(c, t => latestAnalysis(t, id)), 201)
   })
@@ -157,6 +161,7 @@ export const aiRoutes = new Hono<AppEnv>()
 
   // ── Relationship paths (deterministic) ────────────────────────────────────
   .get('/paths', async c => {
+    requireFeature(c.var.entitlements, 'map.path_finder')
     const q = z.object({ from: z.uuid(), to: z.uuid() }).parse(c.req.query())
     const path = await tx(c, t => relationshipPath(t, q.from, q.to))
     return c.json({ found: !!path, hops: path ?? [], method: 'Shortest chain of recorded person-to-person relationships you can see, up to 4 steps. Inferred relationships are labelled.' })
@@ -194,7 +199,7 @@ export const aiRoutes = new Hono<AppEnv>()
     const tn = c.var.tenant
     const { db } = c.var.deps
     const engine = engineOf(c)
-    const settings = await assertAIAllowed(db, limiterOf(c), tn.workspaceId, tn.userId, engine.kind === 'claude')
+    const { settings, reservation } = await assertAIAllowed(db, limiterOf(c), tn.workspaceId, tn.userId, engine.kind === 'claude', { feature: 'ai.copilot', estimate: 30_000 })
     // Retention: purge this workspace's expired conversations (cheap, indexed).
     await withTenant(db, tn, t => t.delete(aiConversation).where(lt(aiConversation.expiresAt, new Date())))
     const history = body.conversationId ? await tx(c, async t => {
@@ -226,10 +231,10 @@ export const aiRoutes = new Hono<AppEnv>()
             await t.update(aiConversation).set({ updatedAt: new Date() }).where(eq(aiConversation.id, conversationId!))
           })
         }
-        await recordUsage(db, tn, { feature: 'copilot', engine: engine.kind, model: out.usage.model, input: out.usage.input, output: out.usage.output, cacheRead: out.usage.cacheRead, latencyMs: Math.round(performance.now() - t0), status: 'ok' })
+        await recordUsage(db, tn, { feature: 'copilot', engine: engine.kind, model: out.usage.model, input: out.usage.input, output: out.usage.output, cacheRead: out.usage.cacheRead, latencyMs: Math.round(performance.now() - t0), status: 'ok' }, reservation)
       } catch (e) {
         const cancelled = abort.signal.aborted || (e as Error).name === 'AbortError'
-        await recordUsage(db, tn, { feature: 'copilot', engine: engine.kind, model: engine.model, latencyMs: Math.round(performance.now() - t0), status: cancelled ? 'cancelled' : 'error', errorCode: (e as Error).name })
+        await recordUsage(db, tn, { feature: 'copilot', engine: engine.kind, model: engine.model, latencyMs: Math.round(performance.now() - t0), status: cancelled ? 'cancelled' : 'error', errorCode: (e as Error).name }, reservation)
         if (!cancelled) await send({ type: 'error', message: 'Something went wrong while answering. Nothing was changed — try again.' })
       }
     })

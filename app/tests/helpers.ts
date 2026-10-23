@@ -10,7 +10,7 @@ export const ORIGIN = 'http://localhost:5173'
 export const PASSWORD = 'correct-horse-battery'
 
 /** Fresh in-memory Postgres (PGlite), migrated, with the real app and auth wired up. */
-export async function createTestContext(opts: { ai?: import('../server/ai/engine').AIEngine } = {}) {
+export async function createTestContext(opts: { ai?: import('../server/ai/engine').AIEngine; billing?: import('../server/billing/provider').BillingProvider | null } = {}) {
   const database = await createDatabase({})
   await migrate(database)
   const env = loadEnv({ NODE_ENV: 'test', APP_URL: ORIGIN, REQUIRE_EMAIL_VERIFICATION: 'true' })
@@ -19,8 +19,9 @@ export async function createTestContext(opts: { ai?: import('../server/ai/engine
   const { createLocalEngine } = await import('../server/ai/engine')
   const { createLimiter } = await import('../server/ratelimit')
   const limiter = createLimiter()
-  const app = createApp({ db: database.db, auth, env, mailer, limiter, ai: opts.ai ?? createLocalEngine() })
-  return { app, db: database.db, limiter, close: () => database.close() }
+  const deps: import('../server/context').Deps = { db: database.db, auth, env, mailer, limiter, ai: opts.ai ?? createLocalEngine(), ...(opts.billing !== undefined ? { billing: opts.billing } : {}) }
+  const app = createApp(deps)
+  return { app, db: database.db, limiter, deps, jobs: deps.jobs!, simulator: deps.simulator ?? null, close: () => database.close() }
 }
 export type TestContext = Awaited<ReturnType<typeof createTestContext>>
 

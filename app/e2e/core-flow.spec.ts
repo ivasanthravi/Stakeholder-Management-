@@ -56,9 +56,12 @@ test.describe.serial('Phase 1 core flow', () => {
     await signUpAndVerify(page, alice)
     // Verification signs the user in and lands on onboarding (no workspace yet).
     await page.goto('/')
-    await expect(page.getByRole('heading', { name: 'Create your workspace' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Set up your workspace' })).toBeVisible()
     await page.getByLabel('Workspace name').fill('E2E Infrastructure')
     await page.getByRole('button', { name: 'Create workspace' }).click()
+    // Phase 3: guided setup follows; this flow skips it and builds records through the product itself.
+    await expect(page).toHaveURL(/\/welcome/)
+    await page.getByRole('button', { name: 'Skip setup' }).click()
     await expect(page.getByRole('heading', { name: /E2E Infrastructure is ready/ })).toBeVisible()
   })
 
@@ -144,6 +147,8 @@ test.describe.serial('Phase 1 core flow', () => {
     await page.goto('/')
     await page.getByLabel('Workspace name').fill('Other Org')
     await page.getByRole('button', { name: 'Create workspace' }).click()
+    await expect(page).toHaveURL(/\/welcome/)
+    await page.getByRole('button', { name: 'Skip setup' }).click()
     await expect(page.getByRole('heading', { name: /Other Org is ready/ })).toBeVisible()
     // Direct object reference to Tenant A's stakeholder.
     await page.goto(stakeholderUrl)

@@ -30,7 +30,7 @@ export const COMMITMENT_STATUSES = ['open', 'in_progress', 'completed', 'cancell
 export const RELATIONSHIP_TYPES = ['reports_to', 'colleague', 'advises', 'influences', 'allied', 'opposes', 'member_of', 'partner_of', 'funds', 'regulates', 'other'] as const
 
 // ── Workspace ─────────────────────────────────────────────────────────────────
-export const workspaceCreateSchema = z.object({ name: name(80) })
+export const workspaceCreateSchema = z.object({ name: name(80), template: z.string().max(40).optional() })
 export const workspaceSettingsSchema = z.object({
   name: name(80).optional(),
   vocabulary: z.object({
@@ -40,6 +40,7 @@ export const workspaceSettingsSchema = z.object({
   }).optional(),
   organizationTypes: z.array(trimmed(40).min(1)).max(30).optional(),
   engagementKinds: z.array(trimmed(40).min(1)).max(30).optional(),
+  template: z.string().max(40).optional(),
 })
 export const inviteSchema = z.object({
   email,
