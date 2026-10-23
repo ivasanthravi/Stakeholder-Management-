@@ -23,7 +23,10 @@ export function loadEnv(source?: Record<string, string | undefined>): Env {
     try { process.loadEnvFile('.env') } catch { /* no .env file */ }
     source = process.env
   }
-  const env = schema.parse(source)
+  // The API has its own port variable so tools that set PORT for the web dev server don't collide with it.
+  // In production one process serves app and API, so PORT is honoured there.
+  const port = source.API_PORT ?? (source.NODE_ENV === 'production' ? source.PORT : undefined)
+  const env = schema.parse({ ...source, PORT: port })
   if (env.NODE_ENV === 'production') {
     if (!env.AUTH_SECRET) throw new Error('AUTH_SECRET is required in production')
     if (!env.DATABASE_URL) throw new Error('DATABASE_URL is required in production (PGlite is for development only)')
