@@ -1,0 +1,144 @@
+{
+  "people": 2000,
+  "sequentialLatency": {
+    "health (no auth)": {
+      "medianMs": 0,
+      "minMs": 0,
+      "maxMs": 0
+    },
+    "workspace (auth + tenant + entitlements only)": {
+      "medianMs": 3,
+      "minMs": 2,
+      "maxMs": 4
+    },
+    "dashboard": {
+      "medianMs": 1579,
+      "minMs": 1484,
+      "maxMs": 2371
+    },
+    "directory page": {
+      "medianMs": 319,
+      "minMs": 304,
+      "maxMs": 373
+    },
+    "directory filter": {
+      "medianMs": 198,
+      "minMs": 180,
+      "maxMs": 272
+    },
+    "search": {
+      "medianMs": 12,
+      "minMs": 9,
+      "maxMs": 14
+    },
+    "profile overview": {
+      "medianMs": 94,
+      "minMs": 85,
+      "maxMs": 134
+    },
+    "graph (initiative)": {
+      "medianMs": 3206,
+      "minMs": 2881,
+      "maxMs": 3671
+    },
+    "commitments overdue": {
+      "medianMs": 3,
+      "minMs": 2,
+      "maxMs": 12
+    },
+    "decisions": {
+      "medianMs": 2,
+      "minMs": 2,
+      "maxMs": 3
+    },
+    "engagements": {
+      "medianMs": 138,
+      "minMs": 131,
+      "maxMs": 149
+    },
+    "lookups": {
+      "medianMs": 2,
+      "minMs": 2,
+      "maxMs": 3
+    },
+    "activity": {
+      "medianMs": 13,
+      "minMs": 7,
+      "maxMs": 24
+    }
+  },
+  "slowestStatements": [
+    {
+      "calls": "7",
+      "mean_ms": "3207.8",
+      "total_ms": "22455",
+      "q": "with last as ( select ep.stakeholder_id as sid, max(e.occurred_at) as at from engagement_participant ep join engagement e on e.id = ep.engagement_id where e.arc"
+    },
+    {
+      "calls": "7",
+      "mean_ms": "1197.0",
+      "total_ms": "8379",
+      "q": "select i.id, i.code, i.name, i.status, (select count(*) from initiative_stakeholder x join stakeholder s on s.id = x.stakeholder_id where x.initiative_id = i.id"
+    },
+    {
+      "calls": "7",
+      "mean_ms": "318.5",
+      "total_ms": "2229",
+      "q": "select s.id, s.name, s.title, s.stance, s.influence, s.owner_id as \"ownerId\", u.name as \"ownerName\", count(e.id) filter (where e.occurred_at > now() - make_inte"
+    },
+    {
+      "calls": "7",
+      "mean_ms": "244.1",
+      "total_ms": "1708",
+      "q": "with last as ( select ep.stakeholder_id as sid, max(e.occurred_at) as at from engagement_participant ep join engagement e on e.id = ep.engagement_id where e.arc"
+    },
+    {
+      "calls": "14",
+      "mean_ms": "77.3",
+      "total_ms": "1082",
+      "q": "select \"engagement_participant\".\"stakeholder_id\", \"engagement\".\"occurred_at\" from \"engagement_participant\" inner join \"engagement\" on \"engagement\".\"id\" = \"engag"
+    },
+    {
+      "calls": "7",
+      "mean_ms": "143.8",
+      "total_ms": "1007",
+      "q": "select distinct on (ep.stakeholder_id) ep.stakeholder_id as sid, e.id, e.key, e.title, e.occurred_at as \"occurredAt\" from engagement_participant ep join engagem"
+    },
+    {
+      "calls": "7",
+      "mean_ms": "134.6",
+      "total_ms": "942",
+      "q": "select e.id, e.key, e.kind, e.title, e.occurred_at as \"occurredAt\", e.summary, e.initiative_id as \"initiativeId\", i.code as \"initiativeCode\", e.owner_id as \"own"
+    },
+    {
+      "calls": "7",
+      "mean_ms": "119.7",
+      "total_ms": "838",
+      "q": "with last as ( select ep.stakeholder_id as sid, max(e.occurred_at) as at from engagement_participant ep join engagement e on e.id = ep.engagement_id where e.arc"
+    },
+    {
+      "calls": "1",
+      "mean_ms": "316.9",
+      "total_ms": "317",
+      "q": "with last as ( select ep.stakeholder_id as sid, max(e.occurred_at) as at from engagement_participant ep join engagement e on e.id = ep.engagement_id where e.arc"
+    },
+    {
+      "calls": "7",
+      "mean_ms": "43.0",
+      "total_ms": "301",
+      "q": "select \"engagement\".\"id\", \"engagement\".\"key\", \"engagement\".\"kind\", \"engagement\".\"title\", \"engagement\".\"occurred_at\", \"engagement\".\"summary\", \"engagement\".\"initi"
+    },
+    {
+      "calls": "7",
+      "mean_ms": "42.0",
+      "total_ms": "294",
+      "q": "select \"engagement_participant\".\"stakeholder_id\", \"engagement\".\"occurred_at\" from \"engagement_participant\" inner join \"engagement\" on \"engagement\".\"id\" = \"engag"
+    },
+    {
+      "calls": "7",
+      "mean_ms": "19.8",
+      "total_ms": "139",
+      "q": "select e.id, e.key, e.kind, e.title, e.occurred_at as \"occurredAt\", i.code as \"initiativeCode\", (select count(*) from engagement_participant ep where ep.engagem"
+    }
+  ]
+}

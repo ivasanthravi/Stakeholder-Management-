@@ -415,7 +415,7 @@ function InitiativeStep({ focus, template, created, existing, onCreated, onBack,
   return (
     <form onSubmit={submit} noValidate className="ob-step">
       <StepHead focus={focus} title={`Add your first ${one}`}>
-        A {one} is the piece of work your stakeholders care about. Everything you record can be linked to it.
+        {/^[aeiou]/i.test(one) ? 'An' : 'A'} {one} is the piece of work your stakeholders care about. Everything you record can be linked to it.
       </StepHead>
       {created ? (
         <div className="ob-created"><span className="ob-done-dot sm"><Check size={12} /></span><span><span className="ob-code">{created.code}</span> <span className="t-strong">{created.name}</span> is set up.</span></div>

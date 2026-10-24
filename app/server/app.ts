@@ -1,5 +1,11 @@
 import { Hono } from 'hono'
 import { secureHeaders } from 'hono/secure-headers'
+import { bodyLimit } from 'hono/body-limit'
+import { requestLogger } from './log'
+import { clientIp, ipConfig } from './net'
+import { renderMetrics, tokenMatches } from './metrics'
+import { sql as dsql } from 'drizzle-orm'
+import { job } from './db/schema'
 import { createLimiter, rateLimit } from './ratelimit'
 import { desc } from 'drizzle-orm'
 import { idempotency, jsonBody, requireUser, sessionMiddleware, tenantMiddleware, type AppEnv, type Deps } from './context'
@@ -31,7 +37,25 @@ import { inboxRoutes, meRoutes, unsubscribeRoutes } from './modules/notification
 export function createApp(deps: Deps) {
   const app = new Hono<AppEnv>()
   app.onError(errorHandler)
+  app.use('*', requestLogger as never)
   app.use('*', async (c, next) => { c.set('deps', deps); await next() })
+  // Request bodies are small JSON documents; the largest legitimate one is meeting notes (≤ 60,000 characters).
+  app.use('/api/*', bodyLimit({ maxSize: 512 * 1024, onError: () => { throw new ApiError(413, 'too_large', 'This request is too large.') } }))
+  // CSRF defence in depth (session cookies are already SameSite=Lax): a state-changing request that carries an Origin
+  // must come from the app's own origin. Provider webhooks and one-click unsubscribe are authenticated by signature
+  // or token, not cookies, so they're exempt. Requests without an Origin (server-to-server, CLI) carry no browser cookies' intent.
+  const appOrigin = new URL(deps.env.APP_URL).origin
+  app.use('/api/*', async (c, next) => {
+    const m = c.req.method
+    if (m !== 'GET' && m !== 'HEAD' && m !== 'OPTIONS' && !c.req.path.startsWith('/api/billing/webhooks/') && !c.req.path.startsWith('/api/notifications/unsubscribe')) {
+      const origin = c.req.header('origin')
+      const site = c.req.header('sec-fetch-site')
+      if ((origin && origin !== appOrigin) || (!origin && site && site !== 'same-origin' && site !== 'none')) {
+        throw new ApiError(403, 'bad_origin', 'This request didn’t come from the Meridian app.')
+      }
+    }
+    await next()
+  })
   // Security headers on every response. The CSP allows only same-origin scripts and connections;
   // inline styles are needed by the animation library and inline SVG.
   app.use('*', secureHeaders({
@@ -58,7 +82,27 @@ export function createApp(deps: Deps) {
   })
   registerJobs(deps)
 
+  // Liveness: the process is up. Readiness: the database answers and the job queue isn't stuck.
   app.get('/api/health', c => c.json({ ok: true }))
+  // Prometheus scrape endpoint; disabled unless METRICS_TOKEN is configured.
+  app.get('/api/metrics', async c => {
+    const token = (deps.env as unknown as Record<string, string | undefined>).METRICS_TOKEN
+    if (!token) throw notFound('Endpoint')
+    if (!tokenMatches(c.req.header('authorization')?.replace(/^Bearer /i, ''), token)) return c.text('unauthorized', 401)
+    return c.text(await renderMetrics(deps.db), 200, { 'content-type': 'text/plain; version=0.0.4' })
+  })
+  app.get('/api/ready', async c => {
+    const t0 = performance.now()
+    try {
+      await deps.db.execute(dsql`select 1`)
+      const [q] = await deps.db.select({ queued: dsql<number>`count(*) filter (where ${job.status} = 'queued')::int`, dead: dsql<number>`count(*) filter (where ${job.status} = 'dead')::int`,
+        oldest: dsql<number>`coalesce(extract(epoch from now() - min(${job.runAt}) filter (where ${job.status} = 'queued')), 0)::int` }).from(job)
+      const lagging = q.oldest > 15 * 60
+      return c.json({ ok: !lagging, db: { ok: true, ms: Math.round(performance.now() - t0) }, jobs: { queued: q.queued, dead: q.dead, oldestQueuedSeconds: q.oldest, lagging } }, lagging ? 503 : 200)
+    } catch {
+      return c.json({ ok: false, db: { ok: false } }, 503)
+    }
+  })
   app.on(['GET', 'POST'], '/api/auth/*', c => deps.auth.handler(c.req.raw))
 
   // Provider webhooks and the public plan catalog: no session, no user rate limit (signatures authenticate webhooks).
@@ -73,7 +117,7 @@ export function createApp(deps: Deps) {
       topic: z.enum(['sales', 'support', 'security', 'other']).default('sales'), message: z.string().trim().min(10, 'Tell us a little more').max(4000),
       website: z.string().max(0).optional(), // honeypot: real people leave it empty
     }))
-    const ip = c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ?? 'local'
+    const ip = clientIp(c.req.raw.headers, ipConfig(deps.env as unknown as Record<string, unknown>))
     const wait = limiter.take(`contact:${ip}`, { windowMs: 60 * 60_000, max: deps.env.NODE_ENV === 'test' ? 1000 : 5 })
     if (wait) throw new ApiError(429, 'rate_limited', 'Too many messages from this connection. Please try again later or email us directly.', { retryAfter: wait })
     const to = (deps.env as unknown as Record<string, string | undefined>).SALES_EMAIL
@@ -85,7 +129,7 @@ export function createApp(deps: Deps) {
 
   app.use('/api/*', sessionMiddleware)
   // General API limit (generous: keyboard-driven UIs make many small requests).
-  app.use('/api/w/*', rateLimit(limiter, 'api', deps.env.NODE_ENV === 'test' ? { windowMs: 60_000, max: 100_000 } : { windowMs: 60_000, max: 600 }))
+  app.use('/api/w/*', rateLimit(limiter, 'api', { windowMs: 60_000, max: deps.env.NODE_ENV === 'test' ? 100_000 : Number((deps.env as unknown as Record<string, string | undefined>).API_RATE_LIMIT_PER_MINUTE) || 600 }))
   app.route('/api', accountRoutes)
   app.route('/api/me', meRoutes)
   app.route('/api/me', personalDataRoutes)

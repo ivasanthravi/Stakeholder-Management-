@@ -243,3 +243,9 @@
   .rb-vsep { display: none; }
   .mt-title.t-display { font-size: 22px; line-height: 28px; }
 }
+
+/* Tablet: the record count was clipped at the toolbar edge ("4…"); tabs already carry counts, so keep it for
+   screen readers (it is a live region) and hide it visually until there is room. */
+@media (min-width: 641px) and (max-width: 1100px) {
+  .rb-count { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}

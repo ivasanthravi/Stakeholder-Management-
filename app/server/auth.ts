@@ -35,7 +35,15 @@ export function createAuth(db: DB, env: Env, mailer: Mailer) {
       updateAge: 60 * 60 * 24, // refresh daily while active
     },
     rateLimit: { enabled: env.NODE_ENV === 'production', window: 60, max: 100 },
-    advanced: { useSecureCookies: env.NODE_ENV === 'production' },
+    advanced: {
+      useSecureCookies: env.NODE_ENV === 'production',
+      // Rate limits key on the client IP. Use a header the platform sets (CLIENT_IP_HEADER), or tell Better Auth which
+      // proxies to trust so a forged X-Forwarded-For can't rotate identities or share one bucket across everyone.
+      ipAddress: {
+        ipAddressHeaders: [(env as unknown as Record<string, string | undefined>).CLIENT_IP_HEADER?.toLowerCase() || 'x-forwarded-for'],
+        ...((env as unknown as Record<string, string | undefined>).TRUSTED_PROXIES ? { trustedProxies: (env as unknown as Record<string, string>).TRUSTED_PROXIES.split(',').map(x => x.trim()).filter(Boolean) } : {}),
+      },
+    },
     databaseHooks: {
       session: {
         create: {

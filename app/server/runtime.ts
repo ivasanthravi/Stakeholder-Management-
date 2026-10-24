@@ -1,5 +1,6 @@
 // Background job handlers and the recurring schedule. Handlers are registered on every process (so any process can
 // run a queued job); the worker loop and schedule run only where JOBS_ENABLED isn't "false".
+import { errorFields, log } from './log'
 import type { Deps } from './context'
 import { processTrials, reconcileAll, syncSubscription } from './billing/sync'
 import { processDataRequests, runExport } from './modules/data'
@@ -26,7 +27,7 @@ export function startSchedule(deps: Deps) {
       await jobs.enqueue('billing.trials', {}, { dedupeKey: `billing.trials:${bucket(HOUR)}` })
       await jobs.enqueue('billing.reconcile', {}, { dedupeKey: `billing.reconcile:${bucket(24 * HOUR)}` })
       for (const extra of scheduled) await jobs.enqueue(extra.kind, {}, { dedupeKey: `${extra.kind}:${bucket(extra.everyMs)}` })
-    } catch (e) { console.warn(`[schedule] ${(e as Error).message}`) }
+    } catch (e) { log('warn', 'schedule tick failed', errorFields(e)) }
   }
   void tick()
   const timer = setInterval(tick, 10 * 60_000)

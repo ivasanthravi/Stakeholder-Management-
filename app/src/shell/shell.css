@@ -132,8 +132,9 @@
   .toasts { bottom: 68px; }
   .page-head { padding: 0 12px; gap: 6px; }
   .page-head .t-small, .page-head .head-sep, .page-head .btn .kbd { display: none; }
-  .page-head .btn-label { display: none; }
+  .page-head .btn-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .page-head .btn:not(.btn-icon) { width: var(--control-h); padding: 0; }
+  .page-head .btn { flex: none; min-width: 28px; }
   .sidebar { display: none; }
   .main { margin: 0; border-radius: 0; }
   .toasts { left: 16px; }

@@ -9,6 +9,7 @@ import * as s from './schema'
 import { createLogMailer } from '../mail'
 import { createAuth } from '../auth'
 import { buildWorkspace, TODAY } from './sample/generator'
+import { startTrial } from '../billing/entitlements'
 
 const env = loadEnv()
 if (env.NODE_ENV === 'production') throw new Error('Refusing to seed a production database')
@@ -45,6 +46,8 @@ const me = userIds.get('u1')!
 const [ws] = await db.insert(s.workspace).values({ name: 'Westshire Infrastructure Partners (sample)', slug: 'westshire-sample', settings: { sample: true }, createdBy: me, updatedBy: me }).returning()
 const roles = ['owner', 'admin', 'manager', 'contributor', 'viewer'] as const
 await db.insert(s.membership).values(src.users.map((u, i) => ({ workspaceId: ws.id, userId: userIds.get(u.id)!, role: roles[i], createdBy: me, updatedBy: me })))
+// Every workspace needs a subscription row (entitlements read it on each request). The sample starts a normal trial.
+await startTrial(db, ws.id, me)
 
 const ORG_TYPE: Record<string, string> = { 'Local authority': 'government', Agency: 'government', Regulator: 'regulator', 'Community group': 'community', Utility: 'utility', Landowner: 'landowner', Business: 'company', Advocacy: 'ngo', Education: 'education' }
 const DEC_STATUS: Record<string, string> = { decided: 'approved', awaiting: 'under_review', open: 'proposed' }
@@ -124,6 +127,9 @@ function cap(v: string) { return v[0].toUpperCase() + v.slice(1) }
 
 await db.insert(s.auditEvent).values({ workspaceId: ws.id, actorId: me, action: 'workspace.seeded', metadata: { people: SIZE } })
 const count = await db.execute(sql`select count(*)::int as n from stakeholder where workspace_id = ${ws.id}`)
+// Bulk loads leave the planner without statistics until autovacuum catches up; analyze now so the first queries
+// against fresh data get good plans (a cold directory query took 72 s before this).
+await db.execute(sql`analyze`)
 console.info(`Seeded "${ws.name}" with ${((count as { rows: { n: number }[] }).rows ?? [])[0]?.n} stakeholders.`)
 console.info(`Sign in as ${src.users.map(u => `${u.name.split(' ')[0].toLowerCase()}@sample.meridian.test`).join(', ')} (roles: owner, admin, manager, contributor, viewer).`)
 console.info(`Password (development only): ${PASSWORD}`)

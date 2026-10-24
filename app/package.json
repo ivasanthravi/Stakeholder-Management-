@@ -18,7 +18,11 @@
     "test:e2e": "playwright test",
     "audit:interactions": "node audit/interactions.mjs",
     "audit:perf": "node audit/perf.mjs",
-    "eval": "tsx evals/run.ts"
+    "eval": "tsx evals/run.ts",
+    "test:pg": "node scripts/test-postgres.mjs",
+    "db:check": "tsx server/db/check.ts",
+    "db:drill": "tsx scripts/restore-drill.ts",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.2.0",
@@ -45,9 +49,11 @@
     "react-dom": "^19.3.1",
     "react-router-dom": "^7.18.4",
     "stripe": "^23.0.1",
+    "tsx": "^4.23.15",
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@playwright/test": "1.64",
     "@types/cytoscape": "^3.21.9",
     "@types/node": "^26.6.5",
@@ -56,9 +62,13 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
     "drizzle-kit": "^0.31.11",
+    "embedded-postgres": "^18.4.0-beta.17",
+    "eslint": "^10.13.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
     "playwright-core": "1.64",
-    "tsx": "^4.23.15",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.0",
     "vite": "^8.3.5",
     "vitest": "^5.0.5"
   }

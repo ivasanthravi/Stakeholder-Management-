@@ -152,7 +152,7 @@ export function buildWorkspace(peopleCount = 184): Workspace {
   const people: Person[] = []
   const usedNames = new Set<string>()
   for (let i = 0; i < peopleCount; i++) {
-    let name = ''
+    let name: string
     do { name = `${pick(FIRST)} ${pick(LAST)}` } while (usedNames.has(name) && usedNames.size < FIRST.length * LAST.length)
     usedNames.add(name)
     // Weighted toward the first orgs so the core councils/agencies are dense.
@@ -306,7 +306,7 @@ export function buildWorkspace(peopleCount = 184): Workspace {
     const ageDays = (todayMs - Date.parse(e.at)) / DAY
     const ours = r() < 0.72
     const due = Math.round(-ageDays + int(7, 45))
-    let status: Commitment['status'] = 'open'
+    let status: Commitment['status']
     if (due < -20) status = r() < 0.86 ? 'fulfilled' : 'missed'
     else if (due < 0) status = r() < 0.72 ? 'fulfilled' : (r() < 0.5 ? 'in progress' : 'open')
     else status = r() < 0.35 ? 'in progress' : 'open'

@@ -47,3 +47,8 @@
 .peek-note { padding: 8px 10px; border-radius: 6px; background: var(--bg-canvas); color: var(--text-2); }
 .inline-link-plain { text-align: left; color: var(--text-1); }
 .inline-link-plain:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+/* Phones: the peek is a full-width sheet; a 30px sliver of truncated rows beside it read as broken. */
+@media (max-width: 640px) {
+  .peek { max-width: 100%; border-left: 0; box-shadow: none; }
+}

@@ -115,19 +115,19 @@ export function Initiatives() {
               : list.isPending ? <SkeletonRows widths={[36, 160, 64, 80, 20, 30, 20, 50, null]} n={8} />
               : rows.length === 0 ? (
                 filtered ? (
-                  <div className="empty">
+                  <div role="row"><div role="gridcell" className="empty">
                     <Search size={18} className="c3" />
                     <p className="t-heading">{archived && !q && !statuses.length ? 'No archived initiatives' : 'No initiatives match'}</p>
                     <p className="c2 t-small">{q ? <>Nothing matches “{q}”.</> : 'Try removing a filter.'}</p>
                     <Button size="sm" onClick={clearAll}>Clear filters</Button>
-                  </div>
+                  </div></div>
                 ) : (
-                  <div className="empty">
+                  <div role="row"><div role="gridcell" className="empty">
                     <span className="rg-code mono rg-code-lg">NEW</span>
                     <p className="t-heading">No initiatives yet</p>
                     <p className="c2 t-small">An initiative is a project, programme or policy that stakeholders are connected to.</p>
                     {can('initiative.create') && <Button size="sm" variant="primary" icon={<Plus size={13} />} onClick={() => openCreate('initiative')}>New initiative</Button>}
-                  </div>
+                  </div></div>
                 )
               ) : rows.map((r, i) => {
                 const url = `/initiatives/${r.id}`

@@ -97,6 +97,9 @@
 .tl-item[aria-disabled="true"] { cursor: default; }
 .tl-ico { position: relative; z-index: 1; display: grid; place-items: center; flex: none; width: 27px; height: 27px; border-radius: 50%; background: var(--bg-surface); box-shadow: inset 0 0 0 1px var(--border); color: var(--text-2); }
 .tl-content { display: flex; flex-direction: column; gap: 2px; padding-top: 3px; min-width: 0; }
+/* Key and relative time never wrap; on phones the key yields its space to the title. */
+.tl-content > .row > .tl-key, .tl-content > .row > .num { flex: none; white-space: nowrap; }
+@media (max-width: 640px) { .tl-content > .row > .tl-key { display: none; } }
 .tl-sum { display: block; }
 .tl-people { display: flex; align-items: center; gap: 2px; margin-top: 4px; }
 .tl-people .avatar { box-shadow: 0 0 0 1.5px var(--bg-surface); margin-right: -4px; }
@@ -179,3 +182,12 @@
   .hero-meta { display: none; }
   .prof { padding: 20px 20px 48px; }
 }
+
+/* Organization affiliations (Overview rail): icon, name/meta and the end-association button on one aligned row. */
+.aff-list { display: flex; flex-direction: column; }
+.aff { display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; min-width: 0; }
+.aff + .aff { border-top: 1px solid var(--border-soft); }
+.aff > svg { flex: none; margin-top: 3px; }
+.aff > .grow { min-width: 0; }
+.aff > .icon-btn { flex: none; }
+.aff-past { color: var(--text-2); }

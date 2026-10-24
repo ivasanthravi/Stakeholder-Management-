@@ -426,7 +426,12 @@ a.mk-card:hover { box-shadow: inset 0 0 0 1px var(--slate-300), 0 8px 24px -12px
 }
 
 .mk-ai-panel { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: clamp(32px, 5vw, 64px); align-items: start; margin-top: 40px; }
-@media (max-width: 960px) { .mk-ai-panel { grid-template-columns: 1fr; } }
+@media (max-width: 960px) { .mk-ai-panel { grid-template-columns: minmax(0, 1fr); } }
+/* WCAG 1.4.10 reflow: at 320 px the tab row must wrap instead of widening the page. */
+@media (max-width: 420px) {
+  .mk-tabs { display: flex; max-width: 100%; }
+  .mk-tab { white-space: normal; height: auto; min-height: 36px; padding: 8px 12px; flex: 1 1 auto; text-align: center; }
+}
 .mk-ai-copy { display: grid; gap: 18px; padding-top: 8px; }
 
 .mk-engines { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: clamp(56px, 7vw, 96px); border-radius: 14px; overflow: hidden; box-shadow: inset 0 0 0 1px #262C34; }
@@ -555,7 +560,7 @@ a.mk-card:hover { box-shadow: inset 0 0 0 1px var(--slate-300), 0 8px 24px -12px
 @media (max-width: 640px) { .mk-terms { flex-direction: column; align-items: flex-start; gap: 10px; padding: 0 4px; } }
 
 /* Comparison table */
-.mk-compare-wrap { overflow-x: auto; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--mk-line); background: #fff; }
+.mk-compare-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--mk-line); background: #fff; }
 .mk-compare { width: 100%; min-width: 640px; border-collapse: collapse; font: 400 14.5px/21px var(--font-sans); }
 .mk-compare caption { text-align: left; }
 .mk-compare th, .mk-compare td { padding: 13px 20px; border-top: 1px solid var(--mk-line-soft); text-align: center; vertical-align: middle; }

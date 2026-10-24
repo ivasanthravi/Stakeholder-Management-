@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { ArrowDown, ArrowUp, Archive, ChevronDown, CornerDownRight, PanelRight, Plus, Search, X, Building2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, Archive, ChevronDown, CornerDownRight, PanelRight, Plus, Search, X, Building2, Users } from 'lucide-react'
 import { useLookups, usePatchStakeholder, useStakeholderPages, type StakeholderFilters } from '../../api/hooks'
 import { ApiError, errorMessage } from '../../api/http'
 import type { Stance, StakeholderRow } from '../../api/types'
@@ -196,19 +196,19 @@ export function Directory() {
               : loading ? <SkeletonRows />
               : rows.length === 0 ? (
                 filtersActive ? (
-                  <div className="empty">
+                  <div role="row"><div role="gridcell" className="empty">
                     <Search size={18} className="c3" />
                     <p className="t-heading">No stakeholders match these filters</p>
                     <p className="c2 t-small">Try removing a filter, or search by organization.</p>
                     <Button size="sm" onClick={clearAll}>Clear filters</Button>
-                  </div>
+                  </div></div>
                 ) : (
-                  <div className="empty">
-                    <Avatar name="? ?" size={28} />
+                  <div role="row"><div role="gridcell" className="empty">
+                    <Users size={20} className="c3" aria-hidden />
                     <p className="t-heading">No stakeholders yet</p>
                     <p className="c2 t-small">Add the people whose support, approval or input your work depends on.</p>
                     {can('stakeholder.create') && <Button size="sm" variant="primary" icon={<Plus size={13} />} onClick={() => openCreate('stakeholder')}>Add stakeholder</Button>}
-                  </div>
+                  </div></div>
                 )
               ) : (
                 <div role="presentation" style={{ height: virt.getTotalSize() + (query.hasNextPage ? 36 : 0), position: 'relative' }}>
@@ -308,7 +308,7 @@ const DirRow = memo(function DirRow({ r, i, start, now, isSel, isFocus, isPeek, 
       <span className="td td-right num" role="gridcell">{r.openCommitments ? <span className="open-count">{r.openCommitments}</span> : <span className="c3">—</span>}</span>
       <span className="td row gap-2" role="gridcell">
         {r.ownerName ? <><Avatar name={r.ownerName} size={18} internal /><span className="truncate c2 t-small">{r.ownerName.split(' ')[0]}</span></> : <span className="c3 t-small">Unassigned</span>}
-        <span className="row-actions">
+        <span className="row-actions row-actions-float">
           <button className="icon-btn" aria-label={`Peek ${r.name}`} title="Peek (Space)" onClick={e => { e.stopPropagation(); act.peek(r.id) }}><PanelRight size={14} /></button>
           <button className="icon-btn" aria-label={`Open ${r.name}`} title="Open (↵)" onClick={e => { e.stopPropagation(); act.open(r.id) }}><CornerDownRight size={14} /></button>
         </span>

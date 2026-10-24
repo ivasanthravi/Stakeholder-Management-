@@ -517,7 +517,7 @@ export default function Universe() {
         )}
 
         <AnimatePresence>
-          {list && <ListView key="list" people={data.people} rels={data.rels} orgs={data.orgs} sel={sel} onSel={setSel} />}
+          {list && !(graph.data && graph.data.nodes.length === 0) && <ListView key="list" people={data.people} rels={data.rels} orgs={data.orgs} sel={sel} onSel={setSel} />}
         </AnimatePresence>
 
         {!sel && !list && !pathOpen && <HoverCard byId={byId} orgName={data.orgName} />}
@@ -551,14 +551,14 @@ export default function Universe() {
           </div>
         </div>
 
-        <div className="uni-zoom" role="toolbar" aria-label="Zoom">
+        {!list && <div className="uni-zoom" role="toolbar" aria-label="Zoom">
           <button onClick={() => zoomBy(1.25)} aria-label="Zoom in (+)" title="Zoom in (+)"><Plus size={14} /></button>
           <span className="num t-micro c3" aria-live="off">{Math.round(zoom * 100)}%</span>
           <button onClick={() => zoomBy(0.8)} aria-label="Zoom out (−)" title="Zoom out (−)"><Minus size={14} /></button>
           <span className="zsep" />
           <button onClick={fitAll} aria-label="Fit to screen (0)" title="Fit (0)"><Maximize size={13} /></button>
           {sel && <button onClick={() => centerOn(cyRef.current!, sel, true)} aria-label="Centre on selection" title="Centre on selection"><Crosshair size={13} /></button>}
-        </div>
+        </div>}
 
         <div className="uni-count t-small c3 num">
           {data.people.length} people · {data.rels.length} relationships · {data.orgs.length} organizations

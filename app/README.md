@@ -39,7 +39,15 @@ Sample accounts (development only), all with the password `meridian-sample-2026`
 | `npm run db:migrate` | Apply pending migrations |
 | `npm run db:seed` / `db:reset` | Seed sample data / wipe `.data` and reseed |
 | `npm run build` / `npm start` | Production build, then serve API and client from one process |
-| `npm run eval` | AI evaluation: extraction precision/recall, quote and citation validity, leakage, latency, cost (`AI_ENGINE=local` forces the rules engine) |
+| `npm run eval` | AI evaluation: extraction precision/recall, quote and citation validity, leakage, latency, cost (`AI_ENGINE=local` forces the rules engine). `npx tsx evals/gate.ts` checks the latest result against the safety gate |
+| `npm run test:pg` | The Vitest suites against a real PostgreSQL (embedded, started and stopped by the script) |
+| `npm run lint` | ESLint (TypeScript + React hooks rules) |
+| `npm run db:check` | Read-only data-consistency checks against `DATABASE_URL` / PGlite; exits non-zero on failure |
+| `npm run db:drill` | Backup → disaster → restore → verify drill on a throwaway embedded PostgreSQL |
+| `./scripts/release-gate.sh` | Every release check in order (`SKIP_E2E=1` to skip Playwright) |
+| `npx tsx scripts/smoke.ts` | Read-only smoke test of a deployment: `BASE_URL=…` (optional `SMOKE_EMAIL`/`SMOKE_PASSWORD`) |
+| `npx tsx scripts/deploy-drill.ts` | Builds release N and N-1, then rehearses deploy → rollback → roll forward with smoke tests |
+| `npx tsx scripts/load-test.ts` | Local load test at 2,000 stakeholders (never point it at third-party services) |
 
 ## AI features
 Copilot (⌘J), meeting intelligence (engagement → *Review meeting intelligence*), briefings (profile → *Prepare briefing*, decision panel), the Home briefing and signals, map *Find path*, and Settings › AI.
@@ -76,7 +84,11 @@ Required environment (see `.env.example`):
 | `NODE_ENV=production` | — |
 | `DATABASE_URL` | Postgres 15+. The connecting role must be able to `CREATE ROLE`/`GRANT` for the RLS migration, or a DBA must pre-create `app_user` and grant membership to it |
 | `AUTH_SECRET` | 32+ random characters, e.g. `openssl rand -base64 48` |
-| `APP_URL` | The public origin, e.g. `https://app.example.com`. Cookies are `Secure` in production |
+| `APP_URL` | The public origin, e.g. `https://app.example.com`. Cookies are `Secure` in production; state-changing requests from other origins are rejected |
+| `CLIENT_IP_HEADER` or `TRUSTED_PROXY_HOPS` / `TRUSTED_PROXIES` | How to find the real client IP behind your proxy (rate limits depend on it). Set per platform |
+| `METRICS_TOKEN` | Optional. Enables Prometheus metrics at `/api/metrics` (Bearer token) |
+
+Health: `/api/health` (liveness) and `/api/ready` (database and job queue). Logs are JSON in production.
 
 Then:
 
@@ -87,15 +99,16 @@ npm start
 
 This serves `/api/*` and the built client on `PORT` (default 8787) behind a TLS-terminating proxy.
 
-**Not yet production-ready.** See [`../docs/commercial/launch-blockers.md`](../docs/commercial/launch-blockers.md) and [`../docs/commercial/deployment.md`](../docs/commercial/deployment.md). See [`../docs/implementation/known-limitations.md`](../docs/implementation/known-limitations.md).
+**Not yet production-ready: launch is BLOCKED.** See [`../docs/launch/remaining-blockers.md`](../docs/launch/remaining-blockers.md), the [deployment runbook](../docs/launch/deployment-runbook.md) and the [incident runbook](../docs/launch/incident-runbook.md).
 
 ## Layout
 ```
 server/   Hono app: auth.ts, context.ts (session, tenant gate, idempotency), modules/* (one per domain), db/ (schema, migrations, seed)
 shared/   Zod schemas and the permission matrix, used by server and client
 src/      React client: api/ (fetch + TanStack Query hooks), session/, shell/, screens/, forms/, components/
-tests/    Vitest suites (unit, workflow, tenancy)
-e2e/      Playwright core-flow spec
+tests/    Vitest suites (unit, workflow, tenancy, isolation, security, billing, providers, AI)
+e2e/      Playwright specs (core, AI, commercial, journeys)
+scripts/  Release gate, smoke, deploy/restore drills, load and profiling
 audit/    Headless-Chrome screenshot, interaction and performance scripts
 ```
 

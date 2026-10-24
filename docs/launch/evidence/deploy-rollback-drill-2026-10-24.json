@@ -1,0 +1,30 @@
+{
+  "verdict": "DEPLOY + ROLLBACK VERIFIED (local)",
+  "previousRef": "HEAD",
+  "releaseN": {
+    "buildAndInstallMs": 18609,
+    "hasTsxAtRuntime": true
+  },
+  "releasePrev": {
+    "buildAndInstallMs": 12735
+  },
+  "deployNStartMs": 1791,
+  "smoke_release_N": {
+    "ok": true,
+    "checks": "14/14",
+    "failures": []
+  },
+  "rollbackStartMs": 1516,
+  "smoke_after_rollback_to_prev": {
+    "ok": true,
+    "checks": "14/14",
+    "failures": []
+  },
+  "rollForwardStartMs": 765,
+  "smoke_after_roll_forward": {
+    "ok": true,
+    "checks": "14/14",
+    "failures": []
+  },
+  "prevReleaseRuntimeOnlyHasTsxTransitively": true
+}

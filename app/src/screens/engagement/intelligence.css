@@ -10,7 +10,7 @@
 .ix-title { margin: 0; overflow-wrap: anywhere; }
 .ix-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; }
 .ix-meta > * + *::before { content: "·"; margin-right: 10px; color: var(--text-3); }
-.ix-engine { max-width: 72ch; }
+.ix-engine { max-width: 72ch; text-wrap: pretty; }
 .ix-top-actions { flex: 0 1 auto; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; max-width: 620px; }
 .ix-why { flex-basis: 100%; text-align: right; margin-top: -4px; }
 .ix-narrow-only { display: none; }

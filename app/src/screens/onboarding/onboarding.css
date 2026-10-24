@@ -155,7 +155,7 @@
   .ob-initiative { grid-template-columns: minmax(0, 1fr) 96px; }
   .ob-rows-invite .ob-rows-head, .ob-rows-invite .ob-row { grid-template-columns: minmax(0, 1fr) 118px 26px; }
   .ob-back { width: var(--control-h); padding: 0; }
-  .ob-back .btn-label { display: none; }
+  .ob-back .btn-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .ob-step-foot .btn-ghost:not(.ob-back) { padding: 0 8px; }
   .ob-vocab-orgs { display: none !important; }
 }

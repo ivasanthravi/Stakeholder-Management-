@@ -7,13 +7,31 @@ import { createAuth } from '../server/auth'
 import { createApp } from '../server/app'
 
 export const ORIGIN = 'http://localhost:5173'
+
+async function freshPostgres(serverUrl: string) {
+  const { default: pg } = await import('pg')
+  const name = `t_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
+  const admin = new pg.Client({ connectionString: serverUrl })
+  await admin.connect()
+  await admin.query(`create database ${name}`)
+  // Roles are cluster-wide: create app_user once up front so parallel migrations of separate databases don't race on it.
+  await admin.query('create role app_user nologin').catch((e: { code?: string }) => { if (e.code !== '42710' && e.code !== '23505') throw e })
+  await admin.end()
+  const u = new URL(serverUrl); u.pathname = `/${name}`
+  const database = await createDatabase({ url: u.toString() })
+  return { ...database, close: async () => { await database.close(); const a = new pg.Client({ connectionString: serverUrl }); await a.connect(); await a.query(`drop database if exists ${name} with (force)`); await a.end() } }
+}
 export const PASSWORD = 'correct-horse-battery'
 
-/** Fresh in-memory Postgres (PGlite), migrated, with the real app and auth wired up. */
-export async function createTestContext(opts: { ai?: import('../server/ai/engine').AIEngine; billing?: import('../server/billing/provider').BillingProvider | null } = {}) {
-  const database = await createDatabase({})
+/**
+ * A fresh, migrated database with the real app and auth wired up.
+ * Default: in-memory PGlite. With TEST_PG_URL (a real PostgreSQL server, see scripts/test-postgres.mjs) each context
+ * gets its own new database on that server, so the same suites run against real Postgres.
+ */
+export async function createTestContext(opts: { ai?: import('../server/ai/engine').AIEngine; billing?: import('../server/billing/provider').BillingProvider | null; env?: Record<string, string> } = {}) {
+  const database = process.env.TEST_PG_URL ? await freshPostgres(process.env.TEST_PG_URL) : await createDatabase({})
   await migrate(database)
-  const env = loadEnv({ NODE_ENV: 'test', APP_URL: ORIGIN, REQUIRE_EMAIL_VERIFICATION: 'true' })
+  const env = loadEnv({ NODE_ENV: 'test', APP_URL: ORIGIN, REQUIRE_EMAIL_VERIFICATION: 'true', ...(opts.env ?? {}) })
   const mailer = createLogMailer(database.db, { quiet: true })
   const auth = createAuth(database.db, env, mailer)
   const { createLocalEngine } = await import('../server/ai/engine')

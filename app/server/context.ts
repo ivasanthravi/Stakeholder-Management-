@@ -8,6 +8,7 @@ import type { Mailer } from './mail'
 import { ApiError, forbidden, notFound, unauthorized } from './http'
 import { can, type Action, type Role } from '../shared/permissions'
 import type { RequestMeta } from './history'
+import { clientIp, ipConfig } from './net'
 
 export interface Deps {
   db: DB; auth: Auth; env: Env; mailer: Mailer
@@ -28,7 +29,7 @@ export type AppEnv = { Variables: { deps: Deps; user: SessionUser | null; tenant
 export type Ctx = Context<AppEnv>
 
 export const meta = (c: Ctx): RequestMeta => ({
-  ip: c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ?? null,
+  ip: clientIp(c.req.raw.headers, ipConfig(c.var.deps.env as unknown as Record<string, unknown>)),
   userAgent: c.req.header('user-agent') ?? null,
 })
 

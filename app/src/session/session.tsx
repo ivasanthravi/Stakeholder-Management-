@@ -10,6 +10,9 @@ import { can as canDo, type Action, type Role } from '../../shared/permissions'
 export const authClient = createAuthClient({ baseURL: typeof window !== 'undefined' ? window.location.origin : undefined })
 
 const KEY = 'meridian.workspace'
+// The command palette's recent items can name stakeholders, so they're cleared whenever someone signs out on this browser.
+export const RECENT_KEY = 'meridian.recent'
+export const clearRecent = () => { try { localStorage.removeItem(RECENT_KEY) } catch { /* storage unavailable */ } }
 const read = () => { try { return localStorage.getItem(KEY) } catch { return null } }
 const write = (v: string) => { try { localStorage.setItem(KEY, v) } catch { /* storage unavailable */ } }
 
@@ -63,6 +66,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     await authClient.signOut()
+    clearRecent()
     qc.clear()
     nav('/sign-in', { replace: true })
   }, [qc, nav])

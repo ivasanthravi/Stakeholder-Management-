@@ -57,3 +57,14 @@ svg { flex: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 1ms !important; animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
 }
+
+/* WCAG 2.2 target size (2.5.8) on touch screens: small controls get at least a 24 × 24 px hit area.
+   Desktop (fine pointer) keeps the dense layout; nothing moves visually — the hit area grows around the control. */
+@media (pointer: coarse) {
+  .cite, .check, .ccheck, .crumbs a, .set-link, .stance-bar { position: relative; }
+  .cite::after, .check::after, .ccheck::after { content: ''; position: absolute; inset: -6px; }
+  /* Above neighbouring cells, so the enlarged area is actually tappable. */
+  .check, .ccheck { z-index: 2; }
+  .crumbs a, .set-link { display: inline-flex; align-items: center; min-height: 24px; }
+  .search-field input { min-height: 24px; }
+}

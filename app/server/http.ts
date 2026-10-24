@@ -1,10 +1,11 @@
+import { errorFields, log } from './log'
 import type { Context } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { ZodError } from 'zod'
 
 /** Error envelope returned by every API failure: { error: { code, message, fields?, current? } } */
 export class ApiError extends Error {
-  constructor(public status: 400 | 401 | 402 | 403 | 404 | 409 | 410 | 422 | 429 | 500 | 503, public code: string, message: string, public extra: Record<string, unknown> = {}) {
+  constructor(public status: 400 | 401 | 402 | 403 | 404 | 409 | 410 | 413 | 422 | 429 | 500 | 503, public code: string, message: string, public extra: Record<string, unknown> = {}) {
     super(message)
   }
 }
@@ -47,6 +48,6 @@ export function errorHandler(err: Error, c: Context) {
   if (pg?.code === '23503') return c.json({ error: { code: 'invalid_reference', message: 'A linked record no longer exists' } }, 422)
   if (pg?.code === '23514') return c.json({ error: { code: 'invalid', message: 'A value is out of range' } }, 422)
   if (pg?.code === '42501') return c.json({ error: { code: 'forbidden', message: 'You don’t have permission to do that' } }, 403)
-  console.error(err)
+  log('error', 'unhandled error', { requestId: (c.var as { requestId?: string }).requestId, method: c.req.method, path: c.req.path.replace(/\/[0-9a-f-]{36}/gi, '/:id'), ...errorFields(err) })
   return c.json({ error: { code: 'internal', message: 'Something went wrong on our side. Your changes were not saved.' } }, 500)
 }

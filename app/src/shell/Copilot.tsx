@@ -341,7 +341,7 @@ function Panel({ thread, draft, setDraft, view, setView, ctxLabel, ctxKind, onDi
             <div className="cp-input" data-disabled={disabled || undefined}>
               <textarea
                 ref={inputRef} rows={1} value={draft} maxLength={MAX_LEN} disabled={disabled}
-                placeholder={disabled ? 'AI features are turned off for this workspace' : 'Ask about your stakeholders, commitments, decisions…'}
+                placeholder={disabled ? 'AI features are turned off for this workspace' : 'Ask about your stakeholders and commitments…'}
                 aria-label="Ask copilot"
                 onChange={e => { setDraft(e.target.value); e.target.style.height = 'auto'; e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px` }}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submit() } }}

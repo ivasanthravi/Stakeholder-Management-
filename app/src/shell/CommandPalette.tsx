@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { Building2, CornerDownLeft, Gavel, Handshake, Home, Map as MapIcon, MessagesSquare, MessageCircleQuestionMark, Plus, Search, Users, Clock, Target, Settings, Loader2 } from 'lucide-react'
 import { useApp, type CreateKind } from './context'
 import { useLookups, useSearch } from '../api/hooks'
-import { useSession } from '../session/session'
+import { RECENT_KEY, useSession } from '../session/session'
 import { fuzzy } from '../lib/fuzzy'
 import { Avatar, Kbd, StanceBadge } from '../components/ui'
 import type { Stance } from '../api/types'
@@ -17,7 +17,6 @@ import './palette.css'
 interface Item { id: string; group: string; label: string; sub?: string; icon: ReactNode; hint?: string; path?: string; run?: () => void; keywords?: string; stance?: Stance }
 interface Recent { id: string; group: string; label: string; sub?: string; path: string }
 
-const RECENT_KEY = 'meridian.recent'
 const readRecent = (): Recent[] => { try { const v = JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]'); return Array.isArray(v) ? v.filter(x => x && typeof x === 'object' && x.path) : [] } catch { return [] } }
 const pushRecent = (r: Recent) => { try { localStorage.setItem(RECENT_KEY, JSON.stringify([r, ...readRecent().filter(x => x.id !== r.id)].slice(0, 6))) } catch { /* storage unavailable */ } }
 

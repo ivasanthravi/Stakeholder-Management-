@@ -1,6 +1,7 @@
 // Billing API. Tenant routes (mounted under /api/w/:workspaceId/billing) let owners buy, change and cancel;
 // public routes take provider webhooks and serve the plan catalog. Local subscription state changes only through
 // verified webhooks or a fresh fetch from the provider (syncSubscription) — never because a browser came back from checkout.
+import { log } from '../log'
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { jsonBody, meta, need, type AppEnv, type Ctx } from '../context'
@@ -175,7 +176,7 @@ export const publicBillingRoutes = new Hono<AppEnv>()
     } catch (e) {
       if (e instanceof WebhookRejected) {
         // Logged without the payload: it may contain customer details.
-        console.warn(`[billing] webhook rejected (${c.req.param('provider')}): ${e.message}`)
+        log('warn', 'billing webhook rejected', { provider: c.req.param('provider'), reason: e.message.slice(0, 120) })
         return c.json({ error: { code: 'invalid_signature', message: 'Webhook rejected' } }, 400)
       }
       throw e

@@ -101,11 +101,11 @@ function engineAbout(engine: EngineInfo) {
 
 /* ── Transcript files ────────────────────────────────────────────────────── */
 
-const isCaptionFile = (name: string, text: string) => /\.(vtt|srt)$/i.test(name) || /^﻿?WEBVTT/.test(text) || /^\s*\d+\s*\n\s*\d{1,2}:\d{2}:\d{2}[,.]\d{3}\s*-->/.test(text)
+const isCaptionFile = (name: string, text: string) => /\.(vtt|srt)$/i.test(name) || /^\uFEFF?WEBVTT/.test(text) || /^\s*\d+\s*\n\s*\d{1,2}:\d{2}:\d{2}[,.]\d{3}\s*-->/.test(text)
 
 /** Converts WebVTT / SRT captions into plain "Speaker: text" lines (timestamps, cue numbers and markup removed). */
 export function captionsToText(raw: string): string {
-  const lines = raw.replace(/^﻿/, '').replace(/\r\n?/g, '\n').split('\n')
+  const lines = raw.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').split('\n')
   const out: { speaker: string | null; text: string }[] = []
   let skip = false
   for (let i = 0; i < lines.length; i++) {
@@ -855,7 +855,7 @@ function TranscriptUpload({ d, pendingCount, canAnalyse, onSavedAndAnalyse }: { 
     let raw: string
     try { raw = await f.text() } catch { setError(`Couldn’t read “${f.name}”. Nothing was changed.`); return }
     const converted = isCaptionFile(f.name, raw)
-    const text = (converted ? captionsToText(raw) : raw.replace(/^﻿/, '').replace(/\r\n?/g, '\n')).trim()
+    const text = (converted ? captionsToText(raw) : raw.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n')).trim()
     if (!text) { setError(`“${f.name}” has no readable text.`); return }
     if (text.length > NOTES_LIMIT) { setError(`“${f.name}” has ${text.length.toLocaleString()} characters${converted ? ' after removing timestamps' : ''}. Notes are limited to ${NOTES_LIMIT.toLocaleString()} — split the meeting into separate engagements or trim the file.`); return }
     setFile({ name: f.name, text, converted })

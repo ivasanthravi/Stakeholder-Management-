@@ -3,6 +3,7 @@
 // Transports: `log` (development/test — stores in mail_outbox, visible at /dev/mail, nothing leaves the machine) and
 // `postmark` (production). Account and billing email is attempted immediately; a failure is retried by a background job.
 // The delivery log (email_message) records template, recipient and status — never bodies or links, which may carry tokens.
+import { errorFields, log } from './log'
 import { createHash, randomBytes } from 'node:crypto'
 import { eq, sql } from 'drizzle-orm'
 import type { DB } from './db/client'
@@ -29,7 +30,8 @@ export function createLogTransport(db: DB, opts: { quiet?: boolean } = {}): Tran
     name: 'log',
     async deliver(d) {
       await db.insert(mailOutbox).values({ to: d.to, subject: d.subject, text: d.text, url: d.url ?? null, kind: d.tag })
-      if (!opts.quiet) console.info(`[mail:${d.tag}] to=${d.to} subject="${d.subject}"${d.url ? ` url=${d.url}` : ''}`)
+      // Links can carry sign-in tokens: printed only in development, never in production logs.
+      if (!opts.quiet) log('info', 'mail (log transport)', { template: d.tag, to: d.to, ...(process.env.NODE_ENV !== 'production' && d.url ? { link: d.url } : {}) })
       return { messageId: null }
     },
   }
@@ -113,7 +115,7 @@ export function createMailer(db: DB, transport: Transport, opts: { from: string;
         await db.update(emailMessage).set({ status: 'failed', attempts: 1, error: (e as Error).message.slice(0, 300) }).where(eq(emailMessage.id, row.id))
         if (!opts.jobs) throw e
         await opts.jobs.enqueue('email.retry', { id: row.id, mail, userId }, { maxAttempts: 5 })
-        console.warn(`[mail:${mail.template}] delivery failed, queued for retry: ${(e as Error).message}`)
+        log('warn', 'mail delivery failed, queued for retry', { template: mail.template, ...errorFields(e) })
         return { status: 'queued' }
       }
     },

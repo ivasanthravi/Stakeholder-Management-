@@ -77,7 +77,7 @@ function Summary({ d, scope }: { d: Dashboard; scope: 'team' | 'mine' }) {
   const od = s.filter(x => x.kind === 'overdue').length, dw = s.filter(x => x.kind === 'decision-waiting').length, cool = s.filter(x => x.kind === 'cooling').length
   const parts = [od && `${od} overdue commitment${od > 1 ? 's' : ''}`, dw && `${dw} decision${dw > 1 ? 's' : ''} waiting`, cool && `${cool} key relationship${cool > 1 ? 's' : ''} cooling`].filter(Boolean) as string[]
   const n = d.initiatives.length
-  if (!parts.length) return <>Nothing is slipping across {n} initiative{n === 1 ? '' : 's'}.</>
+  if (!parts.length) return n ? <>Nothing is slipping across {n} initiative{n === 1 ? '' : 's'}.</> : <>Nothing is slipping yet.</>
   const last = parts.pop()
   return <>{parts.length ? `${parts.join(', ')} and ${last}` : last} across {n} initiative{n === 1 ? '' : 's'}.</>
 }

@@ -47,7 +47,9 @@ export function createPaddleProvider(env: Record<string, string | undefined>): B
         items: [{ priceId, quantity: i.seats }],
         ...(i.customerId ? { customerId: i.customerId } : {}),
         customData: { workspaceId: i.workspaceId },
-        checkout: { url: i.successUrl },
+        // checkout.url is the page that HOSTS Paddle checkout (it must load Paddle.js), not a return URL. Omitted so the
+        // default payment link from the Paddle dashboard is used. That page doesn't exist in this app yet — see
+        // docs/launch/billing-verification.md (Paddle checkout page: blocker for the Paddle path).
       })
       if (!txn.checkout?.url) throw new BillingConfigError('Paddle returned no checkout URL — set a default payment link in the Paddle dashboard')
       return { url: txn.checkout.url }

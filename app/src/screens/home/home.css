@@ -157,6 +157,9 @@
 
 /* ── Workspace briefing ─────────────────────────────────── */
 .brief { margin-bottom: 20px; padding: 12px 16px 14px; border-radius: var(--radius-md); background: var(--bg-surface); box-shadow: 0 0 0 1px var(--border); }
+/* profile.css also defines .brief (with a zero bottom padding for its footer strip) and loads later; restore the
+   workspace briefing's bottom padding so the last item doesn't sit on the card edge. */
+section.brief[aria-labelledby="brief-h"] { padding-bottom: 16px; }
 .brief-head { display: flex; align-items: center; gap: 8px; min-height: 28px; }
 .brief-ico { color: var(--ai); flex: none; }
 .brief-engine { padding-left: 4px; }

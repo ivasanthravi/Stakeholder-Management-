@@ -1,6 +1,7 @@
 // Durable background jobs in Postgres: claimed with FOR UPDATE SKIP LOCKED (safe with several processes),
 // retried with exponential backoff, dead-lettered after maxAttempts. A dedupe key collapses repeats of
 // the same queued work (e.g. two webhooks for one subscription → one sync).
+import { log as writeLog } from './log'
 import { and, eq, lte, lt, sql } from 'drizzle-orm'
 import type { DB } from './db/client'
 import { job } from './db/schema'
@@ -23,7 +24,7 @@ const backoff = (attempt: number) => Math.min(60 * 60_000, 2 ** attempt * 15_000
 
 export function createJobs(db: DB, opts: { log?: (msg: string) => void } = {}): Jobs {
   const handlers = new Map<string, JobHandler>()
-  const log = opts.log ?? (m => console.warn(m))
+  const log = opts.log ?? (m => writeLog('warn', m))
   let timer: ReturnType<typeof setTimeout> | null = null
   let running = false
 
@@ -53,7 +54,9 @@ export function createJobs(db: DB, opts: { log?: (msg: string) => void } = {}): 
       await db.update(job).set(dead
         ? { status: 'dead', finishedAt: new Date(), lockedAt: null, lastError: msg }
         : { status: 'queued', lockedAt: null, lastError: msg, runAt: new Date(Date.now() + backoff(j.attempts)) }).where(eq(job.id, j.id))
-      log(`[job:${j.kind}#${j.id}] attempt ${j.attempts} failed${dead ? ' (dead)' : ''}: ${msg}`)
+      // Dead jobs are errors (they page someone through the error reporter); retries are warnings.
+      if (dead) writeLog('error', 'job dead after retries', { job: j.kind, jobId: j.id, attempts: j.attempts, reason: msg.slice(0, 200) })
+      else log(`[job:${j.kind}#${j.id}] attempt ${j.attempts} failed: ${msg}`)
     }
     return true
   }

@@ -81,7 +81,7 @@ export function Settings() {
   const onKey = (e: KeyboardEvent) => {
     const i = visible.findIndex(x => x.id === tab)
     const step = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0
-    let n = i
+    let n: number
     if (step) n = (i + step + visible.length) % visible.length
     else if (e.key === 'Home') n = 0
     else if (e.key === 'End') n = visible.length - 1

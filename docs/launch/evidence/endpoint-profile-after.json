@@ -1,0 +1,144 @@
+{
+  "people": 2000,
+  "sequentialLatency": {
+    "health (no auth)": {
+      "medianMs": 0,
+      "minMs": 0,
+      "maxMs": 0
+    },
+    "workspace (auth + tenant + entitlements only)": {
+      "medianMs": 1,
+      "minMs": 1,
+      "maxMs": 2
+    },
+    "dashboard": {
+      "medianMs": 195,
+      "minMs": 192,
+      "maxMs": 201
+    },
+    "directory page": {
+      "medianMs": 191,
+      "minMs": 186,
+      "maxMs": 192
+    },
+    "directory filter": {
+      "medianMs": 31,
+      "minMs": 31,
+      "maxMs": 31
+    },
+    "search": {
+      "medianMs": 9,
+      "minMs": 9,
+      "maxMs": 11
+    },
+    "profile overview": {
+      "medianMs": 4,
+      "minMs": 3,
+      "maxMs": 5
+    },
+    "graph (initiative)": {
+      "medianMs": 91,
+      "minMs": 88,
+      "maxMs": 94
+    },
+    "commitments overdue": {
+      "medianMs": 3,
+      "minMs": 3,
+      "maxMs": 4
+    },
+    "decisions": {
+      "medianMs": 2,
+      "minMs": 2,
+      "maxMs": 2
+    },
+    "engagements": {
+      "medianMs": 29,
+      "minMs": 28,
+      "maxMs": 29
+    },
+    "lookups": {
+      "medianMs": 2,
+      "minMs": 2,
+      "maxMs": 2
+    },
+    "activity": {
+      "medianMs": 2,
+      "minMs": 2,
+      "maxMs": 3
+    }
+  },
+  "slowestStatements": [
+    {
+      "calls": "7",
+      "mean_ms": "179.7",
+      "total_ms": "1258",
+      "q": "with base as ( select s.id, s.name, s.title, s.email, s.stance, s.influence, s.interest, s.engagement_status, s.tags, s.owner_id, s.restricted, s.version, s.upd"
+    },
+    {
+      "calls": "7",
+      "mean_ms": "88.2",
+      "total_ms": "618",
+      "q": "select distinct on (ep.stakeholder_id) ep.stakeholder_id as sid, e.id, e.key, e.title, e.occurred_at as \"occurredAt\" from engagement_participant ep join engagem"
+    },
+    {
+      "calls": "7",
+      "mean_ms": "86.9",
+      "total_ms": "608",
+      "q": "select s.id, s.name, s.title, s.stance, s.influence, s.owner_id as \"ownerId\", u.name as \"ownerName\", count(e.id) filter (where e.occurred_at > now() - make_inte"
+    },
+    {
+      "calls": "7",
+      "mean_ms": "82.0",
+      "total_ms": "574",
+      "q": "select s.id, s.name, s.title, s.stance, s.influence, s.interest, s.owner_id as \"ownerId\", prim.oid as \"orgId\", last.at as \"lastEngagedAt\" from stakeholder s lef"
+    },
+    {
+      "calls": "1",
+      "mean_ms": "186.0",
+      "total_ms": "186",
+      "q": "with base as ( select s.id, s.name, s.title, s.email, s.stance, s.influence, s.interest, s.engagement_status, s.tags, s.owner_id, s.restricted, s.version, s.upd"
+    },
+    {
+      "calls": "7",
+      "mean_ms": "26.3",
+      "total_ms": "184",
+      "q": "select e.id, e.key, e.kind, e.title, e.occurred_at as \"occurredAt\", e.summary, e.initiative_id as \"initiativeId\", i.code as \"initiativeCode\", e.owner_id as \"own"
+    },
+    {
+      "calls": "7",
+      "mean_ms": "20.6",
+      "total_ms": "144",
+      "q": "with base as ( select s.id, s.name, s.title, s.email, s.stance, s.influence, s.interest, s.engagement_status, s.tags, s.owner_id, s.restricted, s.version, s.upd"
+    },
+    {
+      "calls": "14",
+      "mean_ms": "5.0",
+      "total_ms": "70",
+      "q": "select \"engagement_participant\".\"stakeholder_id\", \"engagement\".\"occurred_at\" from \"engagement_participant\" inner join \"engagement\" on \"engagement\".\"id\" = \"engag"
+    },
+    {
+      "calls": "7",
+      "mean_ms": "7.2",
+      "total_ms": "51",
+      "q": "select i.id, i.code, i.name, i.status, (select count(*) from initiative_stakeholder x join stakeholder s on s.id = x.stakeholder_id where x.initiative_id = i.id"
+    },
+    {
+      "calls": "7",
+      "mean_ms": "4.2",
+      "total_ms": "29",
+      "q": "select id, key, title, kind, occurred_at as \"occurredAt\" from engagement where archived_at is null and (title ilike $1 or key ilike $2) order by occurred_at des"
+    },
+    {
+      "calls": "7",
+      "mean_ms": "1.8",
+      "total_ms": "13",
+      "q": "select id, type, directed, strength, status, source_stakeholder_id as s1, target_stakeholder_id as t1, source_organization_id as so, target_organization_id as t"
+    },
+    {
+      "calls": "7",
+      "mean_ms": "1.5",
+      "total_ms": "11",
+      "q": "select cm.id, cm.key, cm.title, cm.status, cm.due_date as \"dueDate\", cm.owner_id as \"ownerId\", u.name as \"ownerName\", cm.stakeholder_id as \"stakeholderId\", s.na"
+    }
+  ]
+}

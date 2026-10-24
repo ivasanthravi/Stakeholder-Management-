@@ -7,7 +7,7 @@ import { account, exportDownloadUrl, useCancelDeletion, useDataRequests, useRequ
 import { ApiError, errorMessage } from '../../api/http'
 import { wk } from '../../api/hooks'
 import { Button, Pill, Skeleton } from '../../components/ui'
-import { useSession, authClient } from '../../session/session'
+import { useSession, authClient, clearRecent } from '../../session/session'
 import { useApp } from '../../shell/context'
 import { LoadError } from '../Home'
 import { absTime, longDate, Notice, PageTitle, relTime, SectionHead, TypedConfirmDialog } from './common'
@@ -169,6 +169,7 @@ function CloseAccount() {
       await account.closeAccount(me.user.email)
       setOpen(false)
       await authClient.signOut().catch(() => {})
+      clearRecent()
       qc.clear()
       window.location.assign('/')
     } catch (e) {

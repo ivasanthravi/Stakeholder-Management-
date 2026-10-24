@@ -1,3 +1,4 @@
+import { log } from './log'
 import { serve } from '@hono/node-server'
 import { serveStatic } from '@hono/node-server/serve-static'
 import { mkdirSync, readFileSync } from 'node:fs'
@@ -34,7 +35,7 @@ if (env.NODE_ENV === 'production') {
 }
 
 serve({ fetch: app.fetch, port: env.PORT }, info => {
-  console.info(`Meridian API on http://localhost:${info.port} (${database.kind}${database.kind === 'pglite' ? `: ${env.PGLITE_DIR}` : ''}; mail: ${transport.name}; billing: ${billing.provider?.label ?? 'not configured'})`)
+  log('info', `Meridian API on http://localhost:${info.port}`, { database: database.kind, mail: transport.name, billing: billing.provider?.label ?? 'not configured', jobs: env.JOBS_ENABLED !== 'false' })
 })
 
 const shutdown = async () => { stopSchedule(); await database.close(); process.exit(0) }

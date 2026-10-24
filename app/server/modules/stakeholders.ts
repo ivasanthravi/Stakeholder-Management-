@@ -66,23 +66,26 @@ export const stakeholderRoutes = new Hono<AppEnv>()
         q.ownerId ? sql`s.owner_id = ${q.ownerId}` : undefined,
       ].filter(Boolean)
       const res = await t.execute(sql`
-        with last as (
-          select ep.stakeholder_id as sid, max(e.occurred_at) as at
-          from engagement_participant ep join engagement e on e.id = ep.engagement_id
-          where e.archived_at is null group by ep.stakeholder_id
-        ), openc as (
-          select stakeholder_id as sid, count(*)::int as n from commitment
-          where status in ('open', 'in_progress') and archived_at is null and stakeholder_id is not null group by stakeholder_id
-        ), prim as (
-          select distinct on (so.stakeholder_id) so.stakeholder_id as sid, json_build_object('id', o.id, 'name', o.name, 'shortName', o.short_name) as org
-          from stakeholder_organization so join organization o on o.id = so.organization_id
-          where so.valid_to is null order by so.stakeholder_id, so.is_primary desc, so.created_at
-        ), base as (
+        -- Per-stakeholder LATERAL lookups (indexed) instead of workspace-wide aggregates joined by filter: the aggregate form
+        -- went quadratic at a few thousand stakeholders (see docs/launch/performance-report.md).
+        with base as (
           select s.id, s.name, s.title, s.email, s.stance, s.influence, s.interest, s.engagement_status, s.tags, s.owner_id,
             s.restricted, s.version, s.updated_at, u.name as owner_name, prim.org as primary_org,
             last.at as last_engaged_at, coalesce(openc.n, 0) as open_commitments
           from stakeholder s left join "user" u on u.id = s.owner_id
-            left join last on last.sid = s.id left join openc on openc.sid = s.id left join prim on prim.sid = s.id
+            left join lateral (
+              select max(e.occurred_at) as at from engagement_participant ep join engagement e on e.id = ep.engagement_id
+              where ep.stakeholder_id = s.id and e.archived_at is null
+            ) last on true
+            left join lateral (
+              select count(*)::int as n from commitment c
+              where c.stakeholder_id = s.id and c.status in ('open', 'in_progress') and c.archived_at is null
+            ) openc on true
+            left join lateral (
+              select json_build_object('id', o.id, 'name', o.name, 'shortName', o.short_name) as org
+              from stakeholder_organization so join organization o on o.id = so.organization_id
+              where so.stakeholder_id = s.id and so.valid_to is null order by so.is_primary desc, so.created_at limit 1
+            ) prim on true
         where ${sql.join(filters as never[], sql` and `)}
         )
         select *, count(*) over ()::int as total from base

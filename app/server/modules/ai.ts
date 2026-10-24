@@ -183,7 +183,9 @@ export const aiRoutes = new Hono<AppEnv>()
     return c.json(data)
   })
   .delete('/conversations/:id', async c => {
-    await tx(c, t => t.delete(aiConversation).where(eq(aiConversation.id, c.req.param('id'))))
+    // RLS limits this to the caller's own conversations; deleting nothing means it isn't theirs (or doesn't exist).
+    const gone = await tx(c, t => t.delete(aiConversation).where(eq(aiConversation.id, c.req.param('id'))).returning({ id: aiConversation.id }))
+    if (!gone[0]) throw notFound('Conversation')
     return c.json({ ok: true })
   })
   .delete('/conversations', async c => {

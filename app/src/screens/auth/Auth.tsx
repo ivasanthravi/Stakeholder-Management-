@@ -1,9 +1,10 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { safeNext } from '../../../shared/url'
 import { motion } from 'motion/react'
 import { AlertCircle, ArrowRight, Inbox, MailCheck } from 'lucide-react'
 import { z } from 'zod'
-import { authClient, useSession } from '../../session/session'
+import { authClient, clearRecent, useSession } from '../../session/session'
 import { useQueryClient } from '@tanstack/react-query'
 import { ApiError, errorMessage, request } from '../../api/http'
 import { useForm, TextField, FormError } from '../../components/form'
@@ -40,7 +41,7 @@ export function SignIn() {
   const { refresh } = useSession()
   const form = useForm(signInSchema, { email: params.get('email') ?? '', password: '' })
   const [unverified, setUnverified] = useState<string | null>(null)
-  const next = params.get('next') || '/'
+  const next = safeNext(params.get('next'))
 
   const submit = () => form.submit(async v => {
     setUnverified(null)
@@ -57,8 +58,12 @@ export function SignIn() {
     <AuthLayout title="Sign in" subtitle={params.get('expired') ? <span className="notice">Your session ended. Sign in again to continue where you left off.</span> : params.get('reset') ? 'Password updated. Sign in with your new password.' : 'Welcome back.'}>
       <form className="auth-form" onSubmit={e => { e.preventDefault(); void submit() }} noValidate>
         <TextField form={form} name="email" label="Email" type="email" autoComplete="email" autoFocus />
-        <TextField form={form} name="password" label="Password" type="password" autoComplete="current-password"
-          hint={<Link to="/forgot-password" className="inline-link">Forgot password?</Link>} />
+        <div className="auth-password">
+          <TextField form={form} name="password" label="Password" type="password" autoComplete="current-password" />
+          {/* Kept outside the field's hint slot: validation replaces the hint with an error on blur, which removed this
+              link exactly as keyboard focus moved to it. */}
+          <Link to="/forgot-password" className="inline-link auth-forgot">Forgot password?</Link>
+        </div>
         {unverified ? <VerifyNotice email={unverified} /> : <FormError form={form} />}
         <Button variant="primary" type="submit" loading={form.submitting} className="auth-submit">Sign in</Button>
       </form>
@@ -83,9 +88,9 @@ export function SignUp() {
   const invited = (params.get('next') ?? '').startsWith('/invite/')
   const form = useForm(signUpSchema, { name: '', email: params.get('email') ?? '', password: '' })
   const submit = () => form.submit(async v => {
-    const { error } = await authClient.signUp.email({ name: v.name, email: v.email, password: v.password, callbackURL: params.get('next') || '/' })
+    const { error } = await authClient.signUp.email({ name: v.name, email: v.email, password: v.password, callbackURL: safeNext(params.get('next')) })
     if (error) throw new ApiError(error.status ?? 400, 'auth', error.message ?? 'Could not create the account')
-    nav(`/check-email?email=${encodeURIComponent(v.email)}${params.get('next') ? `&next=${encodeURIComponent(params.get('next')!)}` : ''}`)
+    nav(`/check-email?email=${encodeURIComponent(v.email)}${params.get('next') ? `&next=${encodeURIComponent(safeNext(params.get('next')))}` : ''}`)
   })
   return (
     <AuthLayout title="Create your account" subtitle={invited ? 'Create your account to join your team’s workspace.' : 'Start a free workspace, or join one you’ve been invited to.'}>
@@ -104,7 +109,7 @@ export function SignUp() {
 export function CheckEmail() {
   const [params] = useSearchParams()
   const email = params.get('email') ?? ''
-  const next = params.get('next') || '/'
+  const next = safeNext(params.get('next'))
   const [sent, setSent] = useState(false)
   return (
     <AuthLayout title="Check your email" subtitle={<>We sent a verification link to <strong>{email}</strong>. Open it to finish creating your account.</>}>
@@ -223,6 +228,7 @@ export function AcceptInvite() {
   }
   const switchAccount = async () => {
     await authClient.signOut()
+    clearRecent()
     qc.clear()
     nav(`/${inv.accountExists ? 'sign-in' : 'sign-up'}?${qp}`, { replace: true })
   }

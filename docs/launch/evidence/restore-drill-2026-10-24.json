@@ -1,0 +1,21 @@
+{
+  "verdict": "RESTORE VERIFIED",
+  "postgres": "18.4 (embedded-postgres)",
+  "seed": "1704 ms",
+  "tables": 41,
+  "rows": 10312,
+  "stopPrimary": "64 ms",
+  "backupCopy": "474 ms",
+  "backupSizeMB": 72.3,
+  "disasterDetected": true,
+  "restoreStart": "23 ms",
+  "migrateOnRestore": "21 ms",
+  "tablesMismatched": [],
+  "consistencyChecksFailed": [],
+  "smoke": {
+    "ready": 200,
+    "signIn": 200,
+    "stakeholders": 184,
+    "expected": 184
+  }
+}

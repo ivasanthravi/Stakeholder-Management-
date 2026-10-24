@@ -183,17 +183,16 @@ export const insightRoutes = new Hono<AppEnv>()
     if (scoped && !z.uuid().safeParse(initiativeId).success) return c.json({ nodes: [], orgs: [], edges: [] })
     const data = await tx(c, async t => {
       const nodes = rowsOf<Record<string, unknown>>(await t.execute(sql`
-        with last as (
-          select ep.stakeholder_id as sid, max(e.occurred_at) as at
-          from engagement_participant ep join engagement e on e.id = ep.engagement_id
-          where e.archived_at is null group by ep.stakeholder_id
-        ), prim as (
-          select distinct on (so.stakeholder_id) so.stakeholder_id as sid, so.organization_id as oid
-          from stakeholder_organization so where so.valid_to is null
-          order by so.stakeholder_id, so.is_primary desc, so.created_at
-        )
         select s.id, s.name, s.title, s.stance, s.influence, s.interest, s.owner_id as "ownerId", prim.oid as "orgId", last.at as "lastEngagedAt"
-        from stakeholder s left join last on last.sid = s.id left join prim on prim.sid = s.id
+        from stakeholder s
+          left join lateral (
+            select max(e.occurred_at) as at from engagement_participant ep join engagement e on e.id = ep.engagement_id
+            where ep.stakeholder_id = s.id and e.archived_at is null
+          ) last on true
+          left join lateral (
+            select so.organization_id as oid from stakeholder_organization so
+            where so.stakeholder_id = s.id and so.valid_to is null order by so.is_primary desc, so.created_at limit 1
+          ) prim on true
         where s.archived_at is null
           ${scoped ? sql`and exists (select 1 from initiative_stakeholder x where x.stakeholder_id = s.id and x.initiative_id = ${initiativeId})` : sql``}
         limit 2000`))

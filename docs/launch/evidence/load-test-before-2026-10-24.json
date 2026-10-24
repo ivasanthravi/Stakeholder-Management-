@@ -1,0 +1,201 @@
+{
+  "conditions": {
+    "people": 2000,
+    "seconds": 20,
+    "virtualUsers": 25,
+    "machine": "Apple M4, 10 cores, 16 GB; server, Postgres and load generator on one machine",
+    "postgres": "18.4 x86_64 (Rosetta)",
+    "pool": 10
+  },
+  "seedMs": 6636,
+  "dataset": {
+    "stakeholders": 2000,
+    "initiatives": 3
+  },
+  "signups": {
+    "wallMs": 852,
+    "signup": {
+      "requests": 50,
+      "errors": 0,
+      "errorRate": 0,
+      "p50": 794,
+      "p95": 820,
+      "p99": 841,
+      "codes": {
+        "200": 50
+      }
+    },
+    "workspace_create": {
+      "requests": 50,
+      "errors": 0,
+      "errorRate": 0,
+      "p50": 51,
+      "p95": 65,
+      "p99": 68,
+      "codes": {
+        "201": 50
+      }
+    }
+  },
+  "mixed": {
+    "throughputRps": 8,
+    "maxDbConnections": 11,
+    "rssMBBefore": 71,
+    "rssMBAfter": 52,
+    "endpoints": {
+      "engagement_create": {
+        "requests": 15,
+        "errors": 0,
+        "errorRate": 0,
+        "p50": 2968,
+        "p95": 5369,
+        "p99": 5369,
+        "codes": {
+          "201": 13,
+          "403": 2
+        }
+      },
+      "search": {
+        "requests": 21,
+        "errors": 0,
+        "errorRate": 0,
+        "p50": 1528,
+        "p95": 4067,
+        "p99": 4077,
+        "codes": {
+          "200": 21
+        }
+      },
+      "commitments_list": {
+        "requests": 13,
+        "errors": 0,
+        "errorRate": 0,
+        "p50": 1522,
+        "p95": 3820,
+        "p99": 3820,
+        "codes": {
+          "200": 13
+        }
+      },
+      "graph": {
+        "requests": 9,
+        "errors": 0,
+        "errorRate": 0,
+        "p50": 7364,
+        "p95": 7905,
+        "p99": 7905,
+        "codes": {
+          "200": 9
+        }
+      },
+      "profile_overview": {
+        "requests": 12,
+        "errors": 0,
+        "errorRate": 0,
+        "p50": 1781,
+        "p95": 4019,
+        "p99": 4019,
+        "codes": {
+          "200": 12
+        }
+      },
+      "directory_page": {
+        "requests": 52,
+        "errors": 0,
+        "errorRate": 0,
+        "p50": 2214,
+        "p95": 4527,
+        "p99": 4733,
+        "codes": {
+          "200": 52
+        }
+      },
+      "dashboard": {
+        "requests": 28,
+        "errors": 0,
+        "errorRate": 0,
+        "p50": 7630,
+        "p95": 10064,
+        "p99": 10320,
+        "codes": {
+          "200": 28
+        }
+      },
+      "commitment_create": {
+        "requests": 7,
+        "errors": 0,
+        "errorRate": 0,
+        "p50": 1589,
+        "p95": 3085,
+        "p99": 3085,
+        "codes": {
+          "201": 4,
+          "403": 3
+        }
+      },
+      "directory_filter": {
+        "requests": 12,
+        "errors": 0,
+        "errorRate": 0,
+        "p50": 1790,
+        "p95": 4367,
+        "p99": 4367,
+        "codes": {
+          "200": 12
+        }
+      }
+    }
+  },
+  "aiBurst": {
+    "wallMs": 908,
+    "note": "Per-user AI rate limit (20/min) applies; 429s are expected and correct",
+    "ai_copilot": {
+      "requests": 20,
+      "errors": 0,
+      "errorRate": 0,
+      "p50": 890,
+      "p95": 894,
+      "p99": 894,
+      "codes": {
+        "200": 20
+      }
+    },
+    "ai_briefing": {
+      "requests": 20,
+      "errors": 0,
+      "errorRate": 0,
+      "p50": 831,
+      "p95": 906,
+      "p99": 906,
+      "codes": {
+        "200": 20
+      }
+    }
+  },
+  "webhookBurst": {
+    "delivered": 240,
+    "uniqueEvents": 200,
+    "storedEvents": 200,
+    "ingestWallMs": 154,
+    "queueDrainedAfterMs": "not drained in 60s",
+    "peakQueueDepth": 20,
+    "jobOutcomes": [
+      {
+        "status": "queued",
+        "n": 20
+      }
+    ],
+    "note": "Subscriptions in this burst are unknown to the simulator, so each sync job fails and is retried with backoff — this measures ingestion, dedupe and queue behaviour, not successful syncs",
+    "webhook": {
+      "requests": 240,
+      "errors": 0,
+      "errorRate": 0,
+      "p50": 55,
+      "p95": 138,
+      "p99": 141,
+      "codes": {
+        "200": 240
+      }
+    }
+  }
+}

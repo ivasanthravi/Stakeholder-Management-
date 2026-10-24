@@ -336,7 +336,7 @@ function PlanCard({ p, b, interval }: { p: CatalogPlan; b: BillingOverview; inte
     })
   }
 
-  let cta: React.ReactNode = null
+  let cta: React.ReactNode
   if (!p.selfServe) cta = <Link to="/contact" className="btn btn-secondary btn-md bill-cta">Talk to sales<ArrowUpRight size={13} aria-hidden /></Link>
   else if (!b.canManage) cta = isCurrent ? <span className="t-small c3">Your current plan</span> : null
   else if (unchanged) cta = <Button className="bill-cta" disabled icon={<Check size={14} />}>Current plan</Button>

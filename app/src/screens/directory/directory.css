@@ -45,7 +45,7 @@
 .grid-wrap { position: relative; flex: 1; min-height: 0; display: flex; }
 .grid { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .grid {
-  --cols: 36px minmax(220px, 2.1fr) minmax(150px, 1.4fr) 124px 136px 136px 108px 56px minmax(130px, 1fr);
+  --cols: 36px minmax(220px, 2.1fr) minmax(150px, 1.4fr) 124px 144px 136px 112px 64px minmax(130px, 1fr);
 }
 .tr {
   display: grid; grid-template-columns: var(--cols);
@@ -97,6 +97,9 @@
 
 .row-actions { margin-left: auto; display: flex; gap: 2px; opacity: 0; transition: opacity var(--dur-fast) var(--ease-standard); }
 .tr:hover .row-actions, .tr[data-focus] .row-actions { opacity: 1; }
+/* Directory: float the hover actions over the owner cell so they never steal width from the name */
+.row-actions-float { position: absolute; right: 22px; top: 50%; translate: 0 -50%; padding-left: 16px; background: linear-gradient(to right, transparent, var(--bg-surface) 14px); pointer-events: none; }
+.tr:hover .row-actions-float, .tr[data-focus] .row-actions-float { pointer-events: auto; }
 .icon-btn { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 5px; color: var(--text-3); background: var(--bg-surface); box-shadow: 0 0 0 1px var(--border); }
 .icon-btn:hover { color: var(--text-1); box-shadow: 0 0 0 1px var(--border-strong); }
 
@@ -114,7 +117,7 @@
 .check[data-on] .check-path { stroke-dashoffset: 0; }
 
 /* Empty */
-.empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 96px 0; }
+.empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 96px 16px; text-align: center; }
 .empty .btn { margin-top: 8px; }
 
 /* Bulk action bar */
@@ -134,12 +137,17 @@
 .bulk-count > span { display: inline-block; }
 .bulk-sep { width: 1px; height: 18px; background: rgb(255 255 255 / .14); margin: 0 4px; }
 
-@media (max-width: 1280px) {
-  .grid { --cols: 36px minmax(200px, 2fr) minmax(130px, 1.2fr) 124px 136px 0 92px 52px minmax(120px, 1fr); }
+/* Breakpoints follow the columns' minimum widths so rows never overflow the grid (owner names were clipped at 1025–1360). */
+@media (max-width: 1400px) {
+  .grid { --cols: 36px minmax(200px, 2fr) minmax(130px, 1.2fr) 124px 144px 0 112px 64px minmax(120px, 1fr); }
   .grid .tr > :nth-child(6) { visibility: hidden; padding: 0; overflow: hidden; }
 }
+@media (max-width: 1180px) {
+  .grid { --cols: 36px minmax(180px, 2fr) 0 124px 144px 0 112px 64px minmax(100px, 1fr); }
+  .grid .tr > :nth-child(3) { visibility: hidden; padding: 0; overflow: hidden; }
+}
 @media (max-width: 1024px) {
-  .grid { --cols: 36px minmax(180px, 2fr) 0 124px 136px 0 92px 48px 0; }
+  .grid { --cols: 36px minmax(180px, 2fr) 0 124px 144px 0 112px 64px 0; }
   .grid .tr > :nth-child(3), .grid .tr > :nth-child(9) { visibility: hidden; padding: 0; overflow: hidden; }
   .toolbar .chip:nth-of-type(n+3) { display: none; }
 }

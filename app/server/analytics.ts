@@ -1,6 +1,7 @@
 // First-party product analytics. Events are stored in our own database (no third-party scripts or cookies),
 // names and properties are allow-listed, and nothing that describes stakeholders or record content is accepted.
 // Users can opt out in Settings › Notifications & privacy; opted-out users are not recorded at all.
+import { errorFields, log } from './log'
 import { and, eq, gte, sql } from 'drizzle-orm'
 import type { DB } from './db/client'
 import { analyticsEvent, userPreference } from './db/schema'
@@ -33,7 +34,7 @@ export async function track(db: DB, name: EventName, opts: { userId?: string | n
     await db.insert(analyticsEvent).values({ name, userId: opts.userId ?? null, workspaceId: opts.workspaceId ?? null, props })
   } catch (e) {
     // Analytics must never break a user action.
-    console.warn(`[analytics] ${name} not recorded: ${(e as Error).message}`)
+    log('warn', 'analytics event not recorded', { event: name, ...errorFields(e) })
   }
 }
 
