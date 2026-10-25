@@ -1,7 +1,7 @@
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query'
 import { getWorkspaceId, newIdempotencyKey, qs, request, ws } from './http'
 import type {
-  ActivityEvent, Dashboard, Graph, Lookups, Me, Overview, Page, SearchResults, StakeholderDetail, StakeholderRow, WorkspaceInfo,
+  ActivityEvent, Dashboard, Graph, Lookups, Me, Overview, Page, SearchResults, StakeholderDetail, StakeholderRow, TimelineItem, WorkspaceInfo,
 } from './types'
 
 /** Every tenant query key starts with the workspace id, so switching workspaces can never show stale foreign data. */
@@ -27,6 +27,13 @@ export function useStakeholderPages(f: StakeholderFilters) {
 }
 export const useStakeholder = (id: string | null) => useQuery({ queryKey: wk('stakeholder', id), queryFn: () => request<StakeholderDetail>(ws(`/stakeholders/${id}`)), enabled: !!id })
 export const useOverview = (id: string | null) => useQuery({ queryKey: wk('overview', id), queryFn: () => request<Overview>(ws(`/stakeholders/${id}/overview`)), enabled: !!id, placeholderData: keepPreviousData })
+export const useTimeline = (id: string, kinds: string | undefined) => useInfiniteQuery({
+  queryKey: wk('timeline', id, kinds ?? 'all'),
+  initialPageParam: '' as string,
+  queryFn: ({ pageParam, signal }) => request<{ items: TimelineItem[]; next: string | null }>(ws(`/stakeholders/${id}/timeline${qs({ kinds, before: pageParam || undefined, limit: 40 })}`), { signal }),
+  getNextPageParam: last => last.next ?? undefined,
+  placeholderData: keepPreviousData,
+})
 export const useActivity = (entityType: string, entityId: string | null) => useInfiniteQuery({
   queryKey: wk('activity', entityType, entityId),
   initialPageParam: 0 as number,

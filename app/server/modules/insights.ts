@@ -7,6 +7,7 @@ import { tx, type AppEnv } from '../context'
 import type { Tx } from '../db/client'
 import { aiSettings } from '../ai/usage'
 import { rowsOf, STANCE_LABEL } from './_shared'
+import { recentChanges } from './changes'
 import { z } from 'zod'
 import { daysFromToday } from '../../shared/dates'
 
@@ -201,9 +202,11 @@ export async function computeDashboard(t: Tx, me: string, th: Thresholds) {
           (select count(*) from decision d where d.initiative_id = i.id and d.archived_at is null and d.status in ('proposed','under_review'))::int as "pendingDecisions"
         from initiative i left join cover cv on cv.initiative_id = i.id where i.archived_at is null order by array_position(array['active','planned','on_hold','completed'], i.status), i.code`))
       const stanceCounts = rowsOf<{ stance: string; n: number }>(await t.execute(sql`select stance, count(*)::int as n from stakeholder where archived_at is null group by stance`))
+      // "What changed" over the last 7 days (same definition as the copilot's recent_changes tool).
+      const changes = await recentChanges(t, { days: 7, limit: 6 })
       return {
         generatedAt: new Date().toISOString(), me,
-        signals: capPerKind(signals, me), signalCounts: { team, mine }, horizon, horizonOlder, decisions, recentEngagements, initiatives,
+        signals: capPerKind(signals, me), signalCounts: { team, mine }, horizon, horizonOlder, decisions, recentEngagements, initiatives, changes,
         stakeholders: { total: stanceCounts.reduce((a, r) => a + r.n, 0), byStance: Object.fromEntries(stanceCounts.map(r => [r.stance, r.n])) },
       }
 }

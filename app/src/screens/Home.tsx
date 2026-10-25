@@ -1,7 +1,7 @@
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react'
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { AlertCircle, ArrowRight, ArrowUpRight, Building2, CalendarClock, Check, Clock, EyeOff, Gavel, MessagesSquare, Plus, RotateCw, Sparkle, Target, TrendingDown, UserX, Users } from 'lucide-react'
+import { AlertCircle, ArrowRight, ArrowUpRight, Building2, CalendarClock, Check, CheckCircle2, ChevronDown, Clock, EyeOff, Gavel, MessagesSquare, Plus, RotateCw, Sparkle, Target, TrendingDown, UserPlus, UserX, Users } from 'lucide-react'
 import { useDashboard, useInvalidate } from '../api/hooks'
 import { sourceHref, useAIStatus, useWorkspaceBriefing, type Briefing, type BriefingItem, type ItemKind } from '../api/ai'
 import { openCopilot } from '../lib/copilotBus'
@@ -140,6 +140,8 @@ function HomeGrid({ d, scope, onPeek }: { d?: Dashboard; scope: 'team' | 'mine';
   const [open, setOpen] = useState<string | null>(null)
   const [focus, setFocus] = useState(0)
   const [busy, setBusy] = useState<string | null>(null)
+  // The focused row shows its quick actions only once the list is being driven from the keyboard.
+  const [kbd, setKbd] = useState(false)
   const { toast } = useApp()
   const { can } = useSession()
   const invalidate = useInvalidate()
@@ -176,8 +178,8 @@ function HomeGrid({ d, scope, onPeek }: { d?: Dashboard; scope: 'team' | 'mine';
   }
 
   useHotkeys({
-    j: () => setFocus(i => Math.min(visible.length - 1, i + 1)),
-    k: () => setFocus(i => Math.max(0, i - 1)),
+    j: () => { setKbd(true); setFocus(i => Math.min(visible.length - 1, i + 1)) },
+    k: () => { setKbd(true); setFocus(i => Math.max(0, i - 1)) },
     Enter: () => { const v = visible[focus]; if (v) setOpen(o => (o === v.id ? null : v.id)) },
     e: () => { const v = visible[focus]; if (v) hide(v) },
     d: () => { const v = visible[focus]; if (v?.commitmentId) void complete(v) },
@@ -186,7 +188,7 @@ function HomeGrid({ d, scope, onPeek }: { d?: Dashboard; scope: 'team' | 'mine';
 
   return (
     <div className="home-grid">
-      <section className="ledger" aria-labelledby="ledger-h">
+      <section className="ledger" data-kbd={kbd || undefined} aria-labelledby="ledger-h">
         <header className="ledger-head">
           <h2 id="ledger-h" className="t-heading">Needs attention</h2>
           <LayoutGroup id="ledger-filter">
@@ -231,10 +233,11 @@ function HomeGrid({ d, scope, onPeek }: { d?: Dashboard; scope: 'team' | 'mine';
       </section>
 
       <aside className="home-rail">
-        <StakeholderOverview d={d} />
         <Horizon d={d} scope={scope} />
+        <WhatChanged d={d} />
         <PendingDecisions d={d} />
         <InitiativeActivity d={d} />
+        <StakeholderOverview d={d} />
         <RecentEngagements d={d} />
       </aside>
     </div>
@@ -272,8 +275,7 @@ function LedgerRow({ sig, onPeek, open, focused, busy, canComplete, onToggle, on
             <div className="lwhy-inner">
               <div className="why-rule">
                 <span className="row gap-2"><span className="t-caption c3">Why it matters</span><span className="why-basis" title="Raised by a fixed rule over your records — not an AI prediction">Rule-based</span></span>
-                <span>{sig.reason}</span>
-                <span className="t-small c2">Rule: {sig.rule}</span>
+                <span>{sig.rule}</span>
               </div>
               {person && (
                 <button type="button" className="why-person" onClick={() => onPeek(person.id)} title={`Preview ${person.name} without leaving Home`}>
@@ -354,9 +356,15 @@ const clock = (iso: string) => new Date(iso).toLocaleTimeString('en-GB', { hour:
  * Briefing over today's signals. With the built-in rules engine it is free, so it loads on its own;
  * with a model it spends tokens, so it waits for an explicit "Generate briefing".
  */
+const BRIEF_OPEN_KEY = 'home.briefing.open'
+const readOpen = () => { try { const v = localStorage.getItem(BRIEF_OPEN_KEY); return v === null ? null : v === '1' } catch { return null } }
+
 function WorkspaceBriefing() {
   const status = useAIStatus()
   const [requested, setRequested] = useState(false)
+  // A briefing of counts only restates the sentence above it, so it starts folded; one with interpretation or
+  // recommendations starts open. The viewer's own choice wins and is remembered on this device.
+  const [chosen, setChosen] = useState<boolean | null>(readOpen)
   const engine = status.data?.engine
   const on = !!status.data && status.data.settings.enabled
   const local = engine?.kind === 'local'
@@ -364,8 +372,12 @@ function WorkspaceBriefing() {
   if (status.isError || (status.data && !on)) return null
   const b = q.data
   const shownEngine = b?.engine ?? engine
+  const items = b ? b.sections.flatMap(sec => sec.items) : []
+  const countsOnly = !!b && !b.aiError && items.every(it => it.kind === 'metric')
+  const open = !b || q.isError || (chosen ?? !countsOnly)
+  const toggle = () => { const v = !open; setChosen(v); try { localStorage.setItem(BRIEF_OPEN_KEY, v ? '1' : '0') } catch { /* private mode */ } }
   return (
-    <section className="brief" aria-labelledby="brief-h" aria-busy={q.isFetching || undefined}>
+    <section className="brief" data-folded={!open || undefined} aria-labelledby="brief-h" aria-busy={q.isFetching || undefined}>
       <header className="brief-head">
         <Sparkle size={14} className="brief-ico" aria-hidden />
         <h2 id="brief-h" className="t-heading">Workspace briefing</h2>
@@ -375,8 +387,12 @@ function WorkspaceBriefing() {
           </span>
         )}
         <span className="grow" />
-        {b && <span className="t-small c3 num" title={new Date(b.generatedAt).toLocaleString('en-GB')}>Generated {clock(b.generatedAt)}{b.cached ? ' · cached' : ''}</span>}
-        {b && <Button size="sm" variant="ghost" icon={<RotateCw size={13} />} onClick={() => void q.refetch()} loading={q.isFetching} aria-label="Regenerate briefing" title="Regenerate" />}
+        {b && <span className="t-small c3 num brief-time" title={new Date(b.generatedAt).toLocaleString('en-GB')}>Generated {clock(b.generatedAt)}{b.cached ? ' · cached' : ''}</span>}
+        {b && open && <Button size="sm" variant="ghost" icon={<RotateCw size={13} />} onClick={() => void q.refetch()} loading={q.isFetching} aria-label="Regenerate briefing" title="Regenerate" />}
+        {b && !q.isError && (
+          <Button size="sm" variant="ghost" onClick={toggle} aria-expanded={open} aria-controls="brief-body"
+            icon={<ChevronDown size={13} className="brief-chev" />}>{open ? 'Hide' : `Show ${items.length} item${items.length === 1 ? '' : 's'}`}</Button>
+        )}
       </header>
       {!status.data ? <div className="rcard-skel"><Skeleton h={10} w="60%" /></div>
         : q.isError ? (
@@ -391,7 +407,7 @@ function WorkspaceBriefing() {
           </div>
         ) : !b ? (
           <div className="rcard-skel" aria-label="Generating briefing"><Skeleton h={10} w="72%" /><Skeleton h={10} w="88%" /><Skeleton h={10} w="50%" /></div>
-        ) : <BriefingBody b={b} />}
+        ) : open ? <BriefingBody b={b} /> : null}
     </section>
   )
 }
@@ -402,7 +418,7 @@ function BriefingBody({ b }: { b: Briefing }) {
   const num = new Map(b.sources.map((s, i) => [s.ref, { n: i + 1, s }]))
   const empty = b.sections.every(s => !s.items.length)
   return (
-    <div className="brief-body">
+    <div className="brief-body" id="brief-body">
       {b.aiError && (
         <p className="brief-warn t-small" role="status"><AlertCircle size={13} aria-hidden />The AI model couldn’t complete this briefing ({b.aiError}). Showing facts and rule-based items only.</p>
       )}
@@ -563,6 +579,51 @@ function InitiativeActivity({ d }: { d?: Dashboard }) {
         </div>
       )}
       <p className="t-small c3 cov-note">High and very-high influence stakeholders. Marker at 80%.</p>
+    </Card>
+  )
+}
+
+const stanceLabel = (v: string) => (STANCE_LABEL as Record<string, string>)[v] ?? v
+
+/** Last 7 days of recorded change, newest first. Each line links to the record it came from. */
+function WhatChanged({ d }: { d?: Dashboard }) {
+  const c = d?.changes
+  type Line = { key: string; at: string; href: string; icon: ReactNode; title: string; sub: string }
+  const lines: Line[] = c ? [
+    ...c.stance.map(x => ({ key: `s${x.id}`, at: x.at, href: `/stakeholders/${x.id}?tab=history`, icon: <TrendingDown size={13} className="c3" />,
+      title: x.name, sub: x.from && x.to ? `Stance ${stanceLabel(x.from)} → ${stanceLabel(x.to)}` : 'Stance changed' })),
+    ...c.decided.map(x => ({ key: `d${x.id}`, at: x.at, href: `/decisions?open=${x.id}`, icon: <Gavel size={13} className="c3" />,
+      title: x.title, sub: `${x.key} · ${(DECISION_STATUS_LABEL as Record<string, string>)[x.status] ?? x.status}` })),
+    ...c.completed.map(x => ({ key: `c${x.id}`, at: x.at, href: `/commitments?open=${x.id}`, icon: <CheckCircle2 size={13} className="chg-done" />,
+      title: x.title, sub: `${x.key} · Completed` })),
+    // Additions arrive in bulk (an import, a new initiative): more than two become one line, so they can't crowd out
+    // decisions and completed work.
+    ...(c.counts.added > 2 && c.added[0]
+      ? [{ key: 'added', at: c.added[0].at, href: '/stakeholders?sort=updated', icon: <UserPlus size={13} className="c3" />,
+          title: `${c.counts.added.toLocaleString()} stakeholders added`, sub: `Latest: ${c.added[0].name}` }]
+      : c.added.map(x => ({ key: `a${x.id}`, at: x.at, href: `/stakeholders/${x.id}`, icon: <UserPlus size={13} className="c3" />,
+          title: x.name, sub: `Added${x.title ? ` · ${x.title}` : ''}` }))),
+  ].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 6) : []
+  const stats = c ? [
+    { n: c.counts.decided, label: c.counts.decided === 1 ? 'decision made' : 'decisions made', href: '/decisions?status=approved' },
+    { n: c.counts.completed, label: 'completed', href: '/commitments?view=completed' },
+    { n: c.counts.stance, label: c.counts.stance === 1 ? 'stance shift' : 'stance shifts', href: '/stakeholders' },
+    { n: c.counts.added, label: 'added', href: '/stakeholders?sort=updated' },
+  ] : []
+  return (
+    <Card title="What changed" meta="7 days" loading={!d}>
+      {!c ? <p className="t-small c3">Not available.</p> : !lines.length ? <p className="t-small c3">No decisions, completed commitments, stance changes or new stakeholders recorded in the last 7 days.</p> : (
+        <>
+          <div className="chg-stats">
+            {stats.map(x => <Link key={x.label} to={x.href} className="chg-stat" data-zero={!x.n || undefined}><span className="num t-strong">{x.n.toLocaleString()}</span> <span className="c2">{x.label}</span></Link>)}
+          </div>
+          <ul className="chg chg-feed">
+            {lines.map(l => (
+              <li key={l.key}><Link to={l.href} className="chg-link"><span className="chg-ico" aria-hidden>{l.icon}</span><span className="grow chg-txt"><span className="t-strong truncate">{l.title}</span><span className="c3 t-small truncate">{l.sub}</span></span><span className="c3 t-small num">{fmtRelative(l.at)}</span></Link></li>
+            ))}
+          </ul>
+        </>
+      )}
     </Card>
   )
 }

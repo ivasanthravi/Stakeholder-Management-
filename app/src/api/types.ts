@@ -63,6 +63,11 @@ export interface Overview {
   briefing: Briefing
 }
 
+/** One entry in a stakeholder's timeline (GET /stakeholders/:id/timeline). */
+export interface TimelineItem {
+  kind: 'engagement' | 'commitment' | 'commitment_done' | 'decision' | 'decision_decided' | 'change'
+  id: string; recordId: string | null; key: string | null; title: string; detail: string | null; sub: string | null; status: string | null; at: string; initiativeCode: string | null
+}
 export interface ActivityEvent { id: number; entityType?: string; entityId?: string; verb: string; summary: string; changes: Record<string, { from: unknown; to: unknown }> | null; createdAt: string; actor: string | null }
 
 export interface Signal {
@@ -84,6 +89,15 @@ export interface Dashboard {
   horizon: { id: string; key: string; title: string; dueDate: string; stakeholderId: string | null; stakeholderName: string | null; ownerId: string | null }[]
   decisions: { id: string; key: string; title: string; status: DecisionStatus; dueDate: string | null; createdAt: string; ownerName: string | null; initiativeCode: string | null; approvers: number }[]
   recentEngagements: { id: string; key: string; kind: string; title: string; occurredAt: string; initiativeCode: string | null; participants: number }[]
+  /** Last 7 days: exact counts plus the latest few of each kind. */
+  changes?: {
+    days: number
+    counts: { stance: number; decided: number; completed: number; added: number }
+    stance: { id: string; name: string; from: string | null; to: string | null; at: string }[]
+    decided: { id: string; key: string; title: string; status: string; at: string }[]
+    completed: { id: string; key: string; title: string; stakeholderId: string | null; at: string }[]
+    added: { id: string; name: string; title: string | null; at: string }[]
+  }
   initiatives: { id: string; code: string; name: string; status: string; keyTotal: number; keyEngaged: number; engagements30: number; openCommitments: number; pendingDecisions: number }[]
   stakeholders: { total: number; byStance: Partial<Record<Stance, number>> }
 }

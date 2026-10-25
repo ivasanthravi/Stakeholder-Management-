@@ -138,6 +138,8 @@ export function buildStyle(p: Palette, opts: { large?: boolean } = {}): Styleshe
     { selector: 'edge.hl.rel-opposes', style: { 'line-color': p.stance.opposed } },
     { selector: 'edge.hl.rel-reports-to, edge.hl.rel-colleague', style: { 'label': '' } },
     { selector: 'node.org-dim', style: { 'background-opacity': 0.18, 'border-opacity': 0.35, 'text-opacity': 0.35 } },
+    // Key people (see markKeyPeople) are always named; their size is set per zoom so it reads the same on screen.
+    { selector: 'node.key', style: { 'min-zoomed-font-size': 0, 'font-weight': 600, 'z-index': 5 } },
     { selector: 'node.nb', style: { 'border-width': 2.5, 'z-index': 10, 'min-zoomed-font-size': 0 } },
     // Path finder: the chain stands out; unconfirmed (inferred) hops stay dashed so they never read as fact.
     { selector: 'node.path', style: { 'underlay-color': p.accent, 'underlay-opacity': 0.2, 'underlay-padding': 8, 'border-width': 3, 'z-index': 15, 'font-weight': 650, 'min-zoomed-font-size': 0 } },
@@ -152,5 +154,16 @@ export function buildStyle(p: Palette, opts: { large?: boolean } = {}): Styleshe
         'border-width': 3, 'z-index': 20, 'font-weight': 650, 'font-size': 11, 'min-zoomed-font-size': 0,
       },
     },
+    // Readable labels at overview zoom (see sizeKeyLabels): one class per zoom band, sized so text renders at about
+    // 11.5 px on screen. Stylesheet classes, not per-element overrides, keep Cytoscape's style cache effective.
+    // Last in the sheet so they win over .sel's model-space size.
+    // Every rule is checked on every restyle, so there are few bands and one rule each (nodes and edges share it).
+    ...LABEL_BANDS.map((z, i) => ({ selector: `.lz${i}`, style: { 'font-size': 11.5 / z, 'text-max-width': `${Math.round(120 / z)}px`, 'text-margin-y': 4 / z, 'min-zoomed-font-size': 0 } })),
+    // Large maps: faded key people drop their overview names while someone is focused (the whole map dims anyway).
+    // Redrawing those labels measured +35 ms per selection at ~1,000 people.
+    ...(opts.large ? [{ selector: 'node.key.faded', style: { 'text-opacity': 0 } }] : []),
   ] as StylesheetJson
 }
+
+/** Zoom levels at which readable labels change size (below 100%). A label renders between 11.5 and ~17 px. */
+export const LABEL_BANDS = [0.68, 0.46, 0.31, 0.21, 0.14] as const

@@ -5,14 +5,18 @@ import { useOverview } from '../../api/hooks'
 import { Avatar, Button, Kbd, LevelMeter, Skeleton, StanceBadge } from '../../components/ui'
 import { MOD } from '../../lib/hotkeys'
 import { t } from '../../lib/motion'
-import { daysFromToday, fmtDate, fmtRelative, isOpenStatus, LEVEL_LABEL, RELATIONSHIP_LABEL } from '../../lib/format'
+import { daysFromToday, fmtDate, fmtRelative, isOpenStatus, LEVEL_LABEL, RELATIONSHIP_LABEL, RELATIONSHIP_MEANING } from '../../lib/format'
 import { LoadError } from '../Home'
 import './peek.css'
 
 const DAY = 86_400_000
 
 /** Right-hand peek panel. Overlays the list (no reflow) and follows J/K focus. */
-export function PeekPanel({ id, onClose, context = 'list', note }: { id: string; onClose: () => void; context?: 'list' | 'map'; note?: string }) {
+/**
+ * `onPerson`: on the map, choosing a related person moves the focus there instead of leaving the map. It returns false
+ * when that person isn't drawn in the current view, and the profile opens as usual.
+ */
+export function PeekPanel({ id, onClose, context = 'list', note, onPerson }: { id: string; onClose: () => void; context?: 'list' | 'map'; note?: string; onPerson?: (id: string) => boolean }) {
   const nav = useNavigate()
   const ov = useOverview(id)
   const d = ov.data && ov.data.stakeholder.id === id ? ov.data : null
@@ -23,6 +27,8 @@ export function PeekPanel({ id, onClose, context = 'list', note }: { id: string;
   const prior = d?.engagements.filter(e => { const x = now - Date.parse(e.occurredAt); return x > 60 * DAY && x <= 120 * DAY }).length ?? 0
   const open = d?.commitments.filter(c => isOpenStatus(c.status)).slice(0, 3) ?? []
   const rels = (d?.relationships ?? []).slice().sort((a, b) => (b.strength ?? 0) - (a.strength ?? 0)).slice(0, 6)
+  const pending = d?.decisions.filter(x => x.status === 'proposed' || x.status === 'under_review').slice(0, 3) ?? []
+  const openPerson = (pid: string) => { if (!onPerson?.(pid)) nav(`/stakeholders/${pid}`) }
 
   return (
     <motion.aside className="peek" aria-label={s ? `${s.name} preview` : 'Stakeholder preview'} aria-busy={!d || undefined}
@@ -70,14 +76,38 @@ export function PeekPanel({ id, onClose, context = 'list', note }: { id: string;
                 <h3 className="label-rule">Relationships <span className="num">{d.relationships.length}</span></h3>
                 {rels.length === 0 && <p className="c3 t-small">No relationships recorded.</p>}
                 {rels.map(r => (
-                  <button key={r.id} className="peek-rel" onClick={() => nav(r.otherKind === 'stakeholder' ? `/stakeholders/${r.other.id}` : `/organizations/${r.other.id}`)}>
-                    <span className="rel-type">{(RELATIONSHIP_LABEL[r.type] ?? ['Related to', 'Related to'])[r.direction === 'out' ? 0 : 1]}</span>
+                  <button key={r.id} className="peek-rel" onClick={() => (r.otherKind === 'stakeholder' ? openPerson(r.other.id) : nav(`/organizations/${r.other.id}`))}
+                    title={r.otherKind === 'stakeholder' && onPerson ? `Focus ${r.other.name} on the map` : undefined}>
+                    <span className="rel-type" title={RELATIONSHIP_MEANING[r.type]}>{(RELATIONSHIP_LABEL[r.type] ?? ['Related to', 'Related to'])[r.direction === 'out' ? 0 : 1]}</span>
                     <Avatar name={r.other.name} size={18} />
                     <span className="truncate grow">{r.other.name}{r.status === 'inferred' && <span className="c3 t-small"> · inferred</span>}</span>
                     {r.strength && <span className="rel-strength" role="img" aria-label={`Strength ${r.strength} of 3`}>{[1, 2, 3].map(i => <i key={i} data-on={i <= r.strength! || undefined} />)}</span>}
                   </button>
                 ))}
               </section>
+              {s.initiatives.length > 0 && (
+                <section className="peek-sec">
+                  <h3 className="label-rule">Initiatives <span className="num">{s.initiatives.length}</span></h3>
+                  <div className="peek-inits">
+                    {s.initiatives.map(i => (
+                      <button key={i.id} className="peek-init" onClick={() => nav(`/initiatives/${i.id}`)} title={i.role ? `${i.name} · ${i.role}` : i.name}>
+                        <span className="mono">{i.code}</span><span className="truncate">{i.name}</span>{i.role && <span className="c3 t-small truncate">· {i.role}</span>}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
+              {pending.length > 0 && (
+                <section className="peek-sec">
+                  <h3 className="label-rule">Decisions involving them</h3>
+                  {pending.map(x => (
+                    <button key={x.id} className="peek-commit peek-dec" onClick={() => nav(`/decisions?open=${x.id}`)}>
+                      <span className="mono c3">{x.key}</span><span className="grow truncate">{x.title}</span>
+                      <span className={`t-small num ${x.dueDate && daysFromToday(x.dueDate) < 0 ? 'is-overdue' : 'c2'}`}>{x.dueDate ? fmtDate(x.dueDate) : 'pending'}</span>
+                    </button>
+                  ))}
+                </section>
+              )}
               <section className="peek-sec">
                 <h3 className="label-rule">Recent engagement</h3>
                 {d.engagements.length === 0 && <p className="c3 t-small">No engagement recorded yet.</p>}

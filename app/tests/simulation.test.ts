@@ -114,6 +114,14 @@ describe('the Command Center stays true when one kind of signal dominates', () =
     const w = (await owner.get(`/api/w/${ws}/commitments?status=open,in_progress&dueWithinDays=7&limit=5`)).body as { total: number; items: { dueDate: string }[] }
     expect(w.total).toBe(week)
     expect(w.items.every(i => i.dueDate >= w.items[0].dueDate)).toBe(true)
+    // "What changed · 7 days" counts equal the records (decided decisions, completed commitments, new stakeholders).
+    const ch = rows<{ decided: number; completed: number; added: number }>(await ctx.db.execute(sql`select
+      (select count(*)::int from decision where workspace_id = ${ws} and archived_at is null and status in ('approved','rejected','deferred') and decided_at > now() - interval '7 days') as decided,
+      (select count(*)::int from commitment where workspace_id = ${ws} and archived_at is null and status = 'completed' and completed_at > now() - interval '7 days') as completed,
+      (select count(*)::int from stakeholder where workspace_id = ${ws} and archived_at is null and created_at > now() - interval '7 days') as added`))[0]
+    const dc = (d as unknown as { changes: { counts: Record<string, number>; decided: { at: string }[] } }).changes
+    expect(dc.counts).toMatchObject(ch)
+    expect(dc.decided.length).toBe(Math.min(6, ch.decided))
     // The workspace briefing states the same totals as the headline (it once counted the capped list: "60 overdue").
     const brief = JSON.stringify((await owner.get(`/api/w/${ws}/ai/briefings/workspace`)).body)
     expect(brief).toContain(`${truth.overdue} commitments are overdue`)
@@ -335,5 +343,47 @@ describe('relationship graph: structural stress cases on simulated data', () => 
     const back = await owner.get(`/api/w/${ws}/ai/paths?from=${b}&to=${a}`)
     expect(back.status).toBe(200)
     expect(Date.now() - t0).toBeLessThan(5000)
+  })
+})
+
+describe('stakeholder timeline (Phase 8)', () => {
+  test('pages through everything recorded about a person, newest first, with no gaps or repeats', async () => {
+    const { plan, ws, owner } = loaded[loaded.length - 2] // construction, profile B
+    const id = comp(plan, 'long_history')?.refs.stakeholderId ?? plan.people[0].id
+    const truth = rows<{ e: number; c: number; cd: number; d: number }>(await ctx.db.execute(sql`select
+      (select count(*)::int from engagement_participant ep join engagement e on e.id = ep.engagement_id where ep.stakeholder_id = ${id} and e.archived_at is null) as e,
+      (select count(*)::int from commitment where stakeholder_id = ${id} and archived_at is null) as c,
+      (select count(*)::int from commitment where stakeholder_id = ${id} and archived_at is null and completed_at is not null) as cd,
+      (select count(*)::int from decision_stakeholder ds join decision d on d.id = ds.decision_id where ds.stakeholder_id = ${id} and d.archived_at is null) as d`))[0]
+    const seen: { id: string; at: string; kind: string }[] = []
+    let before: string | null = null
+    for (let i = 0; i < 50; i++) {
+      const r = (await owner.get(`/api/w/${ws}/stakeholders/${id}/timeline?kinds=engagement,commitment&limit=25${before ? `&before=${encodeURIComponent(before)}` : ''}`)).body as { items: { id: string; at: string; kind: string }[]; next: string | null }
+      seen.push(...r.items)
+      if (!r.next) break
+      before = r.next
+    }
+    expect(new Set(seen.map(x => x.id)).size).toBe(seen.length)
+    expect(seen.filter(x => x.kind === 'engagement').length).toBe(truth.e)
+    expect(seen.filter(x => x.kind === 'commitment').length).toBe(truth.c)
+    expect(seen.filter(x => x.kind === 'commitment_done').length).toBe(truth.cd)
+    for (let i = 1; i < seen.length; i++) expect(seen[i - 1].at >= seen[i].at).toBe(true)
+    const dec = (await owner.get(`/api/w/${ws}/stakeholders/${id}/timeline?kinds=decision&limit=100`)).body as { items: { kind: string }[] }
+    expect(dec.items.filter(x => x.kind === 'decision').length).toBe(truth.d)
+  })
+  test('a person the caller can’t see has no timeline either', async () => {
+    const { plan, ws } = loaded[loaded.length - 2]
+    const member = plan.users.find(u => !u.departed && (u.role === 'contributor' || u.role === 'viewer'))
+    const restricted = plan.people.filter(p => p.restricted)
+    expect(member && restricted.length).toBeTruthy()
+    const c = await signIn(member!.email)
+    for (const p of restricted) {
+      const profile = await c.get(`/api/w/${ws}/stakeholders/${p.id}`)
+      const timeline = await c.get(`/api/w/${ws}/stakeholders/${p.id}/timeline`)
+      expect(timeline.status).toBe(profile.status === 200 ? 200 : 404)
+    }
+    // Another workspace's person is never reachable through this workspace.
+    const foreign = loaded[0].plan.people[0].id
+    expect((await c.get(`/api/w/${ws}/stakeholders/${foreign}/timeline`)).status).toBe(404)
   })
 })

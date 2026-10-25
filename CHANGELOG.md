@@ -4,6 +4,29 @@ All notable changes are listed here, per release. Versions follow semver.
 - **Releases before Phase 4** were not tagged. Their commits are listed below for reference.
 - **Database changes:** a release that changes the database schema is at least a MINOR version, and its migrations follow the expand/contract policy in `docs/launch/deployment-runbook.md`.
 
+## [Unreleased] — Phase 8: signature experience
+### Command Center
+- **What changed · 7 days:** decisions made, commitments completed, stance shifts and people added. Every line opens its record; bulk additions collapse to one line. It shares its definition with the Copilot's "what changed" answer.
+- **The briefing folds** to one line when it only restates the headline counts. It stays open when it holds interpretation or recommendations, and your choice is remembered on the device.
+- **Full titles in Needs attention:** quick actions appear over the row on hover or keyboard focus instead of reserving width.
+- **The expanded signal shows the rule** instead of repeating the reason.
+- **Phones:** every filter tab is reachable (the strip scrolls).
+- **The rail leads with the commitment horizon and What changed.**
+### Stakeholder Universe
+- **Key people are named at a readable size at every zoom**; the focused person and their connections are named too.
+- **Focus keeps your zoom.** The camera moves only when the person or a direct connection is out of view, and zooms out only as far as needed.
+- **The focus panel:**
+  - choosing a related person moves the focus on the map instead of leaving it;
+  - it lists the person's initiatives and the pending decisions involving them;
+  - relationship types explain what they mean, and that they are recorded, not inferred.
+- **Small groups no longer draw people on top of each other.**
+### Stakeholder Profile
+- **Timeline** (formerly History): engagements, commitments, decisions and record changes in one chronological, filterable, server-paged list, each linked to its source.
+- **The briefing opens with why the person matters** (their initiatives and roles) instead of repeating the header.
+- **The Record card's details are laid out properly.**
+### Known trade-off
+- On maps of about 1,000 people or more, selecting a person takes 50–100 ms longer than in Phase 7, because names are now drawn. See `docs/signature-experience/performance-results.md`.
+
 ## [Unreleased] — Phase 7: real-world simulation lab
 ### Added
 - **Synthetic data universe** (`npm run sim`). Deterministic and seeded; ten industries, profiles A–E (up to 5,000 stakeholders in one workspace, or 50 tenants), and named real-world complications. It writes through the product's own auth and row-level security. Local only: it refuses production and remote databases.

@@ -198,3 +198,16 @@
 .aff > .grow { min-width: 0; }
 .aff > .icon-btn { flex: none; }
 .aff-past { color: var(--text-2); }
+
+/* ── Timeline (unified) ─────────────────────────────────────────── */
+.tl-meta { display: block; }
+.tl-kind { color: var(--text-2); font-weight: 500; }
+.tl-ico-commitment_done { color: var(--positive); }
+.tl-ico-change { color: var(--text-3); }
+.tl-unified .tl-filter { margin-bottom: 10px; }
+
+/* Description lists in profile rail cards: label left, value right, one row each. */
+.kv { display: flex; flex-direction: column; gap: 8px; }
+.kv > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.kv dt { font: var(--text-small); color: var(--text-3); }
+.kv dd { margin: 0; font: var(--text-body); color: var(--text-1); text-align: right; }

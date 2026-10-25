@@ -250,6 +250,62 @@ export const stakeholderRoutes = new Hono<AppEnv>()
   /** Everything the profile workspace needs in one round trip. */
   .get('/:id/overview', async c => c.json(await tx(c, t => overview(t, c.req.param('id')))))
 
+  /**
+   * Timeline: everything recorded about one person, newest first — engagements they took part in, commitments to or
+   * from them (raised and completed), decisions they're part of (opened and decided), and changes to their record.
+   * Keyset-paged on (time, id); `kinds` filters. Row-level security applies to every source table, and the person
+   * must be visible to the caller (restricted records 404).
+   */
+  .get('/:id/timeline', async c => {
+    const id = c.req.param('id')
+    const q = query(c, z.object({
+      kinds: z.string().optional(),
+      before: z.string().regex(/^[0-9T:.\-+Z]+\|[0-9a-z-]+$/i).optional(),
+      limit: z.coerce.number().int().min(1).max(100).default(40),
+    }))
+    const kinds = new Set((q.kinds ?? 'engagement,commitment,decision,change').split(',').filter(Boolean))
+    const [beforeAt, beforeId] = q.before ? q.before.split('|') : [null, null]
+    return c.json(await tx(c, async t => {
+      await getOr404(t, stakeholder, id, 'Stakeholder')
+      const parts = []
+      if (kinds.has('engagement')) parts.push(sql`
+        select 'engagement' as kind, e.id::text as id, e.id as record_id, e.key, e.title, e.summary as detail, e.kind as sub, null::text as status, e.occurred_at as at, i.code as initiative_code
+        from engagement_participant ep join engagement e on e.id = ep.engagement_id left join initiative i on i.id = e.initiative_id
+        where ep.stakeholder_id = ${id} and e.archived_at is null`)
+      if (kinds.has('commitment')) parts.push(sql`
+        select 'commitment' as kind, 'c' || cm.id as id, cm.id as record_id, cm.key, cm.title, null as detail, cm.direction as sub, cm.status, cm.created_at as at, i.code as initiative_code
+        from commitment cm left join initiative i on i.id = cm.initiative_id where cm.stakeholder_id = ${id} and cm.archived_at is null
+        union all
+        select 'commitment_done', 'd' || cm.id, cm.id, cm.key, cm.title, null, cm.direction, cm.status, cm.completed_at, i.code
+        from commitment cm left join initiative i on i.id = cm.initiative_id where cm.stakeholder_id = ${id} and cm.archived_at is null and cm.completed_at is not null`)
+      if (kinds.has('decision')) parts.push(sql`
+        select 'decision' as kind, 'o' || d.id as id, d.id as record_id, d.key, d.title, d.outcome as detail, ds.role as sub, d.status, d.created_at as at, i.code as initiative_code
+        from decision_stakeholder ds join decision d on d.id = ds.decision_id left join initiative i on i.id = d.initiative_id
+        where ds.stakeholder_id = ${id} and d.archived_at is null
+        union all
+        select 'decision_decided', 'x' || d.id, d.id, d.key, d.title, d.outcome, ds.role, d.status, d.decided_at, i.code
+        from decision_stakeholder ds join decision d on d.id = ds.decision_id left join initiative i on i.id = d.initiative_id
+        where ds.stakeholder_id = ${id} and d.archived_at is null and d.decided_at is not null`)
+      // Record changes; verbs that only echo an engagement, commitment or decision above are left out.
+      if (kinds.has('change')) parts.push(sql`
+        select 'change' as kind, 'a' || a.id as id, null::uuid as record_id, null as key, a.summary as title, u.name as detail, a.verb as sub, null as status, a.created_at as at, null as initiative_code
+        from activity_event a left join "user" u on u.id = a.actor_id
+        where a.entity_type = 'stakeholder' and a.entity_id = ${id} and a.verb not in ('engaged', 'commitment_added', 'decision_linked')`)
+      if (!parts.length) return { items: [], next: null }
+      const rows = rowsOf<{ kind: string; id: string; record_id: string | null; key: string | null; title: string; detail: string | null; sub: string | null; status: string | null; at: Date | string; initiative_code: string | null }>(await t.execute(sql`
+        select * from (${sql.join(parts, sql` union all `)}) x
+        ${beforeAt ? sql`where (x.at, x.id) < (${beforeAt}::timestamptz, ${beforeId})` : sql``}
+        order by x.at desc, x.id desc limit ${q.limit + 1}`))
+      const page = rows.slice(0, q.limit)
+      const iso = (v: Date | string) => (v instanceof Date ? v.toISOString() : new Date(v).toISOString())
+      const last = page[page.length - 1]
+      return {
+        items: page.map(r => ({ kind: r.kind, id: r.id, recordId: r.record_id, key: r.key, title: r.title, detail: r.detail, sub: r.sub, status: r.status, at: iso(r.at), initiativeCode: r.initiative_code })),
+        next: rows.length > q.limit && last ? `${iso(last.at)}|${last.id}` : null,
+      }
+    }))
+  })
+
 async function archiveToggle(c: Ctx, archive: boolean) {
   const id = c.req.param('id') ?? ''
   need(c, 'stakeholder.archive')

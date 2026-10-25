@@ -17,7 +17,7 @@ import { Menu, type MenuOption } from '../../components/Menu'
 import { PeekPanel } from '../directory/PeekPanel'
 import { useApp } from '../../shell/context'
 import { dur, t } from '../../lib/motion'
-import { buildStyle, readPalette } from './graphStyle'
+import { buildStyle, LABEL_BANDS, readPalette } from './graphStyle'
 import { clusterLayout } from './clusterLayout'
 import './universe.css'
 
@@ -159,7 +159,11 @@ export default function Universe() {
     cy.on('tap', 'node.person', e => setSel(e.target.id()))
     cy.on('dbltap', 'node.person', e => nav(`/stakeholders/${e.target.id()}`))
     cy.on('tap', e => { if (e.target === cy) setSel(null) })
-    cy.on('zoom', () => setZoom(cy.zoom()))
+    // Readable labels are re-sized once the zoom settles, not per frame: restyling during a gesture invalidates the
+    // viewport texture and measured 25 → 6 fps at 2,000 people (Phase 8 graph run). Labels scale with the zoom until
+    // it has been still for 150 ms (400 ms on large maps, where a slow machine's wheel events can arrive further apart).
+    let zt = 0
+    cy.on('zoom', () => { setZoom(cy.zoom()); clearTimeout(zt); zt = window.setTimeout(() => sizeKeyLabels(cy), largeRef.current ? 400 : 150) })
     // The container can mount at 0×0 inside the view transition; keep Cytoscape's viewport in sync.
     let lastW = 0
     const ro = new ResizeObserver(([entry]) => {
@@ -203,6 +207,7 @@ export default function Universe() {
     const large = data.people.length > LARGE_MAP
     if (large !== largeRef.current) {
       largeRef.current = large
+      cy.scratch('_large', large)
       const r = (cy as unknown as { renderer: () => { textureOnViewport: boolean; hideEdgesOnViewport: boolean } }).renderer()
       r.textureOnViewport = large
       r.hideEdgesOnViewport = large
@@ -255,6 +260,7 @@ export default function Universe() {
         cy.animate({ fit: { eles: cy.elements(), padding: 56 } }, { duration: animate ? 400 : 0, easing: 'ease-in-out-cubic', complete: () => capZoom(cy, animate) })
       }
       setZoom(cy.zoom())
+      markKeyPeople(cy)
     }
 
     if (scope.lens === 'influence') {
@@ -368,6 +374,8 @@ export default function Universe() {
         }
       })
     })
+    // Hovering a large map stays a pure class change; readable labels follow the selection, not the pointer.
+    if (!(largeRef.current && hoverRef.current && hoverRef.current !== sel)) sizeKeyLabels(cy)
   }
   useEffect(() => { applyVisual.current() }, [sel, matches, gaps, data, pathSet])
 
@@ -379,14 +387,13 @@ export default function Universe() {
     if (eles.nonempty()) { cy.stop(true); cy.animate({ fit: { eles, padding: 140 } }, { duration: reduceMotion() ? 0 : dur.slow * 1000, easing: 'ease-in-out-cubic', complete: () => capZoom(cy) }) }
   }, [pathSet, ready])
 
-  // Camera: centre selection only if it sits outside the central 60% of the viewport.
+  // Camera: keep the user's zoom; move only when the person and their direct connections aren't all in view.
   useEffect(() => {
     const cy = cyRef.current
     if (!cy || !sel || !ready) return
     const n = cy.getElementById(sel)
     if (n.empty()) return
-    const rp = n.renderedPosition(), w = cy.width(), h = cy.height()
-    if (rp.x < w * 0.2 || rp.x > w * 0.8 - (w > 900 ? 220 : 0) || rp.y < h * 0.2 || rp.y > h * 0.8) centerOn(cy, sel, true)
+    frameFocus(cy, sel, true, largeRef.current)
     const p = byId.get(sel)
     if (p) announce(`${p.name}, ${STANCE_LABEL[p.stance]}, ${p.influence ? `${LEVEL_LABEL[p.influence]} influence` : 'influence not assessed'}, ${n.connectedEdges().length} connections in view`)
   }, [sel, ready, announce, byId])
@@ -592,6 +599,7 @@ export default function Universe() {
 
         <AnimatePresence>
           {sel && byId.has(sel) && <PeekPanel key="panel" id={sel} context="map" onClose={() => { setSel(null); containerRef.current?.focus() }}
+            onPerson={pid => { if (!byId.has(pid)) return false; setSel(pid); return true }}
             note={(() => { const n = cyRef.current?.getElementById(sel); return n && n.nonempty() ? `${n.connectedEdges().length} relationship${n.connectedEdges().length === 1 ? '' : 's'} shown in this view; the full list is below.` : undefined })()} />}
         </AnimatePresence>
       </div>
@@ -611,6 +619,97 @@ function capZoom(cy: Core, animate = false) {
   if (cy.zoom() <= 1.2) return
   const opts = { zoom: { level: 1.2, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } } }
   if (animate && !reduceMotion()) cy.animate(opts, { duration: 200 }); else cy.zoom(opts.zoom)
+}
+
+/**
+ * Focus framing. The zoom the user chose is kept; the camera moves only if the person or any direct connection is
+ * outside the visible area (the panel covers the right 440 px on wide screens), and zooms out only as far as needed to
+ * show them all. It never zooms in, so focus doesn't throw away the user's context.
+ */
+function frameFocus(cy: Core, id: string, animate: boolean, large = false) {
+  const n = cy.getElementById(id)
+  if (n.empty()) return
+  // Large maps (over 800 people): a hub's connections span most of the map, and animating 2,000 nodes costs more
+  // than it explains, so the camera only makes sure the person is in view, without animating.
+  if (large) {
+    const p = n.renderedPosition(), viewW = cy.width() - (cy.width() > 900 ? 440 : 0)
+    if (p.x < 40 || p.x > viewW - 40 || p.y < 80 || p.y > cy.height() - 40) cy.pan({ x: viewW / 2 - n.position().x * cy.zoom(), y: cy.height() / 2 - n.position().y * cy.zoom() })
+    return
+  }
+  const hood = n.closedNeighborhood('node.person')
+  const panelW = cy.width() > 900 ? 440 : 0
+  const pad = 56, top = 40
+  const viewW = cy.width() - panelW, viewH = cy.height()
+  const rb = hood.renderedBoundingBox({ includeLabels: false })
+  if (rb.x1 >= pad && rb.x2 <= viewW - pad && rb.y1 >= pad + top && rb.y2 <= viewH - pad) return
+  const bb = hood.boundingBox({ includeLabels: false })
+  const fit = Math.min((viewW - pad * 2) / Math.max(bb.w, 1), (viewH - pad * 2 - top) / Math.max(bb.h, 1))
+  const z = Math.min(cy.zoom(), Math.max(0.2, fit))
+  // When even the minimum zoom can't hold the whole neighbourhood, keep the person themself in the middle.
+  const c = fit >= 0.2 ? { x: (bb.x1 + bb.x2) / 2, y: (bb.y1 + bb.y2) / 2 } : n.position()
+  const pan = { x: viewW / 2 - c.x * z, y: (viewH + top) / 2 - c.y * z }
+  if (animate && !reduceMotion()) { cy.stop(true); cy.animate({ zoom: z, pan }, { duration: dur.slow * 1000, easing: 'ease-in-out-cubic' }) }
+  else { cy.zoom(z); cy.pan(pan) }
+}
+
+/**
+ * Key people stay named at every zoom. The most influential (then most connected) people in view are labelled at a
+ * constant on-screen size, so the overview reads as "who matters" instead of unreadable 5 px text. Everyone else keeps
+ * the influence-scaled labels that appear as you zoom in.
+ */
+function markKeyPeople(cy: Core) {
+  const people = cy.nodes('.person')
+  const k = people.length <= 30 ? 0 : Math.min(14, Math.max(6, Math.round(Math.sqrt(people.length) * 0.9)))
+  // Score once (influence, then connections): calling degree() inside the comparator walked the graph ~10,000 times.
+  const ranked = k ? people.map(n => ({ n, s: n.data('influence') * 10_000 + n.degree(false) })).sort((a, b) => b.s - a.s).slice(0, k) : []
+  cy.batch(() => {
+    cy.nodes('.person.key').removeClass('key')
+    for (const r of ranked) r.n.addClass('key')
+  })
+  sizeKeyLabels(cy)
+}
+/**
+ * Readable names for key people, the focused person and their connections, and small sets of search matches.
+ * Key people use stylesheet band classes: their labels are always drawn, and classes keep Cytoscape's style cache
+ * effective. The few focus elements (selection, up to 12 named connections, small match sets, highlighted edges) get
+ * per-element sizes instead: their labels switch from hidden to shown, and only that path refreshes Cytoscape's cached
+ * element textures (a band class alone left them clipped at the old size).
+ */
+const BAND_CLASSES = LABEL_BANDS.map((_, i) => `lz${i}`).join(' ')
+const FOCUS_PX = 11.5
+function sizeKeyLabels(cy: Core) {
+  const z = cy.zoom()
+  // The band whose zoom is at or below the current one (labels never render smaller than 11.5 px); -1 at 100%+.
+  const band = z >= 1 ? -1 : (() => { const i = LABEL_BANDS.findIndex(b => z >= b); return i < 0 ? LABEL_BANDS.length - 1 : i })()
+  const keys = band < 0 ? cy.collection() : cy.nodes('.person.key')
+  const prevKeys = (cy.scratch('_sized') as cytoscape.CollectionReturnValue | undefined) ?? cy.collection()
+  const prevBand = cy.scratch('_band') as number | undefined
+
+  // Focus set. Large maps (over 800 people) name the 12 most influential connections; smaller maps name all of them
+  // up to 40, with their relationship labels.
+  const matches = cy.nodes('.person.match')
+  const nb = cy.nodes('.person.nb')
+  const large = !!cy.scratch('_large')
+  const named = large || nb.length > 40 ? nb.sort((a, b) => b.data('influence') - a.data('influence')).slice(0, large ? 12 : 0) : nb
+  let focus = cy.nodes('.person.sel').union(named)
+  if (matches.length <= 25) focus = focus.union(matches)
+  focus = focus.difference(keys) // key people are already sized by their band
+  const edges = !large && nb.length <= 40 ? cy.edges('.hl') : cy.collection()
+  const prevFocus = (cy.scratch('_focus') as cytoscape.CollectionReturnValue | undefined) ?? cy.collection()
+  const nextFocus = z >= 1 ? cy.collection() : focus.union(edges)
+
+  cy.batch(() => {
+    prevKeys.difference(keys).removeClass(BAND_CLASSES)
+    if (band >= 0) (prevBand === band ? keys.difference(prevKeys) : keys).removeClass(BAND_CLASSES).addClass(`lz${band}`)
+    prevFocus.difference(nextFocus).removeStyle('font-size text-max-width text-margin-y min-zoomed-font-size')
+    if (z < 1) {
+      focus.style({ 'font-size': FOCUS_PX / z, 'text-max-width': `${Math.round(120 / z)}px`, 'text-margin-y': 4 / z, 'min-zoomed-font-size': 0 })
+      edges.style({ 'font-size': 10 / z })
+    }
+  })
+  cy.scratch('_sized', keys)
+  cy.scratch('_band', band)
+  cy.scratch('_focus', nextFocus)
 }
 
 function centerOn(cy: Core, id: string, animate: boolean) {

@@ -2,12 +2,12 @@ import { AnimatePresence, LayoutGroup, motion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
-  AlertCircle, Archive, ArrowUpRight, Building2, Clock, FileText, Footprints, Gavel, Lock, Mail, MapPin, MessagesSquare, MoreHorizontal, Network,
+  AlertCircle, Archive, ArrowUpRight, Building2, CheckCircle2, CircleDot, Clock, FileText, Footprints, Gavel, Lock, Mail, MapPin, MessagesSquare, MoreHorizontal, Network,
   NotebookPen, Pencil, Phone, Plus, Presentation, RotateCcw, Sparkles, Users as UsersIcon, X,
 } from 'lucide-react'
-import { useActivity, useInvalidate, useOverview } from '../api/hooks'
+import { useInvalidate, useOverview, useTimeline } from '../api/hooks'
 import { ApiError, errorMessage, request, ws } from '../api/http'
-import type { CommitmentBrief, Overview, RelationshipView, StakeholderDetail } from '../api/types'
+import type { CommitmentBrief, Overview, RelationshipView, StakeholderDetail, TimelineItem } from '../api/types'
 import { Avatar, Button, Cite, Kbd, LevelMeter, Pill, Skeleton, StanceBadge } from '../components/ui'
 import { Menu } from '../components/Menu'
 import { ConfirmDialog, Drawer, DrawerActions } from '../components/Drawer'
@@ -35,7 +35,8 @@ const TABS = [
   { id: 'activity', label: 'Engagements' },
   { id: 'relationships', label: 'Relationships' },
   { id: 'commitments', label: 'Commitments & decisions' },
-  { id: 'history', label: 'History' },
+  // The id stays 'history' so existing links (?tab=history) keep working.
+  { id: 'history', label: 'Timeline' },
 ] as const
 type TabId = typeof TABS[number]['id']
 const DAY = 86_400_000
@@ -632,31 +633,73 @@ function CommitmentsTab({ d }: { d: Overview }) {
   )
 }
 
-/* ── History ───────────────────────────────────────────────────────── */
+/* ── Timeline ──────────────────────────────────────────────────────── */
+const TL_FILTERS = [
+  { id: 'all', label: 'All', kinds: undefined },
+  { id: 'engagement', label: 'Engagements', kinds: 'engagement' },
+  { id: 'commitment', label: 'Commitments', kinds: 'commitment' },
+  { id: 'decision', label: 'Decisions', kinds: 'decision' },
+  { id: 'change', label: 'Changes', kinds: 'change' },
+] as const
+const DIRECTION_LABEL: Record<string, string> = { ours: 'we owe them', theirs: 'they owe us', mutual: 'mutual' }
+
+/** Where an item came from and where it opens. Every line links to its source record, except record changes. */
+function timelineEntry(it: TimelineItem): { icon: typeof MessagesSquare; label: string; meta: string; href: string | null } {
+  const ini = it.initiativeCode ? ` · ${it.initiativeCode}` : ''
+  switch (it.kind) {
+    case 'engagement': return { icon: KIND_ICON[it.sub ?? ''] ?? MessagesSquare, label: ENGAGEMENT_KIND_LABEL[it.sub ?? ''] ?? 'Engagement', meta: `${it.key ?? ''}${ini}`, href: `/engagements/${it.recordId}` }
+    case 'commitment': return { icon: CircleDot, label: 'Commitment raised', meta: `${it.key ?? ''} · ${DIRECTION_LABEL[it.sub ?? ''] ?? ''} · now ${(COMMITMENT_STATUS_LABEL[it.status as keyof typeof COMMITMENT_STATUS_LABEL] ?? it.status ?? '').toLowerCase()}${ini}`, href: `/commitments?open=${it.recordId}` }
+    case 'commitment_done': return { icon: CheckCircle2, label: 'Commitment completed', meta: `${it.key ?? ''}${ini}`, href: `/commitments?open=${it.recordId}` }
+    case 'decision': return { icon: Gavel, label: 'Decision opened', meta: `${it.key ?? ''}${it.sub ? ` · ${it.sub}` : ''} · now ${(DECISION_STATUS_LABEL[it.status as keyof typeof DECISION_STATUS_LABEL] ?? it.status ?? '').toLowerCase()}${ini}`, href: `/decisions?open=${it.recordId}` }
+    case 'decision_decided': return { icon: Gavel, label: `Decision ${(DECISION_STATUS_LABEL[it.status as keyof typeof DECISION_STATUS_LABEL] ?? 'decided').toLowerCase()}`, meta: `${it.key ?? ''}${it.sub ? ` · ${it.sub}` : ''}${ini}`, href: `/decisions?open=${it.recordId}` }
+    default: return { icon: Pencil, label: 'Record change', meta: it.detail ? `by ${it.detail}` : 'by the system', href: null }
+  }
+}
+
+/** Everything recorded about this person, newest first, from the server in pages of 40. */
 function HistoryTab({ d }: { d: Overview }) {
-  const act = useActivity('stakeholder', d.stakeholder.id)
-  const events = act.data?.pages.flatMap(p => p.events) ?? []
+  const nav = useNavigate()
+  const [filter, setFilter] = useState<typeof TL_FILTERS[number]['id']>('all')
+  const f = TL_FILTERS.find(x => x.id === filter)!
+  const q = useTimeline(d.stakeholder.id, f.kinds)
+  const items = q.data?.pages.flatMap(p => p.items) ?? []
+  let lastMonth = ''
   return (
     <div className="ov">
       <div className="ov-main">
-        <section className="card">
-          <header className="card-head"><h2 className="t-heading">Activity history</h2><span className="c3 t-small">Every change, by whom and when</span></header>
-          {act.isError ? <LoadError error={act.error} onRetry={() => act.refetch()} /> : act.isPending ? <div style={{ display: 'grid', gap: 10 }}>{[0, 1, 2, 3].map(i => <Skeleton key={i} h={12} w={`${60 + i * 9}%`} />)}</div> : (
-            <ol className="hist">
-              {events.map(e => (
-                <li key={e.id}>
-                  <span className={`hist-dot hist-${e.verb}`} />
-                  <span className="grow"><span>{e.summary}</span>
-                    <span className="t-small c3" style={{ display: 'block' }}>{e.actor ?? 'System'} · <span title={new Date(e.createdAt).toLocaleString('en-GB')}>{fmtRelative(e.createdAt)}</span>
-                      {e.changes && Object.keys(e.changes).filter(k => k !== 'stance').length > 0 && <> · {Object.entries(e.changes).filter(([k]) => k !== 'stance').slice(0, 3).map(([k, v]) => `${k}: ${fmt(v.from)} → ${fmt(v.to)}`).join('; ')}</>}
+        <section className="card tl tl-unified" aria-labelledby="tl-h" aria-busy={q.isFetching || undefined}>
+          <header className="card-head"><h2 id="tl-h" className="t-heading">Timeline</h2><span className="c3 t-small">Engagements, commitments, decisions and record changes, newest first</span></header>
+          <div className="tl-filter" role="group" aria-label="Show">
+            {TL_FILTERS.map(x => <button key={x.id} className="fchip" aria-pressed={filter === x.id} onClick={() => setFilter(x.id)}>{x.label}</button>)}
+          </div>
+          {q.isError ? <LoadError error={q.error} onRetry={() => q.refetch()} /> : q.isPending ? <div style={{ display: 'grid', gap: 10 }}>{[0, 1, 2, 3].map(i => <Skeleton key={i} h={12} w={`${60 + i * 9}%`} />)}</div> : (
+            <ol>
+              {items.map(it => {
+                const e = timelineEntry(it)
+                const m = fmtDate(it.at, { month: 'long', year: 'numeric' })
+                const header = m !== lastMonth ? (lastMonth = m) : null
+                const body = (
+                  <>
+                    <span className={`tl-ico tl-ico-${it.kind}`}><e.icon size={13} /></span>
+                    <span className="grow tl-content">
+                      <span className="row gap-2"><span className="t-strong truncate">{it.title}</span><span className="grow" /><span className="c3 t-small num" title={new Date(it.at).toLocaleString('en-GB')}>{fmtRelative(it.at)}</span></span>
+                      <span className="c3 t-small tl-meta"><span className="tl-kind">{e.label}</span>{e.meta && <span> · {e.meta}</span>}</span>
+                      {it.kind === 'engagement' && it.detail && <span className="c2 t-small tl-sum">{it.detail}</span>}
+                      {it.kind === 'decision_decided' && it.detail && <span className="c2 t-small tl-sum">Outcome: {it.detail}</span>}
                     </span>
-                  </span>
-                </li>
-              ))}
+                  </>
+                )
+                return (
+                  <li key={it.id}>
+                    {header && <div className="tl-month">{header}</div>}
+                    {e.href ? <button className="tl-item" onClick={() => nav(e.href!)}>{body}</button> : <div className="tl-item" aria-disabled="true">{body}</div>}
+                  </li>
+                )
+              })}
             </ol>
           )}
-          {!act.isPending && !act.isError && !events.length && <p className="c3 t-small card-empty">No history yet.</p>}
-          {act.hasNextPage && <button className="more" onClick={() => act.fetchNextPage()} disabled={act.isFetchingNextPage}>{act.isFetchingNextPage ? 'Loading…' : 'Load older'}</button>}
+          {!q.isPending && !q.isError && !items.length && <p className="c3 t-small card-empty">{filter === 'all' ? 'Nothing recorded about this person yet.' : `No ${f.label.toLowerCase()} recorded for this person.`}</p>}
+          {q.hasNextPage && <button className="more" onClick={() => void q.fetchNextPage()} disabled={q.isFetchingNextPage}>{q.isFetchingNextPage ? 'Loading…' : 'Load older'}</button>}
         </section>
       </div>
       <aside className="ov-rail">
@@ -673,6 +716,5 @@ function HistoryTab({ d }: { d: Overview }) {
     </div>
   )
 }
-const fmt = (v: unknown) => (v == null || v === '' ? '—' : Array.isArray(v) ? v.join(', ') || '—' : String(v).length > 40 ? String(v).slice(0, 40) + '…' : String(v))
 
 export const _labels = { COMMITMENT_STATUS_LABEL }

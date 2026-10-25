@@ -15,6 +15,21 @@ export const RELATIONSHIP_LABEL: Record<string, [string, string]> = {
   member_of: ['Member of', 'Has member'], partner_of: ['Partner of', 'Partner of'], funds: ['Funds', 'Funded by'], regulates: ['Regulates', 'Regulated by'], other: ['Related to', 'Related to'],
 }
 
+/** What each relationship type means. Every relationship is recorded by a person on your team; none is inferred from activity. */
+export const RELATIONSHIP_MEANING: Record<string, string> = {
+  reports_to: 'Formal reporting line, as recorded.',
+  colleague: 'Work in the same organisation or team.',
+  advises: 'Gives advice the other takes into account.',
+  influences: 'Recorded by your team as able to shape the other’s position.',
+  allied: 'Recorded as sharing a position on this work.',
+  opposes: 'Recorded as taking opposing positions on this work.',
+  member_of: 'Belongs to the organisation or body.',
+  partner_of: 'Formal partnership between organisations.',
+  funds: 'Provides funding to the other.',
+  regulates: 'Holds regulatory authority over the other.',
+  other: 'Another recorded connection; see its description.',
+}
+
 const DAY = 86_400_000
 
 /** Calendar-day difference (local), positive = in the future. */

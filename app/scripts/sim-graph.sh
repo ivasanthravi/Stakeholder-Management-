@@ -4,7 +4,7 @@
 # workspace, 1× and 4× CPU, median of 3) → stop and clean up. Results: ../docs/simulation/evidence/graph/
 set -u
 cd "$(dirname "$0")/.."
-OUT=../docs/simulation/evidence/graph; mkdir -p $OUT
+OUT=${OUT:-../docs/simulation/evidence/graph}; mkdir -p $OUT
 npx vite build --outDir .data/simgraph-dist --emptyOutDir > /dev/null 2>&1 || { echo BUILD_FAILED; exit 1; }
 for P in ${PROFILES:-A B C D E}; do
   DIR=.data/simgraph-$P; rm -rf $DIR

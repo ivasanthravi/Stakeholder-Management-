@@ -1,0 +1,194 @@
+[
+ {
+  "run": 0,
+  "readyMs": 315,
+  "longN": 1,
+  "longTotal": 80,
+  "longMax": 80,
+  "longTop": [
+   80
+  ],
+  "apiStart": 162,
+  "apiMs": 28,
+  "apiTTFB": 28,
+  "apiBytes": 120392,
+  "apiTransfer": 120692,
+  "graphReqs": 1,
+  "cyNodes": 115,
+  "cyOrgs": 19,
+  "cyEdges": 314,
+  "countText": "115 people · 314 relationships · 19 organizations · ←→ to traverse",
+  "zoom": 0.514,
+  "labelsVisibleAtFit": false,
+  "apiNodes": 115,
+  "apiEdges": 324,
+  "apiOrgs": 19,
+  "apiPersonEdges": 314,
+  "bodyBytes": 120392,
+  "heapMB": 11.1,
+  "pan": {
+   "n": 132,
+   "p50": 16.7,
+   "p95": 16.7,
+   "max": 16.8,
+   "fps": 60,
+   "over50": 0,
+   "longN": 0,
+   "longMax": 0,
+   "moves": 60
+  },
+  "zoomWheel": {
+   "n": 131,
+   "p50": 16.7,
+   "p95": 16.7,
+   "max": 33.4,
+   "fps": 59.5,
+   "over50": 0,
+   "longN": 0,
+   "longMax": 0,
+   "wheels": 30
+  },
+  "select": {
+   "toHighlight": 27,
+   "toPeek": 27,
+   "toPeekLoaded": 46,
+   "longN": 0,
+   "longMax": 0
+  },
+  "list": {
+   "toFirstPaint": 32,
+   "items": 115,
+   "domNodes": 1606,
+   "longN": 0,
+   "longMax": 0
+  }
+ },
+ {
+  "run": 1,
+  "readyMs": 291,
+  "longN": 1,
+  "longTotal": 76,
+  "longMax": 76,
+  "longTop": [
+   76
+  ],
+  "apiStart": 154,
+  "apiMs": 18,
+  "apiTTFB": 17,
+  "apiBytes": 120392,
+  "apiTransfer": 120692,
+  "graphReqs": 1,
+  "cyNodes": 115,
+  "cyOrgs": 19,
+  "cyEdges": 314,
+  "countText": "115 people · 314 relationships · 19 organizations · ←→ to traverse",
+  "zoom": 0.514,
+  "labelsVisibleAtFit": false,
+  "apiNodes": 115,
+  "apiEdges": 324,
+  "apiOrgs": 19,
+  "apiPersonEdges": 314,
+  "bodyBytes": 120392,
+  "heapMB": 11.1,
+  "pan": {
+   "n": 132,
+   "p50": 16.7,
+   "p95": 16.7,
+   "max": 16.8,
+   "fps": 60,
+   "over50": 0,
+   "longN": 0,
+   "longMax": 0,
+   "moves": 58
+  },
+  "zoomWheel": {
+   "n": 131,
+   "p50": 16.7,
+   "p95": 16.7,
+   "max": 16.8,
+   "fps": 60,
+   "over50": 0,
+   "longN": 0,
+   "longMax": 0,
+   "wheels": 30
+  },
+  "select": {
+   "toHighlight": 29,
+   "toPeek": 29,
+   "toPeekLoaded": 48,
+   "longN": 0,
+   "longMax": 0
+  },
+  "list": {
+   "toFirstPaint": 26,
+   "items": 115,
+   "domNodes": 1606,
+   "longN": 0,
+   "longMax": 0
+  }
+ },
+ {
+  "run": 2,
+  "readyMs": 294,
+  "longN": 1,
+  "longTotal": 77,
+  "longMax": 77,
+  "longTop": [
+   77
+  ],
+  "apiStart": 156,
+  "apiMs": 18,
+  "apiTTFB": 17,
+  "apiBytes": 120392,
+  "apiTransfer": 120692,
+  "graphReqs": 1,
+  "cyNodes": 115,
+  "cyOrgs": 19,
+  "cyEdges": 314,
+  "countText": "115 people · 314 relationships · 19 organizations · ←→ to traverse",
+  "zoom": 0.514,
+  "labelsVisibleAtFit": false,
+  "apiNodes": 115,
+  "apiEdges": 324,
+  "apiOrgs": 19,
+  "apiPersonEdges": 314,
+  "bodyBytes": 120392,
+  "heapMB": 11.1,
+  "pan": {
+   "n": 133,
+   "p50": 16.7,
+   "p95": 16.7,
+   "max": 16.8,
+   "fps": 60,
+   "over50": 0,
+   "longN": 0,
+   "longMax": 0,
+   "moves": 60
+  },
+  "zoomWheel": {
+   "n": 130,
+   "p50": 16.7,
+   "p95": 16.7,
+   "max": 33.3,
+   "fps": 59.5,
+   "over50": 0,
+   "longN": 0,
+   "longMax": 0,
+   "wheels": 30
+  },
+  "select": {
+   "toHighlight": 28,
+   "toPeek": 28,
+   "toPeekLoaded": 50,
+   "longN": 0,
+   "longMax": 0
+  },
+  "list": {
+   "toFirstPaint": 27,
+   "items": 115,
+   "domNodes": 1606,
+   "longN": 0,
+   "longMax": 0
+  }
+ }
+]

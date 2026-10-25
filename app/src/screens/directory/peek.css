@@ -52,3 +52,10 @@
 @media (max-width: 640px) {
   .peek { max-width: 100%; border-left: 0; box-shadow: none; }
 }
+
+/* Initiatives and decisions: compact, scannable rows that open the record. */
+.peek-inits { display: flex; flex-direction: column; gap: 2px; margin: 0 -6px; }
+.peek-init { display: flex; align-items: center; gap: 8px; min-height: 28px; padding: 0 6px; border-radius: 6px; text-align: left; font: var(--text-small); }
+.peek-init:hover, .peek-dec:hover { background: var(--bg-hover); }
+.peek-init .mono { flex: none; font-size: 10px; color: var(--text-2); padding: 1px 4px; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--border); }
+.peek-dec { width: calc(100% + 12px); margin: 0 -6px; padding: 0 6px; border-radius: 6px; text-align: left; }

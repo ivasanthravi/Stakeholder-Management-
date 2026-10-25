@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { withTenant, type DB, type TenantContext, type Tx } from '../../db/client'
 import { commitment, decision, decisionStakeholder, engagement, engagementParticipant, initiative, organization, relationship, stakeholder, stakeholderOrganization, user } from '../../db/schema'
 import { rowsOf, STANCE_LABEL } from '../../modules/_shared'
+import { recentChanges } from '../../modules/changes'
 import { daysFromToday } from '../../../shared/dates'
 
 export interface Ref { ref: string; type: string; id: string; label: string; href: string; at?: string | null }
@@ -166,27 +167,12 @@ export async function runTool(db: DB, tn: TenantContext, reg: RefRegistry, name:
         return { engagements: rows.map(e => ({ ref: reg.add('engagement', e.id, `${e.key} ${e.title}`, iso(e.at)), date: iso(e.at)?.slice(0, 10), kind: e.kind, title: e.title, summary: e.summary })) }
       }
       case 'recent_changes': {
-        // Every item is joined to its record, so RLS hides anything the user can't see (restricted stakeholders never
-        // leak through history text).
-        const days = a.days as number, ini = (a.initiative_id as string | null) ?? null
-        const since = sql`now() - make_interval(days => ${days})`
-        const stance = rowsOf<Record<string, unknown>>(await t.execute(sql`
-          select distinct on (s.id) s.id, s.name, a.changes, a.created_at as at from activity_event a join stakeholder s on s.id = a.entity_id
-          where a.entity_type = 'stakeholder' and a.verb = 'stance_changed' and a.created_at > ${since} and s.archived_at is null
-            ${ini ? sql`and exists (select 1 from initiative_stakeholder x where x.stakeholder_id = s.id and x.initiative_id = ${ini})` : sql``}
-          order by s.id, a.created_at desc`))
-        const decided = await t.select({ id: decision.id, key: decision.key, title: decision.title, status: decision.status, at: decision.decidedAt }).from(decision)
-          .where(and(isNull(decision.archivedAt), inArray(decision.status, ['approved', 'rejected', 'deferred']), sql`${decision.decidedAt} > ${since}`, ini ? eq(decision.initiativeId, ini) : undefined)).orderBy(desc(decision.decidedAt))
-        const done = await t.select({ id: commitment.id, key: commitment.key, title: commitment.title, at: commitment.completedAt }).from(commitment)
-          .where(and(isNull(commitment.archivedAt), eq(commitment.status, 'completed'), sql`${commitment.completedAt} > ${since}`, ini ? eq(commitment.initiativeId, ini) : undefined)).orderBy(desc(commitment.completedAt))
-        const added = await t.select({ id: stakeholder.id, name: stakeholder.name, at: stakeholder.createdAt }).from(stakeholder)
-          .where(and(isNull(stakeholder.archivedAt), sql`${stakeholder.createdAt} > ${since}`, ini ? sql`exists (select 1 from initiative_stakeholder x where x.stakeholder_id = ${stakeholder.id} and x.initiative_id = ${ini})` : undefined)).orderBy(desc(stakeholder.createdAt))
-        const ch = (r: Record<string, unknown>) => (r.changes as { stance?: { from: string; to: string } } | null)?.stance
+        const r = await recentChanges(t, { days: a.days as number, initiativeId: (a.initiative_id as string | null) ?? null, limit: 5 })
         return {
-          days, stance_changes: stance.length, decisions_decided: decided.length, commitments_completed: done.length, stakeholders_added: added.length,
-          latest_stance_changes: stance.slice(0, 5).map(r => ({ ref: reg.add('stakeholder', r.id as string, r.name as string), name: r.name, from: ch(r) ? STANCE_LABEL[ch(r)!.from] : null, to: ch(r) ? STANCE_LABEL[ch(r)!.to] : null })),
-          latest_decisions: decided.slice(0, 5).map(d => ({ ref: reg.add('decision', d.id, `${d.key} ${d.title}`), key: d.key, title: d.title, status: d.status, on: iso(d.at)?.slice(0, 10) })),
-          latest_completed: done.slice(0, 5).map(c => ({ ref: reg.add('commitment', c.id, `${c.key} ${c.title}`), key: c.key, title: c.title, on: iso(c.at)?.slice(0, 10) })),
+          days: r.days, stance_changes: r.counts.stance, decisions_decided: r.counts.decided, commitments_completed: r.counts.completed, stakeholders_added: r.counts.added,
+          latest_stance_changes: r.stance.map(x => ({ ref: reg.add('stakeholder', x.id, x.name), name: x.name, from: x.from ? STANCE_LABEL[x.from] : null, to: x.to ? STANCE_LABEL[x.to] : null })),
+          latest_decisions: r.decided.map(d => ({ ref: reg.add('decision', d.id, `${d.key} ${d.title}`), key: d.key, title: d.title, status: d.status, on: d.at.slice(0, 10) })),
+          latest_completed: r.completed.map(c => ({ ref: reg.add('commitment', c.id, `${c.key} ${c.title}`), key: c.key, title: c.title, on: c.at.slice(0, 10) })),
         }
       }
       case 'get_initiative': {

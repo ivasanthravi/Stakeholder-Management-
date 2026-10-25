@@ -1,0 +1,197 @@
+[
+ {
+  "run": 0,
+  "readyMs": 2925,
+  "longN": 2,
+  "longTotal": 2093,
+  "longMax": 1716,
+  "longTop": [
+   1716,
+   377
+  ],
+  "apiStart": 414,
+  "apiMs": 269,
+  "apiTTFB": 265,
+  "apiBytes": 1953616,
+  "apiTransfer": 1953916,
+  "graphReqs": 1,
+  "cyNodes": 2000,
+  "cyOrgs": 283,
+  "cyEdges": 4919,
+  "countText": "2000 people · 4919 relationships · 283 organizations · showing the 2,000 most influential of 4,901 — filter by initiative to see the rest · ←→ to traverse",
+  "zoom": 0.15,
+  "labelsVisibleAtFit": false,
+  "apiNodes": 2000,
+  "apiEdges": 5115,
+  "apiOrgs": 283,
+  "apiPersonEdges": 4919,
+  "bodyBytes": 1953616,
+  "heapMB": 40.8,
+  "pan": {
+   "n": 101,
+   "p50": 16.7,
+   "p95": 16.8,
+   "max": 266.7,
+   "fps": 44.2,
+   "over50": 4,
+   "longN": 3,
+   "longMax": 173,
+   "moves": 47
+  },
+  "zoomWheel": {
+   "n": 112,
+   "p50": 16.7,
+   "p95": 16.8,
+   "max": 116.7,
+   "fps": 52.9,
+   "over50": 3,
+   "longN": 3,
+   "longMax": 121,
+   "wheels": 27
+  },
+  "select": {
+   "toHighlight": 338,
+   "toPeek": 338,
+   "toPeekLoaded": 359,
+   "longN": 2,
+   "longMax": 266
+  },
+  "list": {
+   "toFirstPaint": 109,
+   "items": 2000,
+   "domNodes": 19609,
+   "longN": 3,
+   "longMax": 162
+  }
+ },
+ {
+  "run": 1,
+  "readyMs": 2870,
+  "longN": 2,
+  "longTotal": 2218,
+  "longMax": 1829,
+  "longTop": [
+   1829,
+   389
+  ],
+  "apiStart": 168,
+  "apiMs": 312,
+  "apiTTFB": 309,
+  "apiBytes": 1953616,
+  "apiTransfer": 1953916,
+  "graphReqs": 1,
+  "cyNodes": 2000,
+  "cyOrgs": 283,
+  "cyEdges": 4919,
+  "countText": "2000 people · 4919 relationships · 283 organizations · showing the 2,000 most influential of 4,901 — filter by initiative to see the rest · ←→ to traverse",
+  "zoom": 0.15,
+  "labelsVisibleAtFit": false,
+  "apiNodes": 2000,
+  "apiEdges": 5115,
+  "apiOrgs": 283,
+  "apiPersonEdges": 4919,
+  "bodyBytes": 1953616,
+  "heapMB": 40.8,
+  "pan": {
+   "n": 98,
+   "p50": 16.7,
+   "p95": 16.8,
+   "max": 266.7,
+   "fps": 42.9,
+   "over50": 4,
+   "longN": 3,
+   "longMax": 198,
+   "moves": 44
+  },
+  "zoomWheel": {
+   "n": 116,
+   "p50": 16.7,
+   "p95": 16.7,
+   "max": 116.7,
+   "fps": 53.5,
+   "over50": 3,
+   "longN": 3,
+   "longMax": 117,
+   "wheels": 28
+  },
+  "select": {
+   "toHighlight": 361,
+   "toPeek": 361,
+   "toPeekLoaded": 396,
+   "longN": 1,
+   "longMax": 363
+  },
+  "list": {
+   "toFirstPaint": 116,
+   "items": 2000,
+   "domNodes": 19609,
+   "longN": 3,
+   "longMax": 202
+  }
+ },
+ {
+  "run": 2,
+  "readyMs": 3144,
+  "longN": 2,
+  "longTotal": 2171,
+  "longMax": 1773,
+  "longTop": [
+   1773,
+   398
+  ],
+  "apiStart": 367,
+  "apiMs": 541,
+  "apiTTFB": 535,
+  "apiBytes": 1953616,
+  "apiTransfer": 1953916,
+  "graphReqs": 1,
+  "cyNodes": 2000,
+  "cyOrgs": 283,
+  "cyEdges": 4919,
+  "countText": "2000 people · 4919 relationships · 283 organizations · showing the 2,000 most influential of 4,901 — filter by initiative to see the rest · ←→ to traverse",
+  "zoom": 0.15,
+  "labelsVisibleAtFit": false,
+  "apiNodes": 2000,
+  "apiEdges": 5115,
+  "apiOrgs": 283,
+  "apiPersonEdges": 4919,
+  "bodyBytes": 1953616,
+  "heapMB": 40.8,
+  "pan": {
+   "n": 112,
+   "p50": 16.7,
+   "p95": 16.8,
+   "max": 150,
+   "fps": 49.4,
+   "over50": 3,
+   "longN": 3,
+   "longMax": 162,
+   "moves": 52
+  },
+  "zoomWheel": {
+   "n": 86,
+   "p50": 16.7,
+   "p95": 50,
+   "max": 350,
+   "fps": 39.7,
+   "over50": 4,
+   "longN": 4,
+   "longMax": 348,
+   "wheels": 20
+  },
+  "select": {
+   "toHighlight": 365,
+   "toPeek": 365,
+   "toPeekLoaded": 437,
+   "longN": 2,
+   "longMax": 281
+  },
+  "list": {
+   "toFirstPaint": 112,
+   "items": 2000,
+   "domNodes": 19609,
+   "longN": 3,
+   "longMax": 163
+  }
+ }
+]

@@ -1,0 +1,77 @@
+{
+ "steps": [
+  {
+   "name": "cc full page",
+   "ok": true,
+   "ms": 408
+  },
+  {
+   "name": "cc hover first commitment",
+   "ok": true,
+   "ms": 91
+  },
+  {
+   "name": "cc select first commitment",
+   "ok": true,
+   "ms": 129
+  },
+  {
+   "name": "cc escape",
+   "ok": true,
+   "ms": 3
+  },
+  {
+   "name": "universe open",
+   "ok": true,
+   "ms": 992
+  },
+  {
+   "name": "universe search",
+   "ok": true,
+   "ms": 30
+  },
+  {
+   "name": "universe select result",
+   "ok": true,
+   "ms": 52
+  },
+  {
+   "name": "universe escape",
+   "ok": true,
+   "ms": 17
+  },
+  {
+   "name": "universe list view",
+   "ok": true,
+   "ms": 101
+  },
+  {
+   "name": "profile overview",
+   "ok": true,
+   "ms": 176
+  },
+  {
+   "name": "profile tab activity",
+   "ok": true,
+   "ms": 145
+  },
+  {
+   "name": "profile tab relationships",
+   "ok": true,
+   "ms": 160
+  },
+  {
+   "name": "profile tab commitments",
+   "ok": true,
+   "ms": 158
+  },
+  {
+   "name": "profile tab history",
+   "ok": true,
+   "ms": 139
+  }
+ ],
+ "errors": [
+  "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+ ]
+}

@@ -1,0 +1,116 @@
+{
+ "label": "before",
+ "base": "http://localhost:5173",
+ "ranAt": "2026-10-25T06:28:30.764Z",
+ "profileId": "b8a0a1f8-df09-4c63-84c0-7f9bc643609b",
+ "shots": [
+  {
+   "screen": "command-center",
+   "width": 1440,
+   "loadToSettleMs": 893,
+   "horizontalOverflow": false
+  },
+  {
+   "screen": "universe",
+   "width": 1440,
+   "loadToSettleMs": 1225,
+   "horizontalOverflow": false
+  },
+  {
+   "screen": "profile",
+   "width": 1440,
+   "loadToSettleMs": 591,
+   "horizontalOverflow": false
+  },
+  {
+   "screen": "command-center",
+   "width": 1280,
+   "loadToSettleMs": 850,
+   "horizontalOverflow": false
+  },
+  {
+   "screen": "universe",
+   "width": 1280,
+   "loadToSettleMs": 1208,
+   "horizontalOverflow": false
+  },
+  {
+   "screen": "profile",
+   "width": 1280,
+   "loadToSettleMs": 585,
+   "horizontalOverflow": false
+  },
+  {
+   "screen": "command-center",
+   "width": 1024,
+   "loadToSettleMs": 854,
+   "horizontalOverflow": false
+  },
+  {
+   "screen": "universe",
+   "width": 1024,
+   "loadToSettleMs": 1181,
+   "horizontalOverflow": false
+  },
+  {
+   "screen": "profile",
+   "width": 1024,
+   "loadToSettleMs": 628,
+   "horizontalOverflow": false
+  },
+  {
+   "screen": "command-center",
+   "width": 768,
+   "loadToSettleMs": 1224,
+   "horizontalOverflow": false
+  },
+  {
+   "screen": "universe",
+   "width": 768,
+   "loadToSettleMs": 1316,
+   "horizontalOverflow": false
+  },
+  {
+   "screen": "profile",
+   "width": 768,
+   "loadToSettleMs": 595,
+   "horizontalOverflow": false
+  },
+  {
+   "screen": "command-center",
+   "width": 390,
+   "loadToSettleMs": 875,
+   "horizontalOverflow": false
+  },
+  {
+   "screen": "universe",
+   "width": 390,
+   "loadToSettleMs": 1198,
+   "horizontalOverflow": false
+  },
+  {
+   "screen": "profile",
+   "width": 390,
+   "loadToSettleMs": 573,
+   "horizontalOverflow": false
+  },
+  {
+   "screen": "command-center",
+   "width": 320,
+   "loadToSettleMs": 850,
+   "horizontalOverflow": false
+  },
+  {
+   "screen": "universe",
+   "width": 320,
+   "loadToSettleMs": 1256,
+   "horizontalOverflow": false
+  },
+  {
+   "screen": "profile",
+   "width": 320,
+   "loadToSettleMs": 590,
+   "horizontalOverflow": false
+  }
+ ]
+}

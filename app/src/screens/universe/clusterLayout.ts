@@ -11,6 +11,7 @@ interface Organization { id: string }
 const GOLDEN = Math.PI * (3 - Math.sqrt(5))
 const SPACING = 30
 const GAP = 34
+const MIN_RING = 52
 
 export function clusterLayout(people: Person[], rels: Relationship[], orgs: Organization[]) {
   const byOrg = new Map<string, Person[]>()
@@ -23,10 +24,11 @@ export function clusterLayout(people: Person[], rels: Relationship[], orgs: Orga
   for (const [oid, ps] of byOrg) {
     const sorted = ps.slice().sort((a, b) => b.influence - a.influence || a.id.localeCompare(b.id))
     sorted.forEach((p, k) => {
-      const r = k === 0 ? 0 : SPACING * Math.sqrt(k + 0.4)
+      // The first rings keep a minimum distance: two high-influence people (36 px nodes) plus their labels need it.
+      const r = k === 0 ? 0 : Math.max(MIN_RING, SPACING * Math.sqrt(k + 0.4))
       local.set(p.id, { x: Math.cos(k * GOLDEN) * r, y: Math.sin(k * GOLDEN) * r })
     })
-    radius.set(oid, SPACING * Math.sqrt(sorted.length + 0.4) + 26)
+    radius.set(oid, Math.max(sorted.length > 1 ? MIN_RING : 0, SPACING * Math.sqrt(sorted.length + 0.4)) + 26)
   }
 
   // Cross-org weights.

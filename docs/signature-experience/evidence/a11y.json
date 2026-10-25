@@ -1,0 +1,118 @@
+{
+ "ranAt": "2026-10-25T09:08:45.759Z",
+ "base": "http://localhost:5173",
+ "results": [
+  {
+   "width": 1440,
+   "state": "command center",
+   "violations": []
+  },
+  {
+   "width": 1440,
+   "state": "command center · signal expanded",
+   "violations": []
+  },
+  {
+   "width": 1440,
+   "state": "command center · briefing expanded",
+   "violations": []
+  },
+  {
+   "width": 1440,
+   "state": "universe",
+   "violations": []
+  },
+  {
+   "width": 1440,
+   "state": "universe · focus panel",
+   "violations": []
+  },
+  {
+   "width": 1440,
+   "state": "profile · overview",
+   "violations": []
+  },
+  {
+   "width": 1440,
+   "state": "profile · activity",
+   "violations": []
+  },
+  {
+   "width": 1440,
+   "state": "profile · relationships",
+   "violations": []
+  },
+  {
+   "width": 1440,
+   "state": "profile · commitments",
+   "violations": []
+  },
+  {
+   "width": 1440,
+   "state": "profile · history",
+   "violations": []
+  },
+  {
+   "width": 390,
+   "state": "command center",
+   "violations": []
+  },
+  {
+   "width": 390,
+   "state": "command center · signal expanded",
+   "violations": []
+  },
+  {
+   "width": 390,
+   "state": "command center · briefing expanded",
+   "violations": []
+  },
+  {
+   "width": 390,
+   "state": "universe (list on phones)",
+   "violations": []
+  },
+  {
+   "width": 390,
+   "state": "profile · overview",
+   "violations": []
+  },
+  {
+   "width": 390,
+   "state": "profile · activity",
+   "violations": []
+  },
+  {
+   "width": 390,
+   "state": "profile · relationships",
+   "violations": []
+  },
+  {
+   "width": 390,
+   "state": "profile · commitments",
+   "violations": []
+  },
+  {
+   "width": 390,
+   "state": "profile · history",
+   "violations": []
+  }
+ ],
+ "keyboard": [
+  {
+   "path": "/",
+   "tabStops": 12,
+   "withVisibleFocus": 12
+  },
+  {
+   "path": "/stakeholders?view=map",
+   "tabStops": 12,
+   "withVisibleFocus": 12
+  },
+  {
+   "path": "/stakeholders?view=table",
+   "tabStops": 12,
+   "withVisibleFocus": 12
+  }
+ ]
+}

@@ -39,8 +39,14 @@
 .lreason { font: var(--text-small); color: var(--text-2); }
 .lcode { font-size: 10px; color: var(--text-2); padding: 1px 4px; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--border); }
 .lnone { width: 20px; height: 20px; border-radius: 50%; box-shadow: inset 0 0 0 1.25px var(--slate-300); background: repeating-linear-gradient(45deg, transparent 0 3px, var(--slate-150) 3px 4px); }
-.lactions { display: flex; gap: 4px; opacity: 0; transition: opacity var(--dur-fast) var(--ease-standard); }
-.lrow-main:hover .lactions, .lrow[data-focus] .lactions { opacity: 1; }
+/* Quick actions sit over the row's right-hand metadata on hover or focus instead of reserving width on every row, so
+   titles get the space. The backdrop matches the row's own (opaque) background in each state. */
+.lrow-main { position: relative; --row-solid: var(--bg-surface); }
+.lrow-main:hover { --row-solid: color-mix(in srgb, var(--slate-900) 3.5%, var(--bg-surface)); }
+.lrow[data-open] .lrow-main { --row-solid: var(--bg-canvas); }
+.lactions { position: absolute; right: 44px; top: 50%; transform: translateY(-50%); display: flex; gap: 4px; padding-left: 20px;
+  background: linear-gradient(to right, transparent, var(--row-solid) 18px); opacity: 0; pointer-events: none; transition: opacity var(--dur-fast) var(--ease-standard); }
+.lrow-main:hover .lactions, .ledger[data-kbd] .lrow[data-focus] .lactions, .lactions:focus-within { opacity: 1; pointer-events: auto; }
 .lchev-btn { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 5px; }
 .lchev-btn:hover { background: var(--bg-press); }
 .lchev { color: var(--text-3); transition: transform var(--dur-base) var(--ease-standard); }
@@ -126,7 +132,9 @@
   .ftabs { margin-left: 0; }
   .home { padding: 16px 12px 40px; }
   .ledger-foot span:not(.grow):nth-child(n+3) { display: none; }
-  .ftabs .ftab:nth-child(n+3) { display: none; }
+  /* Every filter stays reachable: the tab strip scrolls sideways rather than hiding tabs. */
+  .ftabs { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .ftabs::-webkit-scrollbar { display: none; }
 }
 
 /* ── Phase 1 additions ──────────────────────────────────── */
@@ -161,12 +169,28 @@
 .why-next p { font: var(--text-body); color: var(--text-1); }
 .why-actions { flex-wrap: wrap; }
 
+/* ── What changed ───────────────────────────────────────── */
+.chg-stats { display: flex; flex-wrap: wrap; gap: 2px 4px; margin: -4px -6px 8px; font: var(--text-small); }
+.chg-stat { padding: 2px 6px; border-radius: 6px; white-space: nowrap; }
+.chg-stat:hover { background: var(--bg-hover); }
+.chg-stat[data-zero] { color: var(--text-3); }
+.chg-stat[data-zero] .t-strong, .chg-stat[data-zero] .c2 { color: var(--text-3); font-weight: 500; }
+.chg-feed .chg-link { align-items: flex-start; }
+.chg-feed .chg-ico { margin-top: 3px; }
+.chg-feed .chg-txt .t-small { max-width: 100%; }
+.chg-ico { display: grid; place-items: center; flex: none; width: 16px; }
+.chg-done { color: var(--positive); }
+
 /* ── Workspace briefing ─────────────────────────────────── */
 .brief { margin-bottom: 20px; padding: 12px 16px 14px; border-radius: var(--radius-md); background: var(--bg-surface); box-shadow: 0 0 0 1px var(--border); }
 /* profile.css also defines .brief (with a zero bottom padding for its footer strip) and loads later; restore the
    workspace briefing's bottom padding so the last item doesn't sit on the card edge. */
 section.brief[aria-labelledby="brief-h"] { padding-bottom: 16px; }
 .brief-head { display: flex; align-items: center; gap: 8px; min-height: 28px; }
+.brief[data-folded] { padding-bottom: 12px; }
+section.brief[data-folded][aria-labelledby="brief-h"] { padding-bottom: 12px; }
+.brief-chev { transition: transform var(--dur-base) var(--ease-standard); }
+.brief:not([data-folded]) .brief-chev { transform: rotate(180deg); }
 .brief-ico { color: var(--ai); flex: none; }
 .brief-engine { padding-left: 4px; }
 .brief-idle { display: flex; align-items: center; gap: 16px; margin-top: 6px; }
@@ -193,6 +217,8 @@ section.brief[aria-labelledby="brief-h"] { padding-bottom: 16px; }
   /* The engine disclosure keeps its own line under the title rather than disappearing. */
   .brief-head { flex-wrap: wrap; row-gap: 0; }
   .brief-engine { order: 10; flex-basis: 100%; padding-left: 22px; }
+  /* A folded briefing hides its generation time on phones, so the toggle stays on the title row. */
+  .brief[data-folded] .brief-time { display: none; }
   .brief-idle { flex-direction: column; align-items: flex-start; gap: 8px; }
   .why-next { flex-direction: column; align-items: flex-start; }
 }

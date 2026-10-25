@@ -10,7 +10,7 @@ const DAY = 86_400_000
 const fmt = (d: string | Date) => new Date(typeof d === 'string' && d.length === 10 ? d + 'T12:00:00Z' : d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 
 interface Input {
-  s: { id: string; name: string; title?: unknown; stance: unknown; influence?: unknown; organizations: { name: string; validTo: string | null; isPrimary: boolean }[] }
+  s: { id: string; name: string; title?: unknown; stance: unknown; influence?: unknown; organizations: { name: string; validTo: string | null; isPrimary: boolean }[]; initiatives?: { code: string; name: string; role: string | null }[] }
   engagements: { id: string; key: string; kind: string; title: string; occurredAt: Date; summary: string | null }[]
   commitments: { id: string; key: string; title: string; status: string; dueDate: string | null }[]
   decisions: { id: string; key: string; title: string; status: string; role: string }[]
@@ -26,8 +26,16 @@ export function buildBriefing({ s, engagements, commitments, decisions, relation
   const org = s.organizations.find(o => !o.validTo && o.isPrimary) ?? s.organizations.find(o => !o.validTo)
 
   const self = cite({ id: s.id, kind: 'stakeholder', label: `${s.name} — profile record` })
-  const parts = [s.title ? `${s.title}${org ? ` at ${org.name}` : ''}` : org ? `at ${org.name}` : null].filter(Boolean)
-  out.push({ kind: 'fact', text: `${s.name}${parts.length ? ` is ${parts[0]}` : ''}, recorded as ${STANCE_LABEL[s.stance as string].toLowerCase()}${s.influence ? ` with ${LEVEL[s.influence as number]} influence` : ''}.`, cites: [self] })
+  // The profile header already shows role, organisation, stance and influence, so the briefing opens with why this
+  // person matters: the initiatives they are recorded on, and in what role. Without any, it falls back to identity.
+  const inits = s.initiatives ?? []
+  if (inits.length) {
+    const named = inits.slice(0, 3).map(i => `${i.code} ${i.name}${i.role ? ` (${i.role.toLowerCase()})` : ''}`)
+    out.push({ kind: 'fact', text: `${first} is recorded on ${inits.length === 1 ? 'one initiative' : `${inits.length} initiatives`}: ${named.join(', ')}${inits.length > 3 ? `, and ${inits.length - 3} more` : ''}.`, cites: [self] })
+  } else {
+    const parts = [s.title ? `${s.title}${org ? ` at ${org.name}` : ''}` : org ? `at ${org.name}` : null].filter(Boolean)
+    out.push({ kind: 'fact', text: `${s.name}${parts.length ? ` is ${parts[0]}` : ''}, recorded as ${STANCE_LABEL[s.stance as string].toLowerCase()}${s.influence ? ` with ${LEVEL[s.influence as number]} influence` : ''}; not yet linked to an initiative.`, cites: [self] })
+  }
 
   if (engagements.length) {
     const last = engagements[0]
