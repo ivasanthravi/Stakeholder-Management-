@@ -4,6 +4,67 @@ All notable changes are listed here, per release. Versions follow semver.
 - **Releases before Phase 4** were not tagged. Their commits are listed below for reference.
 - **Database changes:** a release that changes the database schema is at least a MINOR version, and its migrations follow the expand/contract policy in `docs/launch/deployment-runbook.md`.
 
+## [Unreleased] — Phase 6: product excellence
+### Fixed: data and trust
+- **Old overdue commitments.** Commitments more than 60 days overdue disappeared from the Command Center; they now always appear, and the horizon counts every overdue commitment.
+- **Consistent overdue counts.** Copilot, briefings and signals count overdue days the same way (one record read "7 days" in one place and "8" in another).
+- **Disclosed map cap.** The relationship map's 2,000-person cap was arbitrary and silent. It now keeps the most influential people and says how many matched.
+### Command Center
+- **Action first.** The briefing is compact, and "Needs attention" sits above the fold on desktop and phones.
+- **Keeps your place.** A signal's stakeholder opens in a peek without leaving Home; Esc closes it.
+### Stakeholder Universe
+- **Smooth at scale.** Large maps (over 800 people) pan and zoom smoothly: at 2,000 people on a slow CPU, 13 → 38 fps.
+- **Readable overview.** Labels scale with influence, so the overview names key people; selection, neighbours and matches are always labelled.
+- **Correctness fixes:**
+  - quick filter toggles no longer drop people;
+  - layouts frame where nodes land;
+  - camera moves don't queue up.
+### Interaction and motion
+- **Route changes.** No more flash of the next screen fading out and back in.
+- **Reduced motion.** Respected by every animation, including canvas and JS height and width animations.
+- **Quicker interactions:**
+  - the table/map toggle is faster;
+  - ego-graph hover responds immediately;
+  - the search field no longer resizes on focus;
+  - closing overlays don't swallow clicks.
+### Accessibility
+- **Real buttons and links.** Relationship names, sortable headers and people rows were exposed with the wrong roles; they're now real links and buttons inside cells.
+### Responsive and copy
+- **No clipping.** Toolbars scroll instead of clipping between 641 and 1,280 px, and Commitments fits at 1,024 px.
+- **Phone headers.** Phones show a back link (or the current scope) instead of truncated breadcrumbs, and the profile identity stacks.
+- **Clearer labels:**
+  - counts say what they count ("184 stakeholders · Show archived");
+  - load errors no longer say changes weren't saved;
+  - the map count is grammatical ("1 person").
+- **Copilot.** Shows 5 sources with "Show all".
+### Tooling
+- **Audit scripts:** `audit/excellence-capture.mjs` (screenshot archive) and `audit/responsive.mjs` (clipping audit).
+- **New check:** a reduced-motion check for JS animations.
+- **New tests:** E2E `excellence.spec.ts` (Command Center context, workflows B and E), `tests/dashboard.test.ts`, and date unit tests.
+
+## [Unreleased] — Phase 5: launch preparation
+### Security and safe configuration
+- **Production refuses development defaults.** A production server (`DEPLOY_ENV=production`, the default when `NODE_ENV=production`) won't start with an http `APP_URL`, without `MAIL_TRANSPORT=postmark`, or with the billing simulator. Staging (`DEPLOY_ENV=staging`) refuses live payments.
+- **The Claude model engine is locked off in production** until `AI_MODEL_APPROVED=true`. An API key alone no longer switches it on.
+- **Audit trail.** Row-level security on the audit trail (migration `0007`): writes inside a tenant transaction must belong to that tenant.
+- **Configurable sign-in limit.** `AUTH_RATE_LIMIT_PER_10S` sets the sign-in/sign-up limit per IP per 10 s (default 3, unchanged).
+### Controlled rollout
+- **Invite-only signup** (`SIGNUP_MODE`, `SIGNUP_ALLOWLIST`), the default in production. People outside the pilot see a clear message instead of waiting for an email that never comes.
+- **`/api/health` reports the environment**, and `scripts/smoke.ts` can assert it (`SMOKE_EXPECT_ENV`).
+### Fixes
+- **"Forgot password?" works on the first click.** Before, leaving an untouched field showed an error that shifted the layout mid-click.
+- **Sign-in returns you to where you were going** after an expired session or a deep link.
+- **Undeliverable emails aren't retried.** Permanently undeliverable addresses (Postmark 300/406) were retried into dead jobs; they're now recorded once.
+- **Signup funnel events.** `signup_started` and `signup_completed` are now recorded, and the operator funnel reports `signupCompletionRate`.
+### Tooling and tests
+- **Staging rehearsal.** `scripts/staging-rehearsal.ts` runs the production artifact on real PostgreSQL behind HTTPS, as a non-superuser database owner. It covers smoke, edge and security checks, full E2E, axe and keyboard checks, `db:check` and a restart.
+- **New tests:**
+  - E2E `recovery.spec.ts`: sign-out, password recovery, expired session, workspace switching, network failure and retry, AI unavailable, closed signup
+  - `email.test.ts`
+  - environment, session-expiry and invite-only tests
+  - RLS backstop tests
+- **E2E against a deployment.** `E2E_BASE_URL` / `E2E_DB_URL` run the suite against a deployment.
+
 ## [Unreleased] — Phase 4: production hardening & launch readiness
 ### Security
 - **CSRF protection.** Changes from another site (a foreign `Origin` or `Sec-Fetch-Site`) are rejected.

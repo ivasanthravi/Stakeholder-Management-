@@ -59,6 +59,9 @@ export function Shell() {
   const navLabel = (to: string, fallback: string) => (to === '/stakeholders' ? vocab.stakeholders : to === '/organizations' ? vocab.organizations : to === '/initiatives' ? vocab.initiatives : fallback)
   // Banners (offline, access) sit above the page; the page is offset by their measured height.
   const bannersRef = useRef<HTMLDivElement>(null)
+  // The first screen after load appears without a fade; later section changes fade in.
+  const firstPage = useRef(true)
+  useEffect(() => { firstPage.current = false }, [])
   const [bannerH, setBannerH] = useState(0)
   useLayoutEffect(() => {
     const el = bannersRef.current
@@ -158,18 +161,17 @@ export function Shell() {
           </AnimatePresence>
           <AccessBanner />
         </div>
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={section}
-            className="page"
-            style={bannerH ? { top: bannerH } : undefined}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1, transition: { duration: 0.14, ease: [0.2, 0, 0, 1] } }}
-            exit={{ opacity: 0, transition: { duration: 0.08 } }}
-          >
-            <Outlet />
-          </motion.div>
-        </AnimatePresence>
+        {/* No exit animation: an exiting container's <Outlet/> already renders the NEW route, so the next screen
+            appeared, faded out, then mounted again. The new section replaces the old at once and fades in. */}
+        <motion.div
+          key={section}
+          className="page"
+          style={bannerH ? { top: bannerH } : undefined}
+          initial={firstPage.current ? false : { opacity: 0 }}
+          animate={{ opacity: 1, transition: t.fast }}
+        >
+          <Outlet />
+        </motion.div>
       </main>
 
       <nav className="bottom-nav" aria-label="Primary">

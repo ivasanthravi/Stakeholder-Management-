@@ -215,6 +215,9 @@
 }
 @media (max-width: 1100px) {
   .eg-page { grid-template-columns: minmax(0, 1fr) 320px; }
+  /* Commitments at ~1024: the remaining columns clipped Initiative at the edge. The Initiative filter covers it. */
+  .rb-cm { --cols: 44px 66px minmax(180px, 2.4fr) minmax(110px, 1fr) 80px 140px; }
+  .rb-cm .rb-row > :nth-child(8), .rb-cm .rb-head > :nth-child(8) { display: none; }
 }
 @media (max-width: 900px) {
   .eg-page { display: block; overflow-y: auto; }

@@ -152,7 +152,7 @@ function TypedInner({ title, body, phrase, phraseLabel, confirmLabel, busy, erro
     }
   }
   return (
-    <motion.div className="drawer-scrim dialog-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: t.fast }} exit={{ opacity: 0, transition: t.exit }} onMouseDown={() => !busy && onCancel()}>
+    <motion.div className="drawer-scrim dialog-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: t.fast }} exit={{ opacity: 0, pointerEvents: 'none', transition: t.exit }} onMouseDown={() => !busy && onCancel()}>
       <motion.div ref={ref} className="dialog set-typed" role="alertdialog" aria-modal="true" aria-labelledby={`${id}-t`} aria-describedby={`${id}-b`}
         initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1, transition: t.fast }} exit={{ scale: 0.98, opacity: 0, transition: t.exit }}
         onMouseDown={e => e.stopPropagation()} onKeyDown={onKeyDown}>

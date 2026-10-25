@@ -6,6 +6,7 @@ import { addMember, client, createTestContext, createWorkspace, lastMail, ORIGIN
 import { analyticsEvent, auditEvent, dataRequest, emailMessage, mailOutbox, membership, stakeholder, user, workspace } from '../server/db/schema'
 import { sendCommitmentDigests } from '../server/modules/notifications'
 import { processDataRequests } from '../server/modules/data'
+import { funnel } from '../server/analytics'
 
 let ctx: TestContext
 let owner: Client, admin: Client, viewer: Client
@@ -204,5 +205,23 @@ describe('account closure', () => {
     const again = await client(ctx).post('/api/auth/sign-in/email', { email: 'closer@com.test', password: PASSWORD })
     expect(again.status).not.toBe(200)
     expect(await ctx.db.select().from(mailOutbox).where(and(eq(mailOutbox.kind, 'account_closed'), eq(mailOutbox.to, 'closer@com.test')))).toHaveLength(1)
+  })
+})
+
+describe('launch funnel', () => {
+  test('signup is started at account creation and completed at email verification', async () => {
+    const pending = client(ctx)
+    await pending.post('/api/auth/sign-up/email', { email: 'funnel-pending@funnel.test', password: PASSWORD, name: 'Pen Ding' })
+    await signUp(ctx, 'funnel-done@funnel.test', 'Don Verified')
+    const ids = Object.fromEntries((await ctx.db.select({ id: user.id, email: user.email }).from(user)).map(u => [u.email, u.id]))
+    const events = await ctx.db.select({ name: analyticsEvent.name, userId: analyticsEvent.userId }).from(analyticsEvent)
+    const has = (name: string, email: string) => events.some(e => e.name === name && e.userId === ids[email])
+    expect(has('signup_started', 'funnel-pending@funnel.test')).toBe(true)
+    expect(has('signup_completed', 'funnel-pending@funnel.test')).toBe(false)
+    expect(has('signup_started', 'funnel-done@funnel.test')).toBe(true)
+    expect(has('signup_completed', 'funnel-done@funnel.test')).toBe(true)
+    const f = await funnel(ctx.db)
+    expect(f.signupCompletionRate).toBeGreaterThan(0)
+    expect(f.signupCompletionRate).toBeLessThan(100)
   })
 })

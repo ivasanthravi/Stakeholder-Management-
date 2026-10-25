@@ -6,15 +6,26 @@
   height: 46px; padding: 0 16px 0 20px;
   border-bottom: 1px solid var(--border-soft);
 }
+/* Counts and toggles never break onto two lines in a 46px bar. */
+.toolbar > .num, .toolbar > .link-btn, .toolbar .rb-count { white-space: nowrap; flex: none; }
+/* Laptops and tablets: when filters don't fit, the bar scrolls sideways instead of clipping the last controls,
+   and the search field gives up width first. */
+@media (max-width: 1280px) {
+  .toolbar { overflow-x: auto; scrollbar-width: none; }
+  .toolbar::-webkit-scrollbar { display: none; }
+  .toolbar > .search-field { flex: 0 1 260px; min-width: 150px; }
+  .toolbar > * { flex-shrink: 0; }
+  .toolbar > .search-field, .toolbar > .grow { flex-shrink: 1; }
+}
 .search-field {
   display: flex; align-items: center; gap: 7px;
   width: 260px; height: 28px; padding: 0 6px 0 9px;
   border-radius: var(--radius-sm); border: 1px solid var(--border);
   background: var(--bg-surface);
-  transition: border-color var(--dur-instant) linear, box-shadow var(--dur-fast) var(--ease-standard), width var(--dur-base) var(--ease-standard);
+  transition: border-color var(--dur-instant) linear, box-shadow var(--dur-fast) var(--ease-standard);
 }
 .search-field:hover { border-color: var(--border-strong); }
-.search-field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent) 14%, transparent); width: 300px; }
+.search-field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent) 14%, transparent); }
 .search-field input { flex: 1; min-width: 0; border: 0; background: none; font: var(--text-small); }
 .search-field input::placeholder { color: var(--text-3); }
 .search-field input:focus-visible { outline: none; }
@@ -58,6 +69,8 @@
   padding: 0 10px; font: var(--text-caption); color: var(--text-3); white-space: nowrap; text-align: left;
   overflow: hidden; min-width: 0;
 }
+.th-cell { display: flex; min-width: 0; height: 100%; }
+.th-cell > .th-btn { flex: 1; }
 .th-btn { border-radius: 4px; transition: color var(--dur-instant) linear; }
 .th-btn:hover { color: var(--text-1); }
 .th-right { justify-content: flex-end; }

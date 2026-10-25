@@ -13,7 +13,8 @@ export class ApiError extends Error {
   get isConflict() { return this.code === 'stale_version' }
 }
 export class NetworkError extends Error {
-  constructor() { super('You appear to be offline. Your changes have not been saved yet.') }
+  /** A failed read changed nothing; only a failed write has unsaved changes to warn about. */
+  constructor(write = true) { super(write ? 'You appear to be offline. Your changes have not been saved yet.' : 'Couldn’t reach Meridian. Check your connection, then try again.') }
 }
 
 let workspaceId: string | null = null
@@ -47,7 +48,7 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
     })
   } catch (e) {
     if ((e as Error).name === 'AbortError') throw e
-    throw new NetworkError()
+    throw new NetworkError((opts.method ?? 'GET') !== 'GET')
   }
   const text = await res.text()
   const data = text ? safeJson(text) : null

@@ -26,6 +26,7 @@ import { LoadError } from '../Home'
 import '../directory/directory.css'
 import '../profile/profile.css'
 import './registers-a.css'
+import { useVocabulary } from '../../lib/vocabulary'
 
 /* ── Types ─────────────────────────────────────────────────────────── */
 interface OrgRow {
@@ -246,6 +247,7 @@ export function Organizations() {
   const q = useDebounced(text.trim())
   const type = params.get('type')
   const archived = params.get('archived') === '1'
+  const voc = useVocabulary()
   const sort = params.get('sort') === 'stakeholders' ? 'stakeholders' : 'name'
   const setParam = (k: string, v: string | null) => { const n = new URLSearchParams(params); if (v) n.set(k, v); else n.delete(k); setParams(n, { replace: true }) }
   const [menuEl, setMenuEl] = useState<HTMLElement | null>(null)
@@ -276,20 +278,24 @@ export function Organizations() {
           {archived && <span className="chip chip-on"><Archive size={12} /><span className="chip-v">Archived</span><button className="chip-x" aria-label="Show active organizations" onClick={() => setParam('archived', null)}><X size={12} /></button></span>}
           {filtered ? <button className="link-btn" onClick={clearAll}>Clear all</button> : null}
           <span className="grow" />
-          <span className="t-small c3 num" aria-live="polite">{list.data ? `${total.toLocaleString()} ${archived ? 'archived' : ''}` : ''}{list.isFetching && !list.isPending ? ' · updating' : ''}</span>
-          {!archived && <button className="link-btn" onClick={() => setParam('archived', '1')} title="Show archived organizations">Archived</button>}
+          <span className="t-small c3 num" aria-live="polite">{list.data ? `${total.toLocaleString()} ${archived ? 'archived' : voc.lower('organization', total !== 1)}` : ''}{list.isFetching && !list.isPending ? ' · updating' : ''}</span>
+          {!archived && <button className="link-btn" onClick={() => setParam('archived', '1')} title="Show archived organizations">Show archived</button>}
         </div>
 
         <div className="rg-grid rg-orgs" role="grid" ref={gridRef} tabIndex={0} aria-label="Organizations" aria-rowcount={rows.length + 1} aria-busy={list.isPending || undefined}
           aria-activedescendant={rows[focus] ? `org-row-${rows[focus].id}` : undefined}>
           <div className="tr thead" role="row">
-            <button className="th th-btn" role="columnheader" aria-sort={sort === 'name' ? 'ascending' : 'none'} onClick={() => setParam('sort', null)}>
-              Name<span className="th-arrow" data-on={sort === 'name' || undefined}><ArrowDown size={11} style={{ transform: 'rotate(180deg)' }} /></span>
-            </button>
+            <span className="th-cell" role="columnheader" aria-sort={sort === 'name' ? 'ascending' : 'none'}>
+              <button className="th th-btn" onClick={() => setParam('sort', null)}>
+                Name<span className="th-arrow" data-on={sort === 'name' || undefined}><ArrowDown size={11} style={{ transform: 'rotate(180deg)' }} /></span>
+              </button>
+            </span>
             <span className="th" role="columnheader">Type</span>
-            <button className="th th-btn th-right" role="columnheader" aria-sort={sort === 'stakeholders' ? 'descending' : 'none'} onClick={() => setParam('sort', 'stakeholders')}>
-              People<span className="th-arrow" data-on={sort === 'stakeholders' || undefined}><ArrowDown size={11} /></span>
-            </button>
+            <span className="th-cell" role="columnheader" aria-sort={sort === 'stakeholders' ? 'descending' : 'none'}>
+              <button className="th th-btn th-right" onClick={() => setParam('sort', 'stakeholders')}>
+                People<span className="th-arrow" data-on={sort === 'stakeholders' || undefined}><ArrowDown size={11} /></span>
+              </button>
+            </span>
             <span className="th th-right" role="columnheader">Last engaged</span>
             <span className="th" role="columnheader">Classifications</span>
             <span className="th" role="columnheader"><span className="sr-only">Actions</span></span>
@@ -571,13 +577,14 @@ function OrgPeople({ current, former, onAdd }: { current: OrgPerson[]; former: O
   const since = (p: OrgPerson) => p.validFrom ? `Since ${fmtDate(p.validFrom, { month: 'short', year: 'numeric' })}` : 'Current'
   const span = (p: OrgPerson) => `${p.validFrom ? fmtDate(p.validFrom, { month: 'short', year: 'numeric' }) : '…'} – ${fmtDate(p.validTo, { month: 'short', year: 'numeric' })}`
   const row = (p: OrgPerson, past: boolean) => (
-    <Link key={p.associationId} to={`/stakeholders/${p.id}`} className="rg-trow" role="row" data-past={past || undefined}>
-      <span role="cell" className="row gap-2 rg-cell-name"><Avatar name={p.name} size={22} /><span className="grow rg-person-id"><span className="t-strong truncate">{p.name}</span>{p.title && p.title !== p.role && <span className="t-small c3 truncate">{p.title}</span>}</span></span>
+    // A table row can't also be a link; the name cell's link stretches over the row so the whole row stays clickable.
+    <div key={p.associationId} className="rg-trow rg-trow-link" role="row" data-past={past || undefined}>
+      <span role="cell" className="row gap-2 rg-cell-name"><Link to={`/stakeholders/${p.id}`} className="rg-stretch" aria-label={p.name} /><Avatar name={p.name} size={22} /><span className="grow rg-person-id"><span className="t-strong truncate">{p.name}</span>{p.title && p.title !== p.role && <span className="t-small c3 truncate">{p.title}</span>}</span></span>
       <span role="cell" className="truncate c2">{p.role ?? <span className="c3">—</span>}</span>
       <span role="cell"><StanceBadge stance={p.stance} /></span>
       <span role="cell" title={p.influence ? `Influence: ${LEVEL_LABEL[p.influence]}` : 'Influence not assessed'}>{p.influence ? <LevelMeter value={p.influence} label="Influence" /> : <span className="meter-empty">—</span>}</span>
       <span role="cell" className="t-small c3 num rg-right">{past ? span(p) : since(p)}</span>
-    </Link>
+    </div>
   )
   return (
     <section className="card">

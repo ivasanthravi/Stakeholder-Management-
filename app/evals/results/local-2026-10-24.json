@@ -4,7 +4,7 @@
     "model": null,
     "label": "Local analysis (no AI model)"
   },
-  "startedAt": "2026-10-24T06:09:55.873Z",
+  "startedAt": "2026-10-24T14:37:25.143Z",
   "extraction": [
     {
       "dataset": "multi-industry (dev)",
@@ -707,7 +707,7 @@
       "expectedFactRecall": 100,
       "latencyMs": {
         "p50": 7,
-        "p95": 10
+        "p95": 11
       },
       "perQuestion": [
         {

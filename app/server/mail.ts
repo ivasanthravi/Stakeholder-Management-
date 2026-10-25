@@ -12,7 +12,7 @@ import { render, type TemplateName } from './email/templates'
 import type { Jobs } from './jobs'
 
 export interface OutgoingEmail { to: string; template: TemplateName; data: Record<string, unknown>; userId?: string | null; workspaceId?: string | null }
-export interface Mailer { send(mail: OutgoingEmail): Promise<{ status: 'sent' | 'queued' | 'suppressed' }> }
+export interface Mailer { send(mail: OutgoingEmail): Promise<{ status: 'sent' | 'queued' | 'suppressed' | 'failed' }> }
 
 export interface Delivery { to: string; from: string; subject: string; html: string; text: string; tag: string; headers: Record<string, string>; url?: string | null }
 export interface Transport { name: string; deliver(d: Delivery): Promise<{ messageId: string | null }> }
@@ -37,6 +37,9 @@ export function createLogTransport(db: DB, opts: { quiet?: boolean } = {}): Tran
   }
 }
 
+/** A delivery that can never succeed (invalid or inactive recipient): recorded as failed, never retried. */
+export class PermanentMailError extends Error {}
+
 /** Postmark HTTP API (https://postmarkapp.com/developer/api/email-api). The server token is never logged. */
 export function createPostmarkTransport(token: string, stream = 'outbound'): Transport {
   return {
@@ -50,7 +53,10 @@ export function createPostmarkTransport(token: string, stream = 'outbound'): Tra
         signal: AbortSignal.timeout(15_000),
       })
       const body = await res.json().catch(() => ({})) as { MessageID?: string; ErrorCode?: number; Message?: string }
-      if (!res.ok || (body.ErrorCode ?? 0) !== 0) throw new Error(`Postmark ${res.status} ${body.ErrorCode ?? ''}: ${body.Message ?? 'request failed'}`)
+      const code = body.ErrorCode ?? 0
+      // 300 invalid address; 406 inactive recipient (Postmark suppresses hard bounces and spam complaints itself).
+      if (code === 300 || code === 406) throw new PermanentMailError(`Postmark ${code}: recipient can't receive email`)
+      if (!res.ok || code !== 0) throw new Error(`Postmark ${res.status} ${code || ''}: ${body.Message ?? 'request failed'}`)
       return { messageId: body.MessageID ?? null }
     },
   }
@@ -92,7 +98,7 @@ export function createMailer(db: DB, transport: Transport, opts: { from: string;
     const mail = p.mail as OutgoingEmail
     try { await attempt(String(p.id), mail, (p.userId as string | null) ?? null) } catch (e) {
       await db.update(emailMessage).set({ status: 'failed', attempts: sql`${emailMessage.attempts} + 1`, error: (e as Error).message.slice(0, 300) }).where(eq(emailMessage.id, String(p.id)))
-      throw e
+      if (!(e instanceof PermanentMailError)) throw e
     }
   })
 
@@ -113,6 +119,10 @@ export function createMailer(db: DB, transport: Transport, opts: { from: string;
         return { status: 'sent' }
       } catch (e) {
         await db.update(emailMessage).set({ status: 'failed', attempts: 1, error: (e as Error).message.slice(0, 300) }).where(eq(emailMessage.id, row.id))
+        if (e instanceof PermanentMailError) {
+          log('warn', 'mail not deliverable', { template: mail.template, ...errorFields(e) })
+          return { status: 'failed' }
+        }
         if (!opts.jobs) throw e
         await opts.jobs.enqueue('email.retry', { id: row.id, mail, userId }, { maxAttempts: 5 })
         log('warn', 'mail delivery failed, queued for retry', { template: mail.template, ...errorFields(e) })

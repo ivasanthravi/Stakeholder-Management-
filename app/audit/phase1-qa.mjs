@@ -13,12 +13,17 @@ let axeSource = null
 try { axeSource = readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8') } catch { /* fetched below */ }
 if (!axeSource) axeSource = await (await fetch('https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.10.2/axe.min.js')).text()
 
-const browser = await chromium.launch({ channel: 'chrome' })
-const state = 'scratch/qa-auth.json'
+// AUDIT_SELF_SIGNED=1 accepts the staging rehearsal's self-signed certificate (local only).
+// axe-core is injected as an inline script, which a production CSP rightly blocks; audit contexts bypass CSP, and the
+// staging rehearsal checks for real CSP violations separately.
+const browser = await chromium.launch({ channel: 'chrome', args: process.env.AUDIT_SELF_SIGNED === '1' ? ['--ignore-certificate-errors'] : [] })
+// One saved session per origin (dev server, staging rehearsal), so one never reuses the other's cookies.
+const state = `scratch/qa-auth-${new URL(BASE).port || 'default'}.json`
 async function signedInContext(vp) {
-  const ctx = await browser.newContext({ ...vp, storageState: existsSync(state) ? state : undefined })
+  const ctx = await browser.newContext({ ...vp, ignoreHTTPSErrors: process.env.AUDIT_SELF_SIGNED === '1', bypassCSP: true, storageState: existsSync(state) ? state : undefined })
   const p = await ctx.newPage()
-  await p.goto(BASE + '/')
+  // A protected page: signed-out visitors are sent to sign-in (the root shows the marketing site to them).
+  await p.goto(BASE + '/stakeholders')
   await p.waitForLoadState('networkidle')
   if (p.url().includes('/sign-in')) {
     await p.fill('input[type=email]', 'rhea@sample.meridian.test')
@@ -103,7 +108,7 @@ for (const [tag, vp] of [['desktop', { viewport: { width: 1440, height: 900 } }]
     await visit(ctx, tag, name, path, act)
   }
   await ctx.close()
-  const anon = await browser.newContext(vp)
+  const anon = await browser.newContext({ ...vp, ignoreHTTPSErrors: process.env.AUDIT_SELF_SIGNED === '1', bypassCSP: true })
   for (const [name, path] of PUBLIC) await visit(anon, tag, name, path)
   await anon.close()
 }

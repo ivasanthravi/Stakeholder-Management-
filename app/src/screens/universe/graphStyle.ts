@@ -21,9 +21,13 @@ export function readPalette(): Palette {
   }
 }
 
+// Canvas styles can't be reached by the CSS reduced-motion rule.
+const REDUCED = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 const EASE = 'ease-out' as const
 
-export function buildStyle(p: Palette): StylesheetJson {
+/** `large`: thousands of elements — class changes apply instantly instead of transitioning on every element. */
+export function buildStyle(p: Palette, opts: { large?: boolean } = {}): StylesheetJson {
+  const DUR = REDUCED || opts.large ? 0 : 140
   const stance = (ele: cytoscape.NodeSingular) => p.stance[ele.data('stance')] ?? p.stance.unknown
   return [
     {
@@ -37,7 +41,9 @@ export function buildStyle(p: Palette): StylesheetJson {
         'border-color': stance,
         'label': 'data(label)',
         'font-family': 'Inter Variable, system-ui, sans-serif',
-        'font-size': 10,
+        // Label size follows influence (9–12px). With min-zoomed-font-size, a zoomed-out overview names the most
+        // influential people first and the rest appear as you zoom in, instead of every label overlapping at once.
+        'font-size': 'mapData(influence, 1, 4, 9, 12)',
         'font-weight': 500,
         'color': p.text1,
         'text-valign': 'bottom',
@@ -46,7 +52,10 @@ export function buildStyle(p: Palette): StylesheetJson {
         'text-background-opacity': 0.85,
         'text-background-padding': '1.5px',
         'text-background-shape': 'roundrectangle',
-        'min-zoomed-font-size': 8,
+        // Cytoscape compares font-size × the texture level (zoom × pixel ratio rounded UP to a power of two), so
+        // between 51% and 100% zoom this hides influence 1–2 labels (9–10px) and keeps influence 3–4 (11–12px);
+        // above 100% every label shows. Selected, neighbouring, matched and path nodes always keep theirs.
+        'min-zoomed-font-size': 10.5,
         'text-max-width': '90px',
         'text-wrap': 'ellipsis',
         'overlay-opacity': 0,
@@ -54,7 +63,7 @@ export function buildStyle(p: Palette): StylesheetJson {
         'underlay-padding': 7,
         'underlay-shape': 'ellipse',
         'transition-property': 'opacity, border-width, underlay-opacity, background-opacity',
-        'transition-duration': 140,
+        'transition-duration': DUR,
         'transition-timing-function': EASE,
       },
     },
@@ -80,7 +89,7 @@ export function buildStyle(p: Palette): StylesheetJson {
         'overlay-opacity': 0,
         'events': 'no',
         'transition-property': 'opacity',
-        'transition-duration': 140,
+        'transition-duration': DUR,
       } as unknown as cytoscape.Css.Node,
     },
     {
@@ -110,7 +119,7 @@ export function buildStyle(p: Palette): StylesheetJson {
         'text-rotation': 'autorotate',
         'min-zoomed-font-size': 8,
         'transition-property': 'opacity, line-color, width',
-        'transition-duration': 140,
+        'transition-duration': DUR,
         'transition-timing-function': EASE,
       },
     },
@@ -129,18 +138,18 @@ export function buildStyle(p: Palette): StylesheetJson {
     { selector: 'edge.hl.rel-opposes', style: { 'line-color': p.stance.opposed } },
     { selector: 'edge.hl.rel-reports-to, edge.hl.rel-colleague', style: { 'label': '' } },
     { selector: 'node.org-dim', style: { 'background-opacity': 0.18, 'border-opacity': 0.35, 'text-opacity': 0.35 } },
-    { selector: 'node.nb', style: { 'border-width': 2.5, 'z-index': 10 } },
+    { selector: 'node.nb', style: { 'border-width': 2.5, 'z-index': 10, 'min-zoomed-font-size': 0 } },
     // Path finder: the chain stands out; unconfirmed (inferred) hops stay dashed so they never read as fact.
-    { selector: 'node.path', style: { 'underlay-color': p.accent, 'underlay-opacity': 0.2, 'underlay-padding': 8, 'border-width': 3, 'z-index': 15, 'font-weight': 650 } },
+    { selector: 'node.path', style: { 'underlay-color': p.accent, 'underlay-opacity': 0.2, 'underlay-padding': 8, 'border-width': 3, 'z-index': 15, 'font-weight': 650, 'min-zoomed-font-size': 0 } },
     { selector: 'edge.path', style: { 'line-color': p.accent, 'target-arrow-color': p.accent, 'width': 3, 'opacity': 1, 'label': 'data(label)', 'z-index': 15 } },
     { selector: 'edge.path-inferred', style: { 'line-style': 'dashed', 'line-dash-pattern': [6, 4], 'line-color': p.attention, 'target-arrow-color': p.attention } },
-    { selector: 'node.match', style: { 'underlay-color': p.accent, 'underlay-opacity': 0.14 } },
+    { selector: 'node.match', style: { 'underlay-color': p.accent, 'underlay-opacity': 0.14, 'min-zoomed-font-size': 0 } },
     { selector: 'node.gapped', style: { 'underlay-color': p.attention, 'underlay-opacity': 0.22, 'underlay-padding': 9, 'border-style': 'double', 'border-width': 3.5 } },
     {
       selector: 'node.sel',
       style: {
         'underlay-color': p.accent, 'underlay-opacity': 0.18, 'underlay-padding': 9,
-        'border-width': 3, 'z-index': 20, 'font-weight': 650, 'font-size': 11,
+        'border-width': 3, 'z-index': 20, 'font-weight': 650, 'font-size': 11, 'min-zoomed-font-size': 0,
       },
     },
   ] as StylesheetJson

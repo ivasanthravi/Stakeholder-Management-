@@ -16,7 +16,7 @@ import { LoadError } from '../Home'
 import { Menu, type MenuOption } from '../../components/Menu'
 import { PeekPanel } from '../directory/PeekPanel'
 import { useApp } from '../../shell/context'
-import { t } from '../../lib/motion'
+import { dur, t } from '../../lib/motion'
 import { buildStyle, readPalette } from './graphStyle'
 import { clusterLayout } from './clusterLayout'
 import './universe.css'
@@ -32,6 +32,7 @@ const cls = (type: string) => type.replace(/_/g, '-')
 const NO_ORG = '__none'
 const STANCES: Stance[] = ['opposed', 'concerned', 'neutral', 'supporter', 'champion', 'unknown']
 const QUAD = 220 // influence-grid cell size in model units
+const LARGE_MAP = 800
 const reduceMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 interface Scope { initiative: string | 'all'; stances: Stance[]; types: RelationshipType[]; group: boolean; lens: Lens }
@@ -63,6 +64,8 @@ export default function Universe() {
   const containerRef = useRef<HTMLDivElement>(null)
   const cyRef = useRef<Core | null>(null)
   const firstRun = useRef(true)
+  const wantIdsRef = useRef<Set<string>>(new Set())
+  const largeRef = useRef(false)
 
   // With a focus but no initiative, show everyone so the focused person is guaranteed to be in view.
   const [scope, setScope] = useState<Scope>(() => ({ initiative: params.get('initiative') ?? (params.get('focus') ? 'all' : ''), stances: [], types: [], group: true, lens: 'network' }))
@@ -194,6 +197,17 @@ export default function Universe() {
     for (const r of data.rels) want.push({ group: 'edges', data: { id: r.id, source: r.source, target: r.target, type: r.type, strength: r.strength, label: REL_LABEL[r.type as RelationshipType] ?? r.type }, classes: `rel rel-${cls(r.type)}` })
 
     const wantIds = new Set(want.map(w => w.data.id!))
+    wantIdsRef.current = wantIds
+    // Large maps (measured: 2,000 people pan at 10–13 fps on a slow CPU) draw a cached texture and hide edges while the
+    // viewport moves, and skip per-element style transitions. Small maps keep full fidelity.
+    const large = data.people.length > LARGE_MAP
+    if (large !== largeRef.current) {
+      largeRef.current = large
+      const r = (cy as unknown as { renderer: () => { textureOnViewport: boolean; hideEdgesOnViewport: boolean } }).renderer()
+      r.textureOnViewport = large
+      r.hideEdgesOnViewport = large
+      cy.style(buildStyle(readPalette(), { large }))
+    }
     const animate = !firstRun.current && !reduceMotion()
 
     cy.batch(() => {
@@ -202,7 +216,9 @@ export default function Universe() {
       if (animate) {
         stale.edges().remove()
         const leaving = stale.nodes('.person').addClass('leaving')
-        setTimeout(() => leaving.remove(), 150)
+        // Only remove what is still unwanted when the fade ends: a filter toggled off and on again within 150 ms
+        // must not delete people the current view shows.
+        setTimeout(() => leaving.filter(n => !wantIdsRef.current.has(n.id())).remove(), 150)
         stale.nodes(':not(.person)').remove()
       } else stale.remove()
 
@@ -265,16 +281,17 @@ export default function Universe() {
         name: 'preset',
         positions: ((n: NodeSingular) => target.get(n.id()) ?? n.position()) as unknown as cytoscape.NodePositionMap,
         animate, animationDuration: 420, animationEasing: 'ease-in-out-cubic', fit: false,
+        // Frame the result once nodes have arrived; fitting straight after run() framed the old positions.
+        stop: done,
       } as cytoscape.PresetLayoutOptions).run()
-      done()
     } else if (groupBy) {
       const target = clusterLayout(data.people.map(p => ({ ...p, influence: p.influence ?? 0 })), data.rels, data.orgs)
       cy.layout({
         name: 'preset',
         positions: ((n: NodeSingular) => target.get(n.id()) ?? n.position()) as unknown as cytoscape.NodePositionMap,
         animate, animationDuration: 420, animationEasing: 'ease-in-out-cubic', fit: false,
+        stop: done,
       } as cytoscape.PresetLayoutOptions).run()
-      done()
     } else {
       const layout = cy.layout({
         name: 'fcose',
@@ -359,7 +376,7 @@ export default function Universe() {
     const cy = cyRef.current
     if (!cy || !pathSet || !ready) return
     const eles = cy.nodes('.person').filter(n => pathSet.nodes.has(n.id()))
-    if (eles.nonempty()) cy.animate({ fit: { eles, padding: 140 } }, { duration: reduceMotion() ? 0 : 400, easing: 'ease-in-out-cubic', complete: () => capZoom(cy) })
+    if (eles.nonempty()) { cy.stop(true); cy.animate({ fit: { eles, padding: 140 } }, { duration: reduceMotion() ? 0 : dur.slow * 1000, easing: 'ease-in-out-cubic', complete: () => capZoom(cy) }) }
   }, [pathSet, ready])
 
   // Camera: centre selection only if it sits outside the central 60% of the viewport.
@@ -380,7 +397,8 @@ export default function Universe() {
     if (!cy || !matches || !matches.size) return
     const h = setTimeout(() => {
       const eles = cy.nodes().filter(n => matches.has(n.id()))
-      cy.animate({ fit: { eles, padding: 120 } }, { duration: reduceMotion() ? 0 : 360, easing: 'ease-in-out-cubic' })
+      cy.stop(true)
+      cy.animate({ fit: { eles, padding: 120 } }, { duration: reduceMotion() ? 0 : dur.slow * 1000, easing: 'ease-in-out-cubic' })
     }, 180)
     return () => clearTimeout(h)
   }, [matches])
@@ -437,7 +455,9 @@ export default function Universe() {
 
   const zoomBy = (f: number) => {
     const cy = cyRef.current!
-    cy.animate({ zoom: { level: Math.max(0.15, Math.min(3, cy.zoom() * f)), renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } } }, { duration: reduceMotion() ? 0 : 200, easing: 'ease-out-cubic' })
+    // Each press starts from where the camera is now, so repeated presses never queue up behind each other.
+    cy.stop(true)
+    cy.animate({ zoom: { level: Math.max(0.15, Math.min(3, cy.zoom() * f)), renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } } }, { duration: reduceMotion() ? 0 : dur.fast * 1000, easing: 'ease-out-cubic' })
   }
   const fitAll = () => cyRef.current?.animate({ fit: { eles: cyRef.current.elements(), padding: 56 } }, { duration: reduceMotion() ? 0 : 360, easing: 'ease-in-out-cubic' })
 
@@ -506,7 +526,7 @@ export default function Universe() {
           onKeyDown={onKey}
           initial={false}
           animate={{ opacity: ready && !list ? 1 : 0 }}
-          transition={{ duration: 0.24, ease: [0.2, 0, 0, 1] }}
+          transition={t.base}
           style={{ pointerEvents: list ? 'none' : undefined }}
         />
 
@@ -561,7 +581,10 @@ export default function Universe() {
         </div>}
 
         <div className="uni-count t-small c3 num">
-          {data.people.length} people · {data.rels.length} relationships · {data.orgs.length} organizations
+          {data.people.length} {data.people.length === 1 ? 'person' : 'people'} · {data.rels.length} relationship{data.rels.length === 1 ? '' : 's'} · {data.orgs.length} organization{data.orgs.length === 1 ? '' : 's'}
+          {graph.data?.total && graph.data.limit && graph.data.total > graph.data.limit
+            ? <span className="uni-capped" role="status"> · showing the {graph.data.limit.toLocaleString()} most influential of {graph.data.total.toLocaleString()} — filter by initiative to see the rest</span>
+            : null}
           {!sel && !list && <span className="uni-hint"> · <Kbd>←</Kbd><Kbd>→</Kbd> to traverse</span>}
         </div>
 
@@ -596,7 +619,8 @@ function centerOn(cy: Core, id: string, animate: boolean) {
   const z = Math.max(cy.zoom(), 0.9)
   const panelOffset = cy.width() > 900 ? 220 : 0 // keep node clear of the side panel
   const pan = { x: cy.width() / 2 - panelOffset - n.position().x * z, y: cy.height() / 2 - n.position().y * z }
-  if (animate && !reduceMotion()) cy.animate({ zoom: z, pan }, { duration: 400, easing: 'ease-in-out-cubic' })
+  // Arrow-key traversal can call this several times a second: cancel the previous move instead of queueing it.
+  if (animate && !reduceMotion()) { cy.stop(true); cy.animate({ zoom: z, pan }, { duration: dur.slow * 1000, easing: 'ease-in-out-cubic' }) }
   else { cy.zoom(z); cy.pan(pan) }
 }
 

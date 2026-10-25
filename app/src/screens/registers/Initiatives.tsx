@@ -28,6 +28,7 @@ import {
 import '../directory/directory.css'
 import '../profile/profile.css'
 import './registers-a.css'
+import { useVocabulary } from '../../lib/vocabulary'
 
 /* ── Types ─────────────────────────────────────────────────────────── */
 type InitStatus = typeof INITIATIVE_STATUSES[number]
@@ -62,6 +63,7 @@ export function Initiatives() {
   const [text, setText] = useState('')
   const q = useDebounced(text.trim())
   const archived = params.get('archived') === '1'
+  const voc = useVocabulary()
   const statuses = useMemo(() => (params.get('status')?.split(',').filter(s => (INITIATIVE_STATUSES as readonly string[]).includes(s)) ?? []) as InitStatus[], [params])
   const setParam = (k: string, v: string | null) => { const n = new URLSearchParams(params); if (v) n.set(k, v); else n.delete(k); setParams(n, { replace: true }) }
   const toggleStatus = (s: InitStatus) => { const next = statuses.includes(s) ? statuses.filter(x => x !== s) : [...statuses, s]; setParam('status', next.length ? next.join(',') : null) }
@@ -93,8 +95,8 @@ export function Initiatives() {
           {archived && <span className="chip chip-on"><Archive size={12} /><span className="chip-v">Archived</span><button className="chip-x" aria-label="Show active initiatives" onClick={() => setParam('archived', null)}><X size={12} /></button></span>}
           {filtered ? <button className="link-btn" onClick={clearAll}>Clear all</button> : null}
           <span className="grow" />
-          <span className="t-small c3 num" aria-live="polite">{list.data ? `${rows.length} ${archived ? 'archived' : ''}` : ''}{list.isFetching && !list.isPending ? ' · updating' : ''}</span>
-          {!archived && <button className="link-btn" onClick={() => setParam('archived', '1')} title="Show archived initiatives">Archived</button>}
+          <span className="t-small c3 num" aria-live="polite">{list.data ? `${rows.length} ${archived ? 'archived' : voc.lower('initiative', rows.length !== 1)}` : ''}{list.isFetching && !list.isPending ? ' · updating' : ''}</span>
+          {!archived && <button className="link-btn" onClick={() => setParam('archived', '1')} title="Show archived initiatives">Show archived</button>}
         </div>
 
         <div className="rg-grid rg-inits" role="grid" ref={gridRef} tabIndex={0} aria-label="Initiatives" aria-rowcount={rows.length + 1} aria-busy={list.isPending || undefined}
@@ -381,10 +383,12 @@ function StakeholdersTab({ i, adding, setAdding, canMembers, onMap }: { i: InitD
               </div>
               {i.stakeholders.map(p => (
                 <div key={p.id} className="rg-trow" role="row" data-pending={removing === p.id || undefined}>
-                  <Link role="cell" to={`/stakeholders/${p.id}`} className="row gap-2 rg-cell-name">
-                    <Avatar name={p.name} size={22} />
-                    <span className="grow rg-person-id"><span className="t-strong truncate">{p.name}</span>{p.title && p.title !== p.role && <span className="t-small c3 truncate">{p.title}</span>}</span>
-                  </Link>
+                  <span role="cell" className="rg-cell-wrap">
+                    <Link to={`/stakeholders/${p.id}`} className="row gap-2 rg-cell-name">
+                      <Avatar name={p.name} size={22} />
+                      <span className="grow rg-person-id"><span className="t-strong truncate">{p.name}</span>{p.title && p.title !== p.role && <span className="t-small c3 truncate">{p.title}</span>}</span>
+                    </Link>
+                  </span>
                   <span role="cell"><StanceBadge stance={p.stance} /></span>
                   <span role="cell">{p.influence ? <LevelMeter value={p.influence} label="Influence" /> : <span className="meter-empty" title="Influence not assessed">—</span>}</span>
                   <span role="cell">{p.interest ? <LevelMeter value={p.interest} label="Interest" /> : <span className="meter-empty" title="Interest not assessed">—</span>}</span>

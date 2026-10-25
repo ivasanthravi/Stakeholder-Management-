@@ -47,8 +47,8 @@ export function Stakeholders() {
             key={view}
             className="sh-view"
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1, transition: { ...t.slow, delay: 0.04 } }}
-            exit={{ opacity: 0, transition: { duration: 0.12 } }}
+            animate={{ opacity: 1, transition: t.fast }}
+            exit={{ opacity: 0, transition: t.exit }}
           >
             {view === 'table' ? <Directory /> : (
               <Suspense fallback={<div className="sh-loading"><Skeleton w={180} h={10} /><Skeleton w={120} h={10} /></div>}>

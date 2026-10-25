@@ -1,0 +1,74 @@
+{
+  "base": "http://localhost:5173",
+  "capturedAt": "2026-10-24T09:59:18.416Z",
+  "ids": {
+    "person": "10678d4c-95d3-45bd-a4e7-1a7769b36185",
+    "org": "3bbf6eae-ba2e-4718-8ff0-ccbc166e8310",
+    "init": "714ee315-2e23-413b-9265-d198dd775cac",
+    "meeting": "2db2bc2d-b441-46a4-822d-20fb7a3a83bd"
+  },
+  "log": [
+    {
+      "vp": "desktop",
+      "name": "02-directory",
+      "path": "/stakeholders",
+      "loadMs": 2527,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "desktop",
+      "name": "05b-organization",
+      "path": "/organizations/3bbf6eae-ba2e-4718-8ff0-ccbc166e8310",
+      "loadMs": 1017,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "desktop",
+      "name": "06b-initiative",
+      "path": "/initiatives/714ee315-2e23-413b-9265-d198dd775cac",
+      "loadMs": 1110,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "mobile",
+      "name": "02-directory",
+      "path": "/stakeholders",
+      "loadMs": 2090,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": [
+        "span.chip  → 391",
+        "button.link-btn → 466",
+        "button.btn btn-primary btn-sm   → 569",
+        "svg.[object SVGAnimatedString] → 493",
+        "path.[object SVGAnimatedString] → 490"
+      ]
+    },
+    {
+      "vp": "mobile",
+      "name": "05b-organization",
+      "path": "/organizations/3bbf6eae-ba2e-4718-8ff0-ccbc166e8310",
+      "loadMs": 1060,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "mobile",
+      "name": "06b-initiative",
+      "path": "/initiatives/714ee315-2e23-413b-9265-d198dd775cac",
+      "loadMs": 1117,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": [
+        "button.tab → 439"
+      ]
+    }
+  ]
+}

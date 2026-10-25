@@ -89,6 +89,7 @@
 /* ── Sources ────────────────────────────────────────────── */
 .cp-sources { display: flex; flex-direction: column; gap: 4px; }
 .cp-sources ol { display: flex; flex-direction: column; }
+.cp-sources > .cp-more { align-self: flex-start; padding: 4px 4px 0; }
 .cp-sources a {
   display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 6px; margin: 0 -6px;
   border-radius: var(--radius-sm); font: var(--text-small); color: var(--text-1);

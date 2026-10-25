@@ -34,6 +34,8 @@
 | Phone widths: icon-only header buttons, onboarding Back and the map view buttons hid their labels with `display:none`, so they had no accessible name (found by an extra axe run at 390 px and in an empty workspace) | 4.1.2 | Labels visually hidden instead of removed |
 | Directory and Initiatives empty states sat directly inside the grid row group (invalid structure) | 1.3.1 | Wrapped in row and cell |
 | Phone page header action buttons shrank to 15–19 px wide | 2.5.8 | No shrink below 900 px |
+| **Phase 5:** Meeting Intelligence source-notes panel scrolled independently but wasn't keyboard-focusable. Found by axe on the production build in the staging rehearsal | 2.1.1 | Focusable labelled region (global focus ring) |
+| **Phase 5:** "Forgot password?" missed by mouse on a fresh sign-in page (an error appearing on blur moved the link mid-click) | Usability (pointer) | Untouched fields aren't flagged on blur |
 ## Known gaps
 | Gap | Priority |
 |---|---|

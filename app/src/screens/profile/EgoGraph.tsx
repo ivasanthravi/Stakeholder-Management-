@@ -5,6 +5,7 @@ import { Network } from 'lucide-react'
 import type { RelationshipView, StakeholderDetail } from '../../api/types'
 import { RELATIONSHIP_LABEL, STANCE_LABEL } from '../../lib/format'
 import { Button } from '../../components/ui'
+import { t } from '../../lib/motion'
 
 const W = 320, H = 232, CX = W / 2, CY = H / 2
 const TYPE_ORDER = ['reports_to', 'colleague', 'advises', 'allied', 'influences', 'opposes', 'member_of', 'partner_of', 'funds', 'regulates', 'other']
@@ -66,7 +67,8 @@ export function EgoGraph({ s: me, relationships }: { s: StakeholderDetail; relat
             onClick={() => go(n)}
             onKeyDown={e => { if (e.key === 'Enter') go(n) }}
             initial={{ opacity: 0, scale: 0.6 }}
-            animate={{ opacity: hover && hover !== n.p.id ? 0.35 : 1, scale: 1, transition: { duration: 0.24, delay: 0.08 + i * 0.012, ease: [0.2, 0, 0, 1] } }}
+            // The entrance is staggered; hover dimming must not inherit that delay (it lagged up to 240 ms per node).
+            animate={{ opacity: hover && hover !== n.p.id ? 0.35 : 1, scale: 1, transition: { scale: { duration: 0.24, delay: 0.08 + i * 0.012, ease: [0.2, 0, 0, 1] }, opacity: t.fast } }}
             style={{ transformOrigin: `${n.x}px ${n.y}px` }}
           >
             <circle cx={n.x} cy={n.y} r={n.size + 6} fill="transparent" />

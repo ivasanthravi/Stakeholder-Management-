@@ -19,6 +19,7 @@ export function useForm<S extends z.ZodType<AnyObj>>(schema: S, initial: z.input
   const [formError, setFormError] = useState<string | null>(null)
   const initialRef = useRef(JSON.stringify(initial))
   const inFlight = useRef(false)
+  const edited = useRef(new Set<string>())
 
   const validate = useCallback((v: AnyObj): { ok: true; data: unknown; errors: Record<string, string> } | { ok: false; errors: Record<string, string> } => {
     const r = schema.safeParse(v)
@@ -29,6 +30,7 @@ export function useForm<S extends z.ZodType<AnyObj>>(schema: S, initial: z.input
   }, [schema])
 
   const set = useCallback((name: string, v: unknown) => {
+    edited.current.add(name)
     setValues(prev => {
       const next = { ...prev, [name]: v }
       // Re-validate a field that already shows an error so it clears as soon as it's fixed.
@@ -38,6 +40,10 @@ export function useForm<S extends z.ZodType<AnyObj>>(schema: S, initial: z.input
   }, [validate])
 
   const blur = useCallback((name: string) => {
+    // Leaving a field you never typed in isn't a mistake: flagging it would also shift the layout under the pointer
+    // mid-click (an autofocused empty field blurs on mousedown, so the link below it moved and the click missed).
+    // Untouched fields are still validated on submit.
+    if (!edited.current.has(name)) return
     setTouched(t => ({ ...t, [name]: true }))
     setErrors(e => ({ ...e, [name]: validate(values).errors[name] ?? '' }))
   }, [validate, values])
@@ -72,7 +78,7 @@ export function useForm<S extends z.ZodType<AnyObj>>(schema: S, initial: z.input
   }, [validate, values])
 
   const dirty = useMemo(() => JSON.stringify(values) !== initialRef.current, [values])
-  const reset = useCallback((v: z.input<S>) => { setValues(v as AnyObj); initialRef.current = JSON.stringify(v); setErrors({}); setTouched({}); setFormError(null) }, [])
+  const reset = useCallback((v: z.input<S>) => { setValues(v as AnyObj); edited.current.clear(); initialRef.current = JSON.stringify(v); setErrors({}); setTouched({}); setFormError(null) }, [])
   const error = (name: string) => (touched[name] || errors[name] ? errors[name] || undefined : undefined)
 
   return { values, set, blur, submit, errors, error, submitting, formError, setFormError, dirty, reset }

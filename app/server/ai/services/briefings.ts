@@ -13,6 +13,7 @@ import { overview } from '../../modules/stakeholders'
 import { STANCE_LABEL } from '../../modules/_shared'
 import type { AIEngine, Evidence } from '../engine'
 import { validateCites } from '../guard'
+import { daysFromToday } from '../../../shared/dates'
 
 export type ItemKind = 'fact' | 'metric' | 'interpretation' | 'recommendation'
 export interface Item { text: string; kind: ItemKind; cites: string[]; action?: string; method?: string; /** Recommendations only: produced by a deterministic rule or by the model. */ origin?: 'rule' | 'ai' }
@@ -45,7 +46,7 @@ const DAY = 86_400_000
 const LEVEL = ['', 'low', 'medium', 'high', 'very high']
 const fmt = (d: string | Date | null | undefined) => (d ? new Date(typeof d === 'string' && d.length === 10 ? d + 'T12:00:00Z' : d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—')
 const ago = (d: Date | string) => { const n = Math.round((Date.now() - new Date(d).getTime()) / DAY); return n <= 0 ? 'today' : n === 1 ? 'yesterday' : `${n} days ago` }
-const daysUntil = (iso: string) => Math.round((Date.parse(iso + 'T23:59:59Z') - Date.now()) / DAY)
+const daysUntil = (iso: string) => daysFromToday(iso)
 
 export class Refs {
   list: Source[] = []

@@ -46,6 +46,7 @@ Sample accounts (development only), all with the password `meridian-sample-2026`
 | `npm run db:drill` | Backup → disaster → restore → verify drill on a throwaway embedded PostgreSQL |
 | `./scripts/release-gate.sh` | Every release check in order (`SKIP_E2E=1` to skip Playwright) |
 | `npx tsx scripts/smoke.ts` | Read-only smoke test of a deployment: `BASE_URL=…` (optional `SMOKE_EMAIL`/`SMOKE_PASSWORD`) |
+| `npx tsx scripts/staging-rehearsal.ts` | Production artifact + real PostgreSQL (non-superuser owner) behind local HTTPS: smoke, security checks, full E2E, accessibility, db:check. Evidence in `docs/launch/evidence/` |
 | `npx tsx scripts/deploy-drill.ts` | Builds release N and N-1, then rehearses deploy → rollback → roll forward with smoke tests |
 | `npx tsx scripts/load-test.ts` | Local load test at 2,000 stakeholders (never point it at third-party services) |
 
@@ -86,6 +87,9 @@ Required environment (see `.env.example`):
 | `AUTH_SECRET` | 32+ random characters, e.g. `openssl rand -base64 48` |
 | `APP_URL` | The public origin, e.g. `https://app.example.com`. Cookies are `Secure` in production; state-changing requests from other origins are rejected |
 | `CLIENT_IP_HEADER` or `TRUSTED_PROXY_HOPS` / `TRUSTED_PROXIES` | How to find the real client IP behind your proxy (rate limits depend on it). Set per platform |
+| `DEPLOY_ENV` | `production` (default) or `staging`. Production requires an https `APP_URL` and `MAIL_TRANSPORT=postmark`; staging refuses live payments |
+| `SIGNUP_MODE` / `SIGNUP_ALLOWLIST` | `invite_only` by default in production: only allow-listed addresses/@domains or invited people can sign up. `open` is a deliberate launch decision |
+| `AI_MODEL_APPROVED` | Must be `true` before the Claude model engine can run in production |
 | `METRICS_TOKEN` | Optional. Enables Prometheus metrics at `/api/metrics` (Bearer token) |
 
 Health: `/api/health` (liveness) and `/api/ready` (database and job queue). Logs are JSON in production.

@@ -528,7 +528,6 @@ function Affiliations({ s }: { s: StakeholderDetail }) {
 /* ── Relationships ─────────────────────────────────────────────────── */
 const relFormSchema = z.object({ type: z.enum(RELATIONSHIP_TYPES), otherKind: z.enum(['stakeholder', 'organization']), otherId: z.string().min(1, 'Choose who this relationship is with'), direction: z.enum(['out', 'in']), strength: z.string().optional(), status: z.enum(['confirmed', 'inferred']) })
 function RelationshipsTab({ d }: { d: Overview }) {
-  const nav = useNavigate()
   const { can } = useSession()
   const { toast } = useApp()
   const invalidate = useInvalidate()
@@ -553,9 +552,13 @@ function RelationshipsTab({ d }: { d: Overview }) {
           {rels.map(r => (
             <div key={r.id} className="rrow" role="row">
               <span role="cell" className="c2">{(RELATIONSHIP_LABEL[r.type] ?? ['Related to', 'Related to'])[r.direction === 'out' ? 0 : 1]}</span>
-              <button role="cell" className="row gap-2 rlink" onClick={() => nav(r.otherKind === 'stakeholder' ? `/stakeholders/${r.other.id}?tab=relationships` : `/organizations/${r.other.id}`)}>
-                {r.otherKind === 'stakeholder' ? <Avatar name={r.other.name} size={20} /> : <Building2 size={15} className="c3" />}<span className="truncate t-strong">{r.other.name}</span>
-              </button>
+              {/* A real link inside the cell: role="cell" on a button hid it from assistive technology, and navigation
+                  belongs on a link (open in a new tab, URL on hover). */}
+              <span role="cell" className="rcell-link">
+                <Link className="row gap-2 rlink" to={r.otherKind === 'stakeholder' ? `/stakeholders/${r.other.id}?tab=relationships` : `/organizations/${r.other.id}`}>
+                  {r.otherKind === 'stakeholder' ? <Avatar name={r.other.name} size={20} /> : <Building2 size={15} className="c3" />}<span className="truncate t-strong">{r.other.name}</span>
+                </Link>
+              </span>
               <span role="cell">{r.other.stance ? <StanceBadge stance={r.other.stance} /> : <span className="c3 t-small">Organization</span>}</span>
               <span role="cell" className="rel-strength" title={r.strength ? `Strength ${r.strength} of 3` : 'Strength not recorded'}>{[1, 2, 3].map(i => <i key={i} data-on={(r.strength ?? 0) >= i || undefined} />)}</span>
               <span role="cell">{r.status === 'inferred' ? <Pill tone="ai">Inferred</Pill> : <span className="c3 t-small">Confirmed</span>}</span>

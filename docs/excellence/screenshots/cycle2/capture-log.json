@@ -1,0 +1,36 @@
+{
+  "base": "http://localhost:5173",
+  "capturedAt": "2026-10-24T14:44:36.850Z",
+  "ids": {
+    "person": "10678d4c-95d3-45bd-a4e7-1a7769b36185",
+    "org": "3bbf6eae-ba2e-4718-8ff0-ccbc166e8310",
+    "init": "714ee315-2e23-413b-9265-d198dd775cac",
+    "meeting": "2db2bc2d-b441-46a4-822d-20fb7a3a83bd"
+  },
+  "log": [
+    {
+      "vp": "desktop",
+      "name": "04-universe",
+      "path": "/stakeholders?view=map",
+      "loadMs": 1358,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "mobile",
+      "name": "04-universe",
+      "path": "/stakeholders?view=map",
+      "loadMs": 1406,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": [
+        "button.chip chip-on → 430",
+        "span.chip-main → 429",
+        "span.chip-v → 404",
+        "svg.[object SVGAnimatedString] → 421",
+        "path.[object SVGAnimatedString] → 418"
+      ]
+    }
+  ]
+}

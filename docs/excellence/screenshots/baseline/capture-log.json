@@ -1,0 +1,650 @@
+{
+  "base": "http://localhost:5173",
+  "capturedAt": "2026-10-24T07:56:31.639Z",
+  "ids": {
+    "person": "10678d4c-95d3-45bd-a4e7-1a7769b36185",
+    "org": "3bbf6eae-ba2e-4718-8ff0-ccbc166e8310",
+    "init": "714ee315-2e23-413b-9265-d198dd775cac",
+    "meeting": "2db2bc2d-b441-46a4-822d-20fb7a3a83bd"
+  },
+  "log": [
+    {
+      "vp": "desktop",
+      "name": "01-command-center",
+      "path": "/",
+      "loadMs": 1035,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "desktop",
+      "name": "02-directory",
+      "path": "/stakeholders",
+      "loadMs": 2132,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "desktop",
+      "name": "03-profile",
+      "path": "/stakeholders/10678d4c-95d3-45bd-a4e7-1a7769b36185",
+      "loadMs": 832,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "desktop",
+      "name": "04-universe",
+      "path": "/stakeholders?view=map",
+      "loadMs": 1485,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "desktop",
+      "name": "05-organizations",
+      "path": "/organizations",
+      "loadMs": 4881,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "desktop",
+      "name": "05b-organization",
+      "path": "/organizations/3bbf6eae-ba2e-4718-8ff0-ccbc166e8310",
+      "loadMs": 719,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "desktop",
+      "name": "06-initiatives",
+      "path": "/initiatives",
+      "loadMs": 1002,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "desktop",
+      "name": "06b-initiative",
+      "path": "/initiatives/714ee315-2e23-413b-9265-d198dd775cac",
+      "loadMs": 972,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "desktop",
+      "name": "07-engagements",
+      "path": "/engagements",
+      "loadMs": 1018,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "desktop",
+      "name": "08-decisions",
+      "path": "/decisions",
+      "loadMs": 1032,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "desktop",
+      "name": "09-commitments",
+      "path": "/commitments",
+      "loadMs": 1080,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "desktop",
+      "name": "10-copilot",
+      "path": "/",
+      "loadMs": 880,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "desktop",
+      "name": "11-meeting-intelligence",
+      "path": "/engagements/2db2bc2d-b441-46a4-822d-20fb7a3a83bd/intelligence",
+      "loadMs": 1886,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": [
+        "span.c3 → 1494",
+        "span.c3 → 1495"
+      ]
+    },
+    {
+      "vp": "desktop",
+      "name": "12-settings",
+      "path": "/settings",
+      "loadMs": 967,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "desktop",
+      "name": "12b-settings-members",
+      "path": "/settings/members",
+      "loadMs": 967,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "desktop",
+      "name": "15-billing",
+      "path": "/settings/billing",
+      "loadMs": 698,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "desktop",
+      "name": "state-loading-directory",
+      "path": "/stakeholders",
+      "loadMs": 5191,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "desktop",
+      "name": "state-error-directory",
+      "path": "/stakeholders",
+      "loadMs": 813,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "desktop",
+      "name": "state-loading-home",
+      "path": "/",
+      "loadMs": 8836,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "desktop",
+      "name": "state-empty-command-center",
+      "path": "/",
+      "loadMs": 749,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "desktop",
+      "name": "state-empty-directory",
+      "path": "/stakeholders",
+      "loadMs": 774,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "desktop",
+      "name": "state-empty-universe",
+      "path": "/stakeholders?view=map",
+      "loadMs": 992,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "desktop",
+      "name": "state-empty-commitments",
+      "path": "/commitments",
+      "loadMs": 762,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "desktop",
+      "name": "state-no-results-directory",
+      "path": "/stakeholders?q=zzzz-no-match",
+      "loadMs": 756,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "desktop",
+      "name": "13-onboarding",
+      "path": "/onboarding",
+      "loadMs": 995,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "desktop",
+      "name": "14-pricing",
+      "path": "/pricing",
+      "loadMs": 1000,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "desktop",
+      "name": "16-marketing-home",
+      "path": "/",
+      "loadMs": 1019,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": [
+        "img. → 1554",
+        "img. → 1491"
+      ]
+    },
+    {
+      "vp": "desktop",
+      "name": "16b-marketing-ai",
+      "path": "/ai",
+      "loadMs": 972,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "desktop",
+      "name": "16c-sign-in",
+      "path": "/sign-in",
+      "loadMs": 963,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "mobile",
+      "name": "01-command-center",
+      "path": "/",
+      "loadMs": 882,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "mobile",
+      "name": "02-directory",
+      "path": "/stakeholders",
+      "loadMs": 1607,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": [
+        "span.chip  → 391",
+        "button.link-btn → 468",
+        "button.btn btn-primary btn-sm   → 570",
+        "svg.[object SVGAnimatedString] → 495",
+        "path.[object SVGAnimatedString] → 492"
+      ]
+    },
+    {
+      "vp": "mobile",
+      "name": "03-profile",
+      "path": "/stakeholders/10678d4c-95d3-45bd-a4e7-1a7769b36185",
+      "loadMs": 710,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": [
+        "button.tab → 545",
+        "span.tab-count num → 545",
+        "button.tab → 610"
+      ]
+    },
+    {
+      "vp": "mobile",
+      "name": "04-universe",
+      "path": "/stakeholders?view=map",
+      "loadMs": 1279,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": [
+        "button.chip chip-on → 430",
+        "span.chip-main → 429",
+        "span.chip-v → 404",
+        "svg.[object SVGAnimatedString] → 421",
+        "path.[object SVGAnimatedString] → 418"
+      ]
+    },
+    {
+      "vp": "mobile",
+      "name": "05-organizations",
+      "path": "/organizations",
+      "loadMs": 4652,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": [
+        "span.c3 → 400",
+        "button.icon-btn → 400",
+        "svg.[object SVGAnimatedString] → 400",
+        "path.[object SVGAnimatedString] → 398",
+        "path.[object SVGAnimatedString] → 398"
+      ]
+    },
+    {
+      "vp": "mobile",
+      "name": "05b-organization",
+      "path": "/organizations/3bbf6eae-ba2e-4718-8ff0-ccbc166e8310",
+      "loadMs": 709,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "mobile",
+      "name": "06-initiatives",
+      "path": "/initiatives",
+      "loadMs": 709,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": [
+        "span.avatar avatar-internal → 404",
+        "button.icon-btn → 400",
+        "svg.[object SVGAnimatedString] → 400",
+        "path.[object SVGAnimatedString] → 398",
+        "path.[object SVGAnimatedString] → 398"
+      ]
+    },
+    {
+      "vp": "mobile",
+      "name": "06b-initiative",
+      "path": "/initiatives/714ee315-2e23-413b-9265-d198dd775cac",
+      "loadMs": 764,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": [
+        "button.tab → 439"
+      ]
+    },
+    {
+      "vp": "mobile",
+      "name": "07-engagements",
+      "path": "/engagements",
+      "loadMs": 726,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "mobile",
+      "name": "08-decisions",
+      "path": "/decisions",
+      "loadMs": 737,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": [
+        "label.search-field → 429",
+        "input. → 397",
+        "kbd.kbd → 422",
+        "span.chip  → 522",
+        "button.chip-main → 521"
+      ]
+    },
+    {
+      "vp": "mobile",
+      "name": "09-commitments",
+      "path": "/commitments",
+      "loadMs": 790,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": [
+        "div.ftabs rb-tabs → 473",
+        "button.ftab → 473",
+        "span. → 437",
+        "span.ftab-count num → 464",
+        "label.search-field → 681"
+      ]
+    },
+    {
+      "vp": "mobile",
+      "name": "10-copilot",
+      "path": "/",
+      "loadMs": 845,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "mobile",
+      "name": "11-meeting-intelligence",
+      "path": "/engagements/2db2bc2d-b441-46a4-822d-20fb7a3a83bd/intelligence",
+      "loadMs": 1582,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "mobile",
+      "name": "12-settings",
+      "path": "/settings",
+      "loadMs": 697,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": [
+        "button.set-tab → 498",
+        "svg.[object SVGAnimatedString] → 418",
+        "path.[object SVGAnimatedString] → 413",
+        "path.[object SVGAnimatedString] → 415",
+        "path.[object SVGAnimatedString] → 417"
+      ]
+    },
+    {
+      "vp": "mobile",
+      "name": "12b-settings-members",
+      "path": "/settings/members",
+      "loadMs": 702,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": [
+        "button.set-tab → 567",
+        "svg.[object SVGAnimatedString] → 418",
+        "path.[object SVGAnimatedString] → 417",
+        "circle.[object SVGAnimatedString] → 414",
+        "span.truncate → 557"
+      ]
+    },
+    {
+      "vp": "mobile",
+      "name": "15-billing",
+      "path": "/settings/billing",
+      "loadMs": 664,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": [
+        "button.set-tab → 524",
+        "svg.[object SVGAnimatedString] → 418",
+        "path.[object SVGAnimatedString] → 411",
+        "path.[object SVGAnimatedString] → 412",
+        "path.[object SVGAnimatedString] → 413"
+      ]
+    },
+    {
+      "vp": "mobile",
+      "name": "state-loading-directory",
+      "path": "/stakeholders",
+      "loadMs": 5197,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": [
+        "span.chip  → 391",
+        "button.link-btn → 468",
+        "button.btn btn-primary btn-sm   → 570",
+        "svg.[object SVGAnimatedString] → 495",
+        "path.[object SVGAnimatedString] → 492"
+      ]
+    },
+    {
+      "vp": "mobile",
+      "name": "state-error-directory",
+      "path": "/stakeholders",
+      "loadMs": 796,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": [
+        "span.chip  → 391",
+        "button.link-btn → 468",
+        "button.btn btn-primary btn-sm   → 570",
+        "svg.[object SVGAnimatedString] → 495",
+        "path.[object SVGAnimatedString] → 492"
+      ]
+    },
+    {
+      "vp": "mobile",
+      "name": "state-loading-home",
+      "path": "/",
+      "loadMs": 8830,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "mobile",
+      "name": "state-empty-command-center",
+      "path": "/",
+      "loadMs": 745,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "mobile",
+      "name": "state-empty-directory",
+      "path": "/stakeholders",
+      "loadMs": 758,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": [
+        "span.chip  → 391",
+        "button.link-btn → 468",
+        "button.btn btn-primary btn-sm   → 570",
+        "svg.[object SVGAnimatedString] → 495",
+        "path.[object SVGAnimatedString] → 492"
+      ]
+    },
+    {
+      "vp": "mobile",
+      "name": "state-empty-universe",
+      "path": "/stakeholders?view=map",
+      "loadMs": 745,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": [
+        "div.seg → 467",
+        "button.seg-btn → 430",
+        "span.seg-on → 430",
+        "svg.[object SVGAnimatedString] → 420",
+        "rect.[object SVGAnimatedString] → 419"
+      ]
+    },
+    {
+      "vp": "mobile",
+      "name": "state-empty-commitments",
+      "path": "/commitments",
+      "loadMs": 734,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": [
+        "div.ftabs rb-tabs → 466",
+        "button.ftab → 466",
+        "span. → 437",
+        "span.ftab-count num → 457",
+        "label.search-field → 674"
+      ]
+    },
+    {
+      "vp": "mobile",
+      "name": "state-no-results-directory",
+      "path": "/stakeholders?q=zzzz-no-match",
+      "loadMs": 747,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": [
+        "span.chip  → 391",
+        "button.link-btn → 468",
+        "button.btn btn-primary btn-sm   → 570",
+        "svg.[object SVGAnimatedString] → 495",
+        "path.[object SVGAnimatedString] → 492"
+      ]
+    },
+    {
+      "vp": "mobile",
+      "name": "13-onboarding",
+      "path": "/onboarding",
+      "loadMs": 988,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    },
+    {
+      "vp": "mobile",
+      "name": "14-pricing",
+      "path": "/pricing",
+      "loadMs": 1000,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": [
+        "table.mk-compare → 661",
+        "thead. → 661",
+        "tr. → 661",
+        "th. → 401",
+        "th. → 545"
+      ]
+    },
+    {
+      "vp": "mobile",
+      "name": "16-marketing-home",
+      "path": "/",
+      "loadMs": 995,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": [
+        "img. → 706",
+        "img. → 755",
+        "img. → 539",
+        "button.mk-ind-btn → 459",
+        "b. → 445"
+      ]
+    },
+    {
+      "vp": "mobile",
+      "name": "16b-marketing-ai",
+      "path": "/ai",
+      "loadMs": 977,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": [
+        "img. → 665"
+      ]
+    },
+    {
+      "vp": "mobile",
+      "name": "16c-sign-in",
+      "path": "/sign-in",
+      "loadMs": 964,
+      "errs": [],
+      "docOverflow": false,
+      "overflowing": []
+    }
+  ]
+}

@@ -113,7 +113,7 @@ export async function* streamCopilot(body: { message: string; conversationId?: s
     res = await fetch(ws('/ai/copilot'), { method: 'POST', credentials: 'same-origin', signal, headers: { 'content-type': 'application/json', accept: 'text/event-stream' }, body: JSON.stringify(body) })
   } catch (e) {
     if ((e as Error).name === 'AbortError') throw e
-    throw new NetworkError()
+    throw new NetworkError(false)
   }
   if (!res.ok || !res.body) {
     const data = await res.json().catch(() => null) as { error?: { code?: string; message?: string } } | null

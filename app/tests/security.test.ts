@@ -4,6 +4,9 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { client, createTestContext, createWorkspace, lastMail, ORIGIN, PASSWORD, signUp, type Client, type TestContext } from './helpers'
 import { clientIp } from '../server/net'
 import { errorFields } from '../server/log'
+import { loadEnv } from '../server/env'
+import { session, user } from '../server/db/schema'
+import { eq } from 'drizzle-orm'
 import { safeNext } from '../shared/url'
 
 let ctx: TestContext
@@ -88,6 +91,17 @@ describe('sessions', () => {
     expect(r.status).toBe(200)
     expect((await victim.get('/api/me')).status).toBe(401)
   })
+  test('an expired session is refused, and so is a session deleted on the server', async () => {
+    const u = await signUp(ctx, 'expiry@sec.test', 'Ezra Expiry')
+    expect((await u.get('/api/me')).status).toBe(200)
+    const [row] = await ctx.db.select({ id: user.id }).from(user).where(eq(user.email, 'expiry@sec.test'))
+    await ctx.db.update(session).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(session.userId, row.id))
+    expect((await u.get('/api/me')).status).toBe(401)
+    const again = await signUp(ctx, 'expiry2@sec.test', 'Ezra Again')
+    const [row2] = await ctx.db.select({ id: user.id }).from(user).where(eq(user.email, 'expiry2@sec.test'))
+    await ctx.db.delete(session).where(eq(session.userId, row2.id))
+    expect((await again.get('/api/me')).status).toBe(401)
+  })
   test('unverified accounts can’t create or join workspaces', async () => {
     const c = client(ctx)
     await c.post('/api/auth/sign-up/email', { email: 'unverified@sec.test', password: PASSWORD, name: 'Una Verified' })
@@ -101,7 +115,7 @@ describe('sessions', () => {
 describe('production configuration', () => {
   let prod: TestContext
   beforeAll(async () => {
-    prod = await createTestContext({ env: { NODE_ENV: 'production', DATABASE_URL: 'postgres://unused/x', AUTH_SECRET: 'x'.repeat(40), BILLING_PROVIDER: 'none', REQUIRE_EMAIL_VERIFICATION: 'false' } })
+    prod = await createTestContext({ env: { NODE_ENV: 'production', DEPLOY_ENV: 'staging', DATABASE_URL: 'postgres://unused/x', AUTH_SECRET: 'x'.repeat(40), BILLING_PROVIDER: 'none', REQUIRE_EMAIL_VERIFICATION: 'false' } })
   })
   afterAll(async () => { await prod.close() })
   test('CSP and HSTS are sent; cookies are Secure; the simulator and dev routes don’t exist', async () => {
@@ -119,6 +133,28 @@ describe('production configuration', () => {
     const statuses: number[] = []
     for (let i = 0; i < 6; i++) statuses.push((await attempt(`10.0.0.${i}, 203.0.113.7`)).status)
     expect(statuses.filter(s => s === 429).length).toBeGreaterThan(0)
+  })
+})
+
+describe('environment guards', () => {
+  const base = { NODE_ENV: 'production', DATABASE_URL: 'postgres://h/db', AUTH_SECRET: 'x'.repeat(40) }
+  test('production refuses development defaults that would fail silently', () => {
+    expect(() => loadEnv({ ...base, APP_URL: 'https://app.example.com' })).toThrow(/MAIL_TRANSPORT=postmark/)
+    expect(() => loadEnv({ ...base, MAIL_TRANSPORT: 'postmark', POSTMARK_SERVER_TOKEN: 't' })).toThrow(/https/)
+    expect(() => loadEnv({ ...base, APP_URL: 'https://app.example.com', MAIL_TRANSPORT: 'postmark' })).toThrow(/POSTMARK_SERVER_TOKEN/)
+    expect(() => loadEnv({ ...base, APP_URL: 'https://app.example.com', MAIL_TRANSPORT: 'postmark', POSTMARK_SERVER_TOKEN: 't', BILLING_PROVIDER: 'simulator' })).toThrow(/simulator/)
+    expect(loadEnv({ ...base, APP_URL: 'https://app.example.com', MAIL_TRANSPORT: 'postmark', POSTMARK_SERVER_TOKEN: 't' }).DEPLOY_ENV).toBe('production')
+  })
+  test('production can’t switch on the model engine with a key alone', () => {
+    const prod = { ...base, APP_URL: 'https://app.example.com', MAIL_TRANSPORT: 'postmark', POSTMARK_SERVER_TOKEN: 't' }
+    expect(() => loadEnv({ ...prod, ANTHROPIC_API_KEY: 'sk-ant-test' })).toThrow(/AI_MODEL_APPROVED/)
+    expect(() => loadEnv({ ...prod, AI_ENGINE: 'claude' })).toThrow(/AI_MODEL_APPROVED/)
+    expect(loadEnv({ ...prod, ANTHROPIC_API_KEY: 'sk-ant-test', AI_ENGINE: 'local' }).NODE_ENV).toBe('production')
+    expect(loadEnv({ ...prod, ANTHROPIC_API_KEY: 'sk-ant-test', AI_MODEL_APPROVED: 'true' }).NODE_ENV).toBe('production')
+  })
+  test('staging may use the log mail transport but never live payments', () => {
+    expect(loadEnv({ ...base, DEPLOY_ENV: 'staging' }).DEPLOY_ENV).toBe('staging')
+    expect(() => loadEnv({ ...base, DEPLOY_ENV: 'staging', BILLING_LIVE_APPROVED: 'true' })).toThrow(/live payments/)
   })
 })
 
@@ -156,5 +192,39 @@ describe('metrics endpoint', () => {
       for (const k of ['meridian_http_requests_total', 'meridian_db_up 1', 'meridian_jobs_dead', 'meridian_billing_events_unprocessed', 'meridian_email_failed_24h', 'meridian_ai_cost_micros_24h']) expect(body).toContain(k)
       expect(body).not.toMatch(/@|workspace_id|[0-9a-f]{8}-[0-9a-f]{4}-/)
     } finally { await m.close() }
+  })
+})
+
+describe('controlled rollout: invite-only signup', () => {
+  let gated: TestContext
+  beforeAll(async () => { gated = await createTestContext({ env: { SIGNUP_MODE: 'invite_only', SIGNUP_ALLOWLIST: '@partner.test, solo@friend.test' } }) })
+  afterAll(async () => { await gated.close() })
+  const signUpAs = (email: string) => client(gated).post('/api/auth/sign-up/email', { email, password: PASSWORD, name: 'Some One' })
+  test('strangers are refused without revealing anything; no account is created', async () => {
+    const r = await signUpAs('stranger@elsewhere.test')
+    expect(r.status).toBe(403)
+    expect(JSON.stringify(r.body)).toMatch(/invitation-only/)
+    expect(await gated.db.select().from(user).where(eq(user.email, 'stranger@elsewhere.test'))).toHaveLength(0)
+  })
+  test('allow-listed domains and addresses can sign up', async () => {
+    expect((await signUpAs('lead@partner.test')).status).toBe(200)
+    expect((await signUpAs('solo@friend.test')).status).toBe(200)
+    expect((await signUpAs('solo2@friend.test')).status).toBe(403)
+  })
+  test('a pending invitation lets that address sign up; a revoked one doesn’t', async () => {
+    const owner = await signUp(gated, 'owner@partner.test', 'Opal Owner')
+    const w = await createWorkspace(owner, 'Partner Co')
+    expect((await owner.post(`/api/w/${w}/invitations`, { email: 'guest@outside.test', role: 'contributor' })).status).toBe(201)
+    expect((await signUpAs('guest@outside.test')).status).toBe(200)
+    const inv = await owner.post(`/api/w/${w}/invitations`, { email: 'gone@outside.test', role: 'viewer' })
+    await owner.del(`/api/w/${w}/invitations/${inv.body.id}`)
+    expect((await signUpAs('gone@outside.test')).status).toBe(403)
+  })
+  test('production defaults to invite-only; staging and development stay open unless configured', () => {
+    const base = { NODE_ENV: 'production', DATABASE_URL: 'postgres://h/db', AUTH_SECRET: 'x'.repeat(40) }
+    expect(loadEnv({ ...base, APP_URL: 'https://app.example.com', MAIL_TRANSPORT: 'postmark', POSTMARK_SERVER_TOKEN: 't' }).SIGNUP_MODE).toBe('invite_only')
+    expect(loadEnv({ ...base, APP_URL: 'https://app.example.com', MAIL_TRANSPORT: 'postmark', POSTMARK_SERVER_TOKEN: 't', SIGNUP_MODE: 'open' }).SIGNUP_MODE).toBe('open')
+    expect(loadEnv({ ...base, DEPLOY_ENV: 'staging' }).SIGNUP_MODE).toBe('open')
+    expect(loadEnv({ NODE_ENV: 'development' }).SIGNUP_MODE).toBe('open')
   })
 })

@@ -24,7 +24,7 @@ const sh = (cmd: string, args: string[], cwd: string, env: Record<string, string
   if (r.status !== 0) throw new Error(`${cmd} ${args.join(' ')} failed in ${cwd}:\n${r.stderr?.slice(-2000)}`)
   return Math.round(performance.now() - t0)
 }
-const prodEnv = { NODE_ENV: 'production', PORT: String(PORT), APP_URL: BASE, DATABASE_URL: DB, AUTH_SECRET: 'deploy-drill-secret-'.padEnd(48, 'x'), BILLING_PROVIDER: 'none', MAIL_TRANSPORT: 'log', REQUIRE_EMAIL_VERIFICATION: 'true', JOBS_ENABLED: 'true' }
+const prodEnv = { NODE_ENV: 'production', DEPLOY_ENV: 'staging', PORT: String(PORT), APP_URL: BASE, DATABASE_URL: DB, AUTH_SECRET: 'deploy-drill-secret-'.padEnd(48, 'x'), BILLING_PROVIDER: 'none', MAIL_TRANSPORT: 'log', REQUIRE_EMAIL_VERIFICATION: 'true', JOBS_ENABLED: 'true' }
 
 function artifact(sourceDir: string, name: string, opts: { omitDev: boolean }) {
   const dir = path.join(root, name)

@@ -56,6 +56,8 @@ svg { flex: none; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 1ms !important; animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
+  /* A busy spinner is the only sign that work is in progress: it keeps turning (WCAG 2.3.3 allows essential motion). */
+  .spin { animation-duration: 0.9s !important; animation-iteration-count: infinite !important; }
 }
 
 /* WCAG 2.2 target size (2.5.8) on touch screens: small controls get at least a 24 × 24 px hit area.

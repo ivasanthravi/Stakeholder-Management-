@@ -524,12 +524,15 @@ function Sources({ text, refs, onNavigate }: { text: string; refs: CopilotRef[];
   const refMap = useMemo(() => new Map(refs.map(r => [r.ref, r])), [refs])
   const order = useMemo(() => citeOrder(text, refMap), [text, refMap])
   const list = order.size ? [...order.keys()].map(k => refMap.get(k)!) : refs.slice(0, 8)
+  // A long source list pushed the answer itself out of view: show the first few, the rest on request.
+  const [all, setAll] = useState(false)
   if (!list.length) return null
+  const shown = all ? list : list.slice(0, SOURCE_LIMIT)
   return (
     <div className="cp-sources">
-      <div className="label-rule">Sources</div>
+      <div className="label-rule">Sources{list.length > SOURCE_LIMIT ? ` · ${list.length}` : ''}</div>
       <ol>
-        {list.map((r, i) => (
+        {shown.map((r, i) => (
           <li key={r.ref}>
             <Link to={r.href} onClick={onNavigate}>
               <span className="cp-src-n" aria-hidden>{order.size ? i + 1 : '·'}</span>
@@ -539,9 +542,13 @@ function Sources({ text, refs, onNavigate }: { text: string; refs: CopilotRef[];
           </li>
         ))}
       </ol>
+      {list.length > SOURCE_LIMIT && (
+        <button type="button" className="cp-link cp-more" aria-expanded={all} onClick={() => setAll(v => !v)}>{all ? 'Show fewer sources' : `Show all ${list.length} sources`}</button>
+      )}
     </div>
   )
 }
+const SOURCE_LIMIT = 5
 
 // ── Structured result cards ──────────────────────────────────────────────────
 const str = (v: unknown) => (typeof v === 'string' ? v : typeof v === 'number' ? String(v) : null)

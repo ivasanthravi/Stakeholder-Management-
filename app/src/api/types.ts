@@ -85,6 +85,9 @@ export interface Dashboard {
 }
 
 export interface Graph {
+  /** People matching the scope; above `limit` only the most influential `limit` are in `nodes`. */
+  total?: number
+  limit?: number
   nodes: { id: string; name: string; title: string | null; stance: Stance; influence: Level | null; interest: Level | null; ownerId: string | null; orgId: string | null; lastEngagedAt: string | null; gap: boolean }[]
   orgs: { id: string; name: string; shortName: string | null; type: string }[]
   edges: { id: string; source: string; target: string; sourceKind: 'stakeholder' | 'organization'; targetKind: 'stakeholder' | 'organization'; type: string; directed: boolean; strength: number | null; status: 'confirmed' | 'inferred' }[]

@@ -8,7 +8,10 @@ import type { Tx } from '../db/client'
 import { aiSettings } from '../ai/usage'
 import { rowsOf, STANCE_LABEL } from './_shared'
 import { z } from 'zod'
+import { daysFromToday } from '../../shared/dates'
 
+/** The relationship map draws at most this many people; beyond it the response says how many matched. */
+const GRAPH_LIMIT = 2000
 const DAY = 86_400_000
 
 export interface Signal {
@@ -53,7 +56,8 @@ export async function computeDashboard(t: Tx, me: string, th: Thresholds) {
         from commitment cm left join "user" u on u.id = cm.owner_id left join stakeholder s on s.id = cm.stakeholder_id
           left join initiative i on i.id = cm.initiative_id left join engagement e on e.id = cm.source_engagement_id
         where cm.archived_at is null and cm.status in ('open','in_progress') and cm.due_date is not null
-          and cm.due_date between current_date - 60 and current_date + 30
+          -- Every overdue commitment counts, however old: the most neglected ones must not drop out of view.
+          and cm.due_date <= current_date + 30
           and (cm.stakeholder_id is null or s.id is not null)`))
       const decisions = rowsOf<Record<string, unknown>>(await t.execute(sql`
         select d.id, d.key, d.title, d.status, d.due_date as "dueDate", d.created_at as "createdAt", d.owner_id as "ownerId", u.name as "ownerName",
@@ -88,7 +92,7 @@ export async function computeDashboard(t: Tx, me: string, th: Thresholds) {
         ({ id: r.stakeholderId as string, name: r.stakeholderName as string, title: r.stakeholderTitle as string | null, stance: r.stakeholderStance as string })
       for (const cm of commitments) {
         const due = Date.parse(String(cm.dueDate) + 'T23:59:59Z')
-        const days = Math.floor((due - now) / DAY)
+        const days = daysFromToday(String(cm.dueDate), now)
         const ev = cm.evId ? [{ id: cm.evId as string, key: cm.evKey as string, title: cm.evTitle as string, occurredAt: new Date(cm.evAt as string).toISOString() }] : []
         const base = { title: `${cm.key} ${cm.title}`, stakeholder: cm.stakeholderId ? counterparty(cm) : null, commitmentId: cm.id as string, commitmentVersion: cm.version as number, ownerId: cm.ownerId as string | null, ownerName: cm.ownerName as string | null, initiativeCode: cm.initiativeCode as string | null, evidence: ev, at: due }
         if (days < 0) signals.push({ ...base, id: `o-${cm.id}`, kind: 'overdue', severity: 3, reason: `${-days} day${days === -1 ? '' : 's'} overdue${cm.stakeholderName ? ` · promised to ${cm.stakeholderName}` : ''}`, rule: 'Open commitment past its due date' })
@@ -96,7 +100,7 @@ export async function computeDashboard(t: Tx, me: string, th: Thresholds) {
       }
       for (const d of decisions) {
         const age = Math.floor((now - new Date(d.createdAt as string).getTime()) / DAY)
-        const due = d.dueDate ? Math.floor((Date.parse(String(d.dueDate) + 'T23:59:59Z') - now) / DAY) : null
+        const due = d.dueDate ? daysFromToday(String(d.dueDate), now) : null
         if ((due !== null && due < th.dueSoonDays) || age >= th.decisionStaleDays) {
           signals.push({
             id: `w-${d.id}`, kind: 'decision-waiting', severity: due !== null && due < 0 ? 3 : 2, title: `${d.key} ${d.title}`,
@@ -183,8 +187,19 @@ export const insightRoutes = new Hono<AppEnv>()
     if (scoped && !z.uuid().safeParse(initiativeId).success) return c.json({ nodes: [], orgs: [], edges: [] })
     const data = await tx(c, async t => {
       const nodes = rowsOf<Record<string, unknown>>(await t.execute(sql`
-        select s.id, s.name, s.title, s.stance, s.influence, s.interest, s.owner_id as "ownerId", prim.oid as "orgId", last.at as "lastEngagedAt"
-        from stakeholder s
+        -- Pick the people first (cheap, on the table itself), then compute per-person details for those only.
+        -- Above the cap the map keeps the most influential people (deterministically) and says how many matched.
+        with picked as (
+          select s.id, count(*) over ()::int as matching
+          from stakeholder s
+          where s.archived_at is null
+            ${scoped ? sql`and exists (select 1 from initiative_stakeholder x where x.stakeholder_id = s.id and x.initiative_id = ${initiativeId})` : sql``}
+          order by s.influence desc nulls last, s.name, s.id
+          limit ${GRAPH_LIMIT}
+        )
+        select s.id, s.name, s.title, s.stance, s.influence, s.interest, s.owner_id as "ownerId", prim.oid as "orgId", last.at as "lastEngagedAt",
+          picked.matching as "matching"
+        from picked join stakeholder s on s.id = picked.id
           left join lateral (
             select max(e.occurred_at) as at from engagement_participant ep join engagement e on e.id = ep.engagement_id
             where ep.stakeholder_id = s.id and e.archived_at is null
@@ -193,9 +208,8 @@ export const insightRoutes = new Hono<AppEnv>()
             select so.organization_id as oid from stakeholder_organization so
             where so.stakeholder_id = s.id and so.valid_to is null order by so.is_primary desc, so.created_at limit 1
           ) prim on true
-        where s.archived_at is null
-          ${scoped ? sql`and exists (select 1 from initiative_stakeholder x where x.stakeholder_id = s.id and x.initiative_id = ${initiativeId})` : sql``}
-        limit 2000`))
+        order by s.influence desc nulls last, s.name, s.id`))
+      const matching = (nodes[0]?.matching as number | undefined) ?? 0
       const ids = new Set(nodes.map(n => n.id as string))
       const orgIds = [...new Set(nodes.map(n => n.orgId).filter(Boolean))] as string[]
       const orgs = orgIds.length ? rowsOf<Record<string, unknown>>(await t.execute(sql`select id, name, short_name as "shortName", type from organization where id in (${sql.join(orgIds.map(i => sql`${i}`), sql`, `)})`)) : []
@@ -211,7 +225,8 @@ export const insightRoutes = new Hono<AppEnv>()
       })
       const now = Date.now()
       return {
-        nodes: nodes.map(n => ({ ...n, gap: (n.influence as number) >= 3 && (!n.ownerId || !n.lastEngagedAt || now - new Date(n.lastEngagedAt as string).getTime() > 60 * DAY) })),
+        total: matching, limit: GRAPH_LIMIT,
+        nodes: nodes.map(({ matching: _m, ...n }) => ({ ...n, gap: (n.influence as number) >= 3 && (!n.ownerId || !n.lastEngagedAt || now - new Date(n.lastEngagedAt as string).getTime() > 60 * DAY) })),
         orgs, edges,
       }
     })

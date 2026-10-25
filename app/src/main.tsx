@@ -1,7 +1,8 @@
 import { lazy, StrictMode, Suspense, type ComponentType } from 'react'
 import { createRoot } from 'react-dom/client'
-import { createBrowserRouter, Navigate, Outlet, RouterProvider, useLocation } from 'react-router-dom'
-import { MotionConfig } from 'motion/react'
+import { createBrowserRouter, Navigate, Outlet, RouterProvider, useLocation, useSearchParams } from 'react-router-dom'
+import { safeNext } from '../shared/url'
+import { MotionConfig, MotionGlobalConfig } from 'motion/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import '@fontsource-variable/inter'
 import '@fontsource-variable/newsreader'
@@ -73,8 +74,10 @@ function RequireWorkspace() {
 
 function PublicOnly() {
   const { status } = useSession()
+  const [params] = useSearchParams()
   if (status === 'loading') return <AppLoading />
-  if (status === 'ready') return <Navigate to="/" replace />
+  // Signing in (or arriving signed in) continues to where the visitor was going: a deep link, an expired session.
+  if (status === 'ready') return <Navigate to={safeNext(params.get('next'))} replace />
   return <Outlet />
 }
 
@@ -136,6 +139,13 @@ const router = createBrowserRouter([
     ],
   },
 ])
+
+// Reduced motion: MotionConfig's reducedMotion="user" only drops transform and layout animation, so height, width,
+// SVG and staggered reveals would still move. While the preference is on, every Motion animation completes instantly.
+const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+const applyReducedMotion = () => { MotionGlobalConfig.instantAnimations = !!reducedMotion?.matches }
+applyReducedMotion()
+reducedMotion?.addEventListener?.('change', applyReducedMotion)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

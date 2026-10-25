@@ -3,6 +3,7 @@ import { secureHeaders } from 'hono/secure-headers'
 import { bodyLimit } from 'hono/body-limit'
 import { requestLogger } from './log'
 import { clientIp, ipConfig } from './net'
+import { signupAllowed } from './auth'
 import { renderMetrics, tokenMatches } from './metrics'
 import { sql as dsql } from 'drizzle-orm'
 import { job } from './db/schema'
@@ -83,7 +84,7 @@ export function createApp(deps: Deps) {
   registerJobs(deps)
 
   // Liveness: the process is up. Readiness: the database answers and the job queue isn't stuck.
-  app.get('/api/health', c => c.json({ ok: true }))
+  app.get('/api/health', c => c.json({ ok: true, environment: deps.env.NODE_ENV === 'production' ? deps.env.DEPLOY_ENV : deps.env.NODE_ENV }))
   // Prometheus scrape endpoint; disabled unless METRICS_TOKEN is configured.
   app.get('/api/metrics', async c => {
     const token = (deps.env as unknown as Record<string, string | undefined>).METRICS_TOKEN
@@ -102,6 +103,18 @@ export function createApp(deps: Deps) {
     } catch {
       return c.json({ ok: false, db: { ok: false } }, 503)
     }
+  })
+  // Invite-only rollout: refuse closed signups with a clear answer. (The auth library would otherwise reply with a
+  // generic success to avoid revealing which emails exist, and the visitor would wait for an email that never comes.)
+  // The user-creation hook in auth.ts enforces the same rule as a backstop.
+  app.post('/api/auth/sign-up/email', async (c, next) => {
+    if (deps.env.SIGNUP_MODE === 'open') return next()
+    const body = await c.req.raw.clone().json().catch(() => null) as { email?: unknown } | null
+    if (typeof body?.email === 'string' && !(await signupAllowed(deps.db, deps.env, body.email))) {
+      // The auth library's error shape, so the sign-up form shows this message as-is.
+      return c.json({ code: 'SIGNUP_CLOSED', message: 'Meridian is invitation-only during the pilot. Ask a workspace admin to invite you, or contact us to request access.' }, 403)
+    }
+    return next()
   })
   app.on(['GET', 'POST'], '/api/auth/*', c => deps.auth.handler(c.req.raw))
 

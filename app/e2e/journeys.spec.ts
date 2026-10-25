@@ -4,7 +4,8 @@
 //   I  account lifecycle: workspace export (real download) → schedule deletion → cancel it
 // plus failure paths: wrong password, unusable invitation link, viewer can't reach billing controls.
 // Setup that isn't the subject of a journey goes through the API; the journey itself is driven through the UI.
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
+import { mailUrl } from './mail'
 import { readFileSync } from 'node:fs'
 
 const PASSWORD = 'correct-horse-battery'
@@ -13,19 +14,10 @@ const owner = { name: 'Juno Owner', email: `juno.${stamp}@e2e.test` }
 const mate = { name: 'Kit Mate', email: `kit.${stamp}@e2e.test` }
 let wid = ''
 
-async function mailLink(req: APIRequestContext, to: string, kind: string) {
-  for (let i = 0; i < 40; i++) {
-    const mail = await (await req.get('/api/dev/mail')).json() as { to: string; kind: string; url: string }[]
-    const m = mail.find(x => x.to === to && x.kind === kind)
-    if (m) return new URL(m.url)
-    await new Promise(r => setTimeout(r, 250))
-  }
-  throw new Error(`no ${kind} mail for ${to}`)
-}
 async function signUpVerified(page: Page, u: { name: string; email: string }) {
   const r = await page.request.post('/api/auth/sign-up/email', { data: { email: u.email, password: PASSWORD, name: u.name } })
   expect(r.ok()).toBeTruthy()
-  const v = await mailLink(page.request, u.email, 'verify')
+  const v = await mailUrl(page.request, u.email, 'verify')
   await page.goto(v.pathname + v.search)
 }
 async function signIn(page: Page, u: { email: string }) {
@@ -42,7 +34,7 @@ test.describe.serial('launch journeys', () => {
     await signUpVerified(op, owner)
     wid = (await (await op.request.post('/api/workspaces', { data: { name: 'Journey Works' } })).json()).id
     await op.request.post(`/api/w/${wid}/invitations`, { data: { email: mate.email, role: 'contributor' } })
-    const invite = await mailLink(op.request, mate.email, 'invite')
+    const invite = await mailUrl(op.request, mate.email, 'invite')
     const mp = await (await browser.newContext()).newPage()
     await signUpVerified(mp, mate)
     await mp.goto(invite.pathname)
@@ -128,7 +120,7 @@ test.describe.serial('launch journeys', () => {
     const op = await (await browser.newContext()).newPage()
     await signIn(op, owner)
     await op.request.post(`/api/w/${wid}/invitations`, { data: { email: v.email, role: 'viewer' } })
-    const invite = await mailLink(op.request, v.email, 'invite')
+    const invite = await mailUrl(op.request, v.email, 'invite')
     const vp = await (await browser.newContext()).newPage()
     await signUpVerified(vp, v)
     await vp.request.post(`/api/invitations/${invite.pathname.split('/').pop()}/accept`)

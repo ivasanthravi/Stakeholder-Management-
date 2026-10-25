@@ -2,9 +2,10 @@
 // attack with A's ids through every route family, search, AI retrieval, exports and background jobs.
 // A pass means: 404 (never 403, so ids can't be probed) and no A content anywhere in B's responses.
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { addMember, createTestContext, createWorkspace, sse, signUp, type Client, type TestContext } from './helpers'
-import { mailOutbox, notification } from '../server/db/schema'
+import { auditEvent, mailOutbox, notification } from '../server/db/schema'
+import { withTenant } from '../server/db/client'
 import { sendCommitmentDigests } from '../server/modules/notifications'
 
 let ctx: TestContext
@@ -156,5 +157,31 @@ describe('membership changes take effect immediately', () => {
     }
     expect((await sse(ctx, aMember, `/api/w/${A}/ai/copilot`, { message: 'Brief me on Aurelia Vance' })).status).toBe(404)
     expect((await aMember.get('/api/me')).body.workspaces.map((w: { id: string }) => w.id)).not.toContain(A)
+  })
+})
+
+describe('database backstop', () => {
+  test('a tenant transaction can’t write audit events into another workspace', async () => {
+    const tenant = { workspaceId: A, userId: 'u-test', role: 'owner' }
+    await withTenant(ctx.db, tenant, t => t.insert(auditEvent).values({ workspaceId: A, action: 'test.own' }))
+    await withTenant(ctx.db, tenant, t => t.insert(auditEvent).values({ workspaceId: null, action: 'test.account' }))
+    await expect(withTenant(ctx.db, tenant, t => t.insert(auditEvent).values({ workspaceId: B, action: 'test.forged' }))).rejects.toThrow()
+  })
+  test('every table the tenant role can touch has row-level security; the rest grant it nothing', async () => {
+    const r = await ctx.db.execute(sql`
+      select c.relname as t, c.relrowsecurity as rls,
+        (select count(*)::int from information_schema.table_privileges p where p.table_schema = 'public' and p.table_name = c.relname and p.grantee = 'app_user') as grants,
+        (select count(*)::int from information_schema.column_privileges p where p.table_schema = 'public' and p.table_name = c.relname and p.grantee = 'app_user') as column_grants
+      from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'r' order by 1`)
+    const rows = (r as unknown as { rows: { t: string; rls: boolean; grants: number; column_grants: number }[] }).rows
+    expect(rows.length).toBeGreaterThan(30)
+    const exposed = rows.filter(x => !x.rls && (x.grants > 0 || x.column_grants > 0)).map(x => x.t)
+    // The user table is the one deliberate exception: app_user may read id, name, email and image (no secrets) so
+    // member lists and owners render; credentials live in `account`, which grants nothing.
+    expect(exposed.filter(t => t !== 'user')).toEqual([])
+    if (exposed.includes('user')) {
+      const cols = await ctx.db.execute(sql`select column_name from information_schema.column_privileges where table_schema = 'public' and table_name = 'user' and grantee = 'app_user' and privilege_type = 'SELECT' order by 1`)
+      expect((cols as unknown as { rows: { column_name: string }[] }).rows.map(x => x.column_name)).toEqual(['email', 'id', 'image', 'name'])
+    }
   })
 })

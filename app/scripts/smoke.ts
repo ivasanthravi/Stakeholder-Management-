@@ -9,6 +9,11 @@ const get = (p: string, init: RequestInit = {}) => fetch(BASE + p, { redirect: '
 async function main() {
   const health = await get('/api/health').catch(() => null)
   check('liveness /api/health', health?.status === 200)
+  // SMOKE_EXPECT_ENV=staging|production guards against smoke-testing (or approving) the wrong environment.
+  if (process.env.SMOKE_EXPECT_ENV && health?.status === 200) {
+    const env = (await health.clone().json().catch(() => ({})) as { environment?: string }).environment
+    check(`environment is ${process.env.SMOKE_EXPECT_ENV}`, env === process.env.SMOKE_EXPECT_ENV, `reported ${env ?? 'nothing'}`)
+  }
   // SMOKE_LEGACY=1 when verifying a rollback to a release older than the readiness endpoint and request ids (Phase 4).
   const legacy = process.env.SMOKE_LEGACY === '1'
   const ready = await get('/api/ready').catch(() => null)

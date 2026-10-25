@@ -6,7 +6,8 @@ import { writeFileSync } from 'node:fs'
 
 const BASE = process.argv[2] ?? 'http://localhost:5173'
 const OUT = process.argv[3] ?? 'scratch/a11y-manual.json'
-const browser = await chromium.launch({ channel: 'chrome' })
+// AUDIT_SELF_SIGNED=1 accepts the staging rehearsal's self-signed certificate (local only).
+const browser = await chromium.launch({ channel: 'chrome', args: process.env.AUDIT_SELF_SIGNED === '1' ? ['--ignore-certificate-errors'] : [] })
 const results = []
 const record = (check, ok, detail = '') => { results.push({ check, ok, detail }); console.log(`${ok ? 'PASS' : 'FAIL'}  ${check}${detail ? ' — ' + detail : ''}`) }
 
@@ -124,6 +125,15 @@ const focusInfo = p => p.evaluate(() => {
   const { ctx, p } = await signedIn({ reducedMotion: 'reduce' })
   const slow = await p.evaluate(() => [...document.querySelectorAll('*')].filter(e => { const s = getComputedStyle(e); const d = Math.max(...s.transitionDuration.split(',').map(parseFloat), ...s.animationDuration.split(',').map(parseFloat)); return d > 0.02 }).length)
   record('reduced motion: no CSS transitions/animations longer than 20 ms', slow === 0, `${slow} elements`)
+  // Motion (JS) animations of opacity, SVG attributes and staggered delays: MotionConfig's reducedMotion alone doesn't
+  // stop these. On the first frame the Command Center's horizon dots exist, every one must already be fully visible.
+  await p.goto(BASE + '/')
+  const op = await p.evaluate(() => new Promise(res => {
+    const t0 = performance.now()
+    const tick = () => { const d = [...document.querySelectorAll('.hz-dot')]; if (d.length || performance.now() - t0 > 8000) res(d.map(x => +getComputedStyle(x).opacity)); else requestAnimationFrame(tick) }
+    tick()
+  }))
+  record('reduced motion: Motion animations (opacity, SVG, staggered) finish instantly', op.length > 0 && op.every(o => o > 0.99), `${op.filter(o => o <= 0.99).length}/${op.length} horizon dots still animating on their first frame`)
   await ctx.close()
 }
 

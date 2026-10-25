@@ -1,0 +1,174 @@
+{
+  "verdict": "STAGING REHEARSAL PASSED (local)",
+  "ranAt": "2026-10-24T07:47:51.757Z",
+  "origin": "https://localhost:8443",
+  "deviationsFromProduction": [
+    "DEPLOY_ENV=staging (log mail transport, no billing provider)",
+    "AUTH_RATE_LIMIT_PER_10S=60 (one shared test-runner IP)",
+    "self-signed certificate (local CA)"
+  ],
+  "buildMs": 19210,
+  "startMs": 1530,
+  "smoke": [
+    "ok   liveness /api/health",
+    "ok   environment is staging — reported staging",
+    "ok   readiness /api/ready (database + job queue) — status 200",
+    "ok   page / serves the app shell",
+    "ok   page /pricing serves the app shell",
+    "ok   page /sign-in serves the app shell",
+    "ok   security headers present",
+    "ok   HSTS on HTTPS",
+    "ok   CSP in production",
+    "ok   request id echoed",
+    "ok   public plan catalog",
+    "ok   development routes absent",
+    "ok   sign-in with the smoke account",
+    "ok   session works (/api/me)",
+    "ok   workspace read /stakeholders?limit=5 — 16 ms",
+    "ok   workspace read /dashboard — 19 ms",
+    "ok   workspace read /billing — 4 ms",
+    "ok   workspace read /search?q=a — 5 ms"
+  ],
+  "database": {
+    "current_user": "meridian_owner",
+    "rolsuper": false,
+    "rolbypassrls": false,
+    "rolcreaterole": true,
+    "app_user": true,
+    "rls_tables": 36,
+    "tables": 41
+  },
+  "e2e": [
+    "✓   1 e2e/ai-flow.spec.ts:16:1 › meeting notes to an accepted, cited commitment (2.5s)",
+    "✓   2 e2e/commercial-flow.spec.ts:38:3 › commercial journey › visitor lands on the marketing site and starts a trial (812ms)",
+    "✓   3 e2e/commercial-flow.spec.ts:46:3 › commercial journey › owner signs up, picks a template, completes setup and reaches the command center (4.9s)",
+    "✓   4 e2e/commercial-flow.spec.ts:76:3 › commercial journey › teammate accepts the invitation as a new user (2.5s)",
+    "-   5 e2e/commercial-flow.spec.ts:88:3 › commercial journey › owner buys a plan through hosted checkout; access follows the webhook, not the redirect",
+    "✓   6 e2e/core-flow.spec.ts:46:3 › Phase 1 core flow › 1–2 sign up, verify email, create a workspace (3.2s)",
+    "✓   7 e2e/core-flow.spec.ts:59:3 › Phase 1 core flow › 3–8 create organization, stakeholder (with organization), initiative, engagement (6.1s)",
+    "✓   8 e2e/core-flow.spec.ts:99:3 › Phase 1 core flow › 9–10 record a decision, create and complete a commitment (3.5s)",
+    "✓   9 e2e/core-flow.spec.ts:118:3 › Phase 1 core flow › 11 dashboard reflects real records (1.4s)",
+    "✓  10 e2e/core-flow.spec.ts:127:3 › Phase 1 core flow › 12 relationship map shows the authorized stakeholder (1.5s)",
+    "✓  11 e2e/core-flow.spec.ts:136:3 › Phase 1 core flow › tenant isolation: another account cannot see or open Tenant A records (3.2s)",
+    "✓  12 e2e/journeys.spec.ts:32:3 › launch journeys › setup: owner with a workspace; teammate invited and accepted (1.1s)",
+    "✓  13 e2e/journeys.spec.ts:45:3 › launch journeys › B: owner changes the teammate’s role, permissions follow immediately, then revokes access (3.4s)",
+    "✓  14 e2e/journeys.spec.ts:67:3 › launch journeys › D: decision with owner → approved with a recorded outcome → visible in history (2.3s)",
+    "✓  15 e2e/journeys.spec.ts:84:3 › launch journeys › I: export the workspace (real download), schedule deletion, then cancel it (5.5s)",
+    "✓  16 e2e/journeys.spec.ts:106:3 › launch journeys › failure paths: wrong password, unusable invitation link, viewer has no billing controls (3.1s)",
+    "✓  17 e2e/recovery.spec.ts:22:3 › account and recovery journeys › setup: a verified user with two workspaces (442ms)",
+    "✓  18 e2e/recovery.spec.ts:32:3 › account and recovery journeys › workspace switching shows only the selected workspace’s records (1.9s)",
+    "✓  19 e2e/recovery.spec.ts:53:3 › account and recovery journeys › a network failure shows a recoverable error, and Retry recovers (4.9s)",
+    "✓  20 e2e/recovery.spec.ts:66:3 › account and recovery journeys › an unavailable AI service fails visibly, without breaking the page (2.1s)",
+    "✓  21 e2e/recovery.spec.ts:79:3 › account and recovery journeys › an expired session returns to sign-in and then to the same page (2.1s)",
+    "✓  22 e2e/recovery.spec.ts:91:3 › account and recovery journeys › sign-out ends the session: protected pages and the API refuse it (1.6s)",
+    "✓  23 e2e/recovery.spec.ts:101:3 › account and recovery journeys › password recovery by email: the new password works, the old one doesn’t, the link is single-use (4.3s)",
+    "✓  24 e2e/recovery.spec.ts:126:3 › account and recovery journeys › invite-only pilot: a closed signup explains itself instead of waiting for an email (1.2s)"
+  ],
+  "axeIssues": [],
+  "results": [
+    {
+      "step": "TLS certificate valid for localhost (trusted with the local CA)",
+      "ok": true,
+      "detail": "valid to Oct 26 07:48:11 2026 GMT"
+    },
+    {
+      "step": "HTTP redirects to HTTPS with path preserved (edge)",
+      "ok": true
+    },
+    {
+      "step": "smoke test over HTTPS (incl. sign-in, environment = staging)",
+      "ok": true,
+      "detail": "18/18"
+    },
+    {
+      "step": "session cookie: __Secure- prefix, Secure, HttpOnly, SameSite=Lax",
+      "ok": true,
+      "detail": "__Secure-better-auth.session_token=…; Max-Age=604800; Path=/; HttpOnly; Secure; SameSite=Lax"
+    },
+    {
+      "step": "HSTS + CSP sent over HTTPS",
+      "ok": true
+    },
+    {
+      "step": "CORS: no Access-Control-Allow-Origin for a foreign origin",
+      "ok": true,
+      "detail": "status 404"
+    },
+    {
+      "step": "cross-site state change refused (CSRF)",
+      "ok": true,
+      "detail": "status 403"
+    },
+    {
+      "step": "auth callback to a foreign origin refused",
+      "ok": true,
+      "detail": "status 403"
+    },
+    {
+      "step": "metrics: refused without token, served with it",
+      "ok": true,
+      "detail": "401/200"
+    },
+    {
+      "step": "dev routes absent",
+      "ok": true
+    },
+    {
+      "step": "canonical origin: index served with app shell at /",
+      "ok": true
+    },
+    {
+      "step": "a forged left-most X-Forwarded-For value is never recorded as the client IP",
+      "ok": true
+    },
+    {
+      "step": "app connects as a non-superuser without BYPASSRLS; migrations created app_user",
+      "ok": true,
+      "detail": "meridian_owner: superuser=false, bypassrls=false, RLS on 36/41 tables"
+    },
+    {
+      "step": "E2E suite against staging",
+      "ok": true,
+      "detail": "23 passed, 0 failed, 1 skipped"
+    },
+    {
+      "step": "no Content Security Policy violations (public and signed-in pages, production CSP)",
+      "ok": true,
+      "detail": "14 pages"
+    },
+    {
+      "step": "axe sweep (production build)",
+      "ok": true,
+      "detail": "98/98 clean"
+    },
+    {
+      "step": "scripted keyboard/focus/reflow/target-size checks (production build)",
+      "ok": true,
+      "detail": "26/26"
+    },
+    {
+      "step": "db:check after the journeys",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "restart: migrations idempotent, healthy again",
+      "ok": true,
+      "detail": "1786 ms"
+    },
+    {
+      "step": "readiness after restart",
+      "ok": true,
+      "detail": "{\"ok\":true,\"db\":{\"ok\":true,\"ms\":2},\"jobs\":{\"queued\":4,\"dead\":0,\"oldestQueuedSeconds\":0,\"lagging\":false}}"
+    },
+    {
+      "step": "no internal errors logged during the rehearsal",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "no record content or secrets in logs",
+      "ok": true
+    }
+  ]
+}

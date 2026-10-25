@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { withTenant, type DB, type TenantContext, type Tx } from '../../db/client'
 import { commitment, decision, decisionStakeholder, engagement, engagementParticipant, initiative, organization, relationship, stakeholder, stakeholderOrganization, user } from '../../db/schema'
 import { rowsOf, STANCE_LABEL } from '../../modules/_shared'
+import { daysFromToday } from '../../../shared/dates'
 
 export interface Ref { ref: string; type: string; id: string; label: string; href: string; at?: string | null }
 
@@ -135,7 +136,7 @@ export async function runTool(db: DB, tn: TenantContext, reg: RefRegistry, name:
           ${a.initiative_id ? sql`and c.initiative_id = ${a.initiative_id}` : sql``} ${a.stakeholder_id ? sql`and c.stakeholder_id = ${a.stakeholder_id}` : sql``}`))
         return {
           total_matching: n, filter: a.filter,
-          commitments: rows.map(r => ({ ref: reg.add('commitment', r.id, `${r.key} ${r.title}`, r.due), key: r.key, title: r.title, due: r.due, days_overdue: r.due && r.due < today ? Math.round((Date.now() - Date.parse(r.due + 'T23:59:59Z')) / DAY) : 0, owed_by: r.direction === 'ours' ? 'us' : 'them', owner: r.ownerName, stakeholder: r.sname ? { ref: reg.add('stakeholder', r.sid!, r.sname), name: r.sname } : null })),
+          commitments: rows.map(r => ({ ref: reg.add('commitment', r.id, `${r.key} ${r.title}`, r.due), key: r.key, title: r.title, due: r.due, days_overdue: r.due && r.due < today ? -daysFromToday(r.due) : 0, owed_by: r.direction === 'ours' ? 'us' : 'them', owner: r.ownerName, stakeholder: r.sname ? { ref: reg.add('stakeholder', r.sid!, r.sname), name: r.sname } : null })),
         }
       }
       case 'list_decisions': {

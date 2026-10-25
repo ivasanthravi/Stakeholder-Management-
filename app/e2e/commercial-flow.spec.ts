@@ -3,21 +3,12 @@
 // → teammate accepts the invitation → owner buys a plan through the provider-hosted checkout (development simulator,
 // no real payment) → confirmed only after the signed webhook → plan entitlements active → cancel at period end.
 import { expect, test, type Page } from '@playwright/test'
+import { mailUrl } from './mail'
 
 const PASSWORD = 'correct-horse-battery'
 const stamp = Date.now()
 const owner = { name: 'Oona Owner', email: `oona.${stamp}@e2e.test` }
 const mate = { name: 'Max Mate', email: `max.${stamp}@e2e.test` }
-
-async function mailLink(page: Page, to: string, kind: string) {
-  for (let i = 0; i < 40; i++) {
-    const mail = await (await page.request.get('/api/dev/mail')).json() as { to: string; kind: string; url: string }[]
-    const m = mail.find(x => x.to === to && x.kind === kind)
-    if (m) return new URL(m.url)
-    await page.waitForTimeout(250)
-  }
-  throw new Error(`no ${kind} mail for ${to}`)
-}
 
 async function signUp(page: Page, u: { name: string; email: string }, from = '/sign-up') {
   await page.goto(from)
@@ -26,7 +17,7 @@ async function signUp(page: Page, u: { name: string; email: string }, from = '/s
   if (!(await email.inputValue())) await email.fill(u.email)
   await page.getByLabel('Password').fill(PASSWORD)
   await page.getByRole('button', { name: 'Create account' }).click()
-  const verify = await mailLink(page, u.email, 'verify')
+  const verify = await mailUrl(page.request, u.email, 'verify')
   await page.goto(verify.pathname + verify.search)
 }
 
@@ -79,7 +70,7 @@ test.describe.serial('commercial journey', () => {
     await expect(page).toHaveURL(/\/$/)
     // Template vocabulary reached the navigation.
     await expect(page.getByRole('link', { name: /Projects/ }).first()).toBeVisible()
-    inviteUrl = await mailLink(page, mate.email, 'invite')
+    inviteUrl = await mailUrl(page.request, mate.email, 'invite')
   })
 
   test('teammate accepts the invitation as a new user', async ({ page }) => {
@@ -95,6 +86,7 @@ test.describe.serial('commercial journey', () => {
   })
 
   test('owner buys a plan through hosted checkout; access follows the webhook, not the redirect', async ({ page }) => {
+    test.skip(!!process.env.E2E_BASE_URL, 'Staging has no billing simulator; this journey needs a provider sandbox (billing sandbox BLOCKED)')
     await page.goto('/sign-in')
     await page.getByLabel('Email').fill(owner.email)
     await page.getByLabel('Password').fill(PASSWORD)

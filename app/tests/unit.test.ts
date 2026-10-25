@@ -78,3 +78,16 @@ describe('domain helpers', () => {
     expect(b.method).toBe('rules')
   })
 })
+
+describe('calendar-day arithmetic for due dates', () => {
+  test('counts whole calendar days whatever the time of day (C-137 read "7 days" in copilot and "8" elsewhere)', async () => {
+    const { daysFromToday } = await import('../shared/dates')
+    for (const hour of ['00:00:01', '07:53:00', '12:00:00', '23:59:59']) {
+      const now = Date.parse(`2026-10-24T${hour}Z`)
+      expect(daysFromToday('2026-10-16', now)).toBe(-8)
+      expect(daysFromToday('2026-10-24', now)).toBe(0)
+      expect(daysFromToday('2026-10-23', now)).toBe(-1)
+      expect(daysFromToday('2026-10-31', now)).toBe(7)
+    }
+  })
+})

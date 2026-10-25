@@ -1,3 +1,4 @@
+.home-body { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .home-scroll { flex: 1; overflow-y: auto; }
 .home { max-width: 1240px; margin: 0 auto; padding: 24px 32px 64px; }
 .home-intro { display: flex; flex-direction: column; gap: 4px; margin-bottom: 20px; }
@@ -48,7 +49,10 @@
 .lwhy { overflow: hidden; background: var(--bg-canvas); }
 .lwhy-inner { display: flex; flex-direction: column; gap: 12px; padding: 4px 16px 14px 33px; }
 .why-rule { display: flex; flex-direction: column; gap: 2px; font: var(--text-body); }
-.why-person { display: flex; align-items: center; gap: 8px; }
+.why-person { display: flex; align-items: center; gap: 8px; width: fit-content; max-width: 100%; margin: -4px -6px; padding: 4px 6px; border-radius: 6px; text-align: left; transition: background-color var(--dur-instant) linear; }
+.why-person:hover { background: var(--bg-hover); }
+.why-peek { color: var(--accent); opacity: 0; transition: opacity var(--dur-fast) var(--ease-standard); }
+.why-person:hover .why-peek, .why-person:focus-visible .why-peek { opacity: 1; }
 .why-ev { display: flex; flex-direction: column; gap: 2px; }
 .ev { display: flex; align-items: center; gap: 10px; height: 28px; padding: 0 10px; border-radius: 6px; background: var(--bg-surface); box-shadow: 0 0 0 1px var(--border-soft); font: var(--text-small); }
 .why-actions { display: flex; gap: 6px; }
@@ -166,21 +170,27 @@ section.brief[aria-labelledby="brief-h"] { padding-bottom: 16px; }
 .brief-idle { display: flex; align-items: center; gap: 16px; margin-top: 6px; }
 .brief-idle p { max-width: 72ch; }
 .brief-err { display: flex; align-items: center; gap: 10px; margin-top: 8px; padding: 8px 10px; border-radius: 6px; background: var(--critical-subtle); color: var(--red-700); font: var(--text-small); }
-.brief-body { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.brief-body { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
 .brief-warn { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 6px; background: var(--amber-50); color: var(--amber-700); box-shadow: inset 0 0 0 1px var(--amber-100); }
 .brief-sections { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px 24px; }
 .brief-sec { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.brief-sec ul { display: flex; flex-direction: column; gap: 8px; }
+.brief-sec ul { display: flex; flex-direction: column; gap: 6px; }
+.brief-sec-kind { text-transform: none; letter-spacing: 0; }
 .bitem { display: flex; flex-direction: column; gap: 2px; padding-left: 10px; box-shadow: inset 2px 0 0 var(--border); }
 .bitem[data-ai] { box-shadow: inset 2px 0 0 var(--ai-line); }
 .bitem-kind { color: var(--text-3); }
 .bitem[data-ai] .bitem-kind { color: var(--ai); }
 .bitem-text { font: var(--text-body); color: var(--text-1); }
 .bitem-interpretation .bitem-text { font: var(--narrative-body); font-size: 15px; line-height: 23px; font-style: italic; color: var(--text-2); }
-.bitem-method { margin-top: 2px; }
-.bitem-method summary { cursor: pointer; width: fit-content; }
+.bitem-method { display: inline; margin-left: 8px; }
+.bitem-method summary { display: inline; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; list-style: none; }
+.bitem-method summary::-webkit-details-marker { display: none; }
+.bitem-method[open] > span { display: block; margin-top: 2px; max-width: 72ch; }
 .bitem-method summary:hover { color: var(--text-1); }
 @media (max-width: 760px) {
+  /* The engine disclosure keeps its own line under the title rather than disappearing. */
+  .brief-head { flex-wrap: wrap; row-gap: 0; }
+  .brief-engine { order: 10; flex-basis: 100%; padding-left: 22px; }
   .brief-idle { flex-direction: column; align-items: flex-start; gap: 8px; }
   .why-next { flex-direction: column; align-items: flex-start; }
 }

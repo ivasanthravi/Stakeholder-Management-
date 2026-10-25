@@ -59,6 +59,7 @@ export async function funnel(db: DB, days = 30) {
   const rate = (a: string, b: string) => (by[b]?.workspaces ? Math.round(((by[a]?.workspaces ?? 0) / by[b].workspaces) * 1000) / 10 : null)
   return {
     windowDays: days, events: counts,
+    signupCompletionRate: by.signup_started?.n ? Math.round(((by.signup_completed?.n ?? 0) / by.signup_started.n) * 1000) / 10 : null,
     activationRate: rate('first_engagement_recorded', 'workspace_created'),
     trialConversion: rate('subscription_activated', 'workspace_created'),
     medianSecondsToFirstValue: ttfv.rows?.[0]?.p50 ?? null,

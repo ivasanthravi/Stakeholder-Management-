@@ -321,7 +321,8 @@ export function MeetingIntelligence() {
             )}
 
             <div className="ix-split" data-source={showSource || undefined}>
-              <section id="ix-source" className="ix-source" aria-label="Source notes">
+              {/* Scrolls independently of the review panel, so it must be reachable by keyboard (WCAG 2.1.1). */}
+              <section id="ix-source" className="ix-source" aria-label="Source notes" tabIndex={0}>
                 <div className="ix-source-inner" ref={sourceRef}>
                   <SourcePane notes={notes} loading={loading} analysis={analysis} located={located} flags={flags} ordered={ordered}
                     active={active} hover={hover} setHover={setHover} onSelect={k => select(k, 'source')} />

@@ -162,6 +162,9 @@
 .rtable { display: flex; flex-direction: column; margin: -4px -6px; }
 .rrow { display: grid; grid-template-columns: 110px minmax(160px, 1.4fr) minmax(140px, 1.2fr) 120px 64px 160px 80px; align-items: center; gap: 8px; height: 38px; padding: 0 6px; border-radius: 6px; text-align: left; font: var(--text-body); }
 .rrow:not(.rhead):hover { background: var(--bg-hover); }
+.rcell-link { min-width: 0; }
+.rlink { min-width: 0; color: var(--text-1); text-decoration: none; }
+.rlink:hover .t-strong { text-decoration: underline; text-underline-offset: 3px; }
 .rhead { height: 30px; font: var(--text-caption); color: var(--text-3); border-bottom: 1px solid var(--border-soft); border-radius: 0; }
 
 /* ── History ────────────────────────────────────────────── */
@@ -170,9 +173,13 @@
 .hist li:first-child { border-top: 0; padding-top: 0; }
 
 @media (max-width: 700px) {
-  .brief-head .legend, .brief-head .c3 { display: none; }
-  .brief { padding: 14px 16px 0 18px; }
-  .brief-foot { margin: 0 -16px 0 -18px; padding: 9px 16px 10px 18px; }
+  /* Scoped to the profile: this stylesheet loads globally, and the Home briefing shares these class names. */
+  .prof .brief-head .legend, .prof .brief-head .c3 { display: none; }
+  .prof .brief { padding: 14px 16px 0 18px; }
+  .prof .brief-foot { margin: 0 -16px 0 -18px; padding: 9px 16px 10px 18px; }
+  /* Role, organization and location each get a line: a wrapped row left a separator dangling at a line end. */
+  .hero-sub { flex-direction: column; align-items: flex-start; gap: 2px; }
+  .hero-sub .dot-sep { display: none; }
   .tabs-hint { display: none; }
   .prof { padding: 16px 14px 40px; }
   .hero-id { gap: 12px; }

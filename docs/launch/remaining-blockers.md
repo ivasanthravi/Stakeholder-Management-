@@ -50,3 +50,27 @@
 - WebKit and Firefox E2E projects.
 - Unused marketing analytics events (`marketing_cta_clicked`, `pricing_viewed`) are defined but never sent.
 - Daily `db:check` cron.
+
+## Phase 5 update (2026-10-24)
+**All P0 blockers B1–B10 remain open.** Each needs a decision, credentials, an account or an external party. See `final-prelaunch-audit.md` for the current status of each.
+
+**Mitigation:** the local staging rehearsal now covers what is possible without infrastructure (`staging-verification.md`).
+
+**Closed in Phase 5:**
+- G7: the recent list is cleared on sign-out.
+- Production-defaults guard.
+- Model-engine approval gate.
+- Audit-trail RLS.
+- Invite-only rollout control.
+- Signup funnel events.
+- Permanent email rejections.
+- Two sign-in usability defects.
+
+**New items:**
+| # | Item | Priority |
+|---|---|---|
+| G10 | **Sign-in limit for shared office IPs.** The default allows 3 sign-in/sign-up attempts per IP per 10 s. Design partners behind one NAT may hit it at busy times. Decide the value (`AUTH_RATE_LIMIT_PER_10S`) per pilot and watch 429s | P1 |
+| G11 | Error-tracker SDK not wired (only the `setErrorReporter` hook exists). Needs the provider choice and a DSN | P1 (part of B6) |
+| G12 | Postmark bounce and spam webhooks not implemented. Postmark suppresses those recipients itself, and later sends now fail fast, but bounces are only visible in Postmark | P2 |
+| G13 | The closed-signup message says "contact us" without a link | P2 |
+| G14 | Add `scripts/staging-rehearsal.ts` to CI (it needs Chrome and embedded PostgreSQL; about 10 minutes) | P2 |

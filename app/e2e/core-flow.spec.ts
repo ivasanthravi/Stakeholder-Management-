@@ -1,20 +1,11 @@
 // End-to-end: the Phase 1 core flow through the real UI, plus cross-tenant denial.
 import { expect, test, type Page } from '@playwright/test'
+import { mailLink } from './mail'
 
 const PASSWORD = 'correct-horse-battery'
 const stamp = Date.now()
 const alice = { name: 'Alice Tester', email: `alice.${stamp}@e2e.test` }
 const bob = { name: 'Bob Outsider', email: `bob.${stamp}@e2e.test` }
-
-async function mailLink(page: Page, to: string, kind: string) {
-  for (let i = 0; i < 20; i++) {
-    const mail = await (await page.request.get('/api/dev/mail')).json() as { to: string; kind: string; url: string }[]
-    const m = mail.find(x => x.to === to && x.kind === kind)
-    if (m) return m.url
-    await page.waitForTimeout(250)
-  }
-  throw new Error(`no ${kind} mail for ${to}`)
-}
 
 async function signUpAndVerify(page: Page, u: { name: string; email: string }) {
   await page.goto('/sign-up')
@@ -23,7 +14,7 @@ async function signUpAndVerify(page: Page, u: { name: string; email: string }) {
   await page.getByLabel('Password').fill(PASSWORD)
   await page.getByRole('button', { name: 'Create account' }).click()
   await expect(page.getByRole('heading', { name: 'Check your email' })).toBeVisible()
-  const url = new URL(await mailLink(page, u.email, 'verify'))
+  const url = new URL(await mailLink(page.request, u.email, 'verify'))
   await page.goto(url.pathname + url.search)
 }
 
@@ -136,7 +127,7 @@ test.describe.serial('Phase 1 core flow', () => {
   test('12 relationship map shows the authorized stakeholder', async ({ page }) => {
     await signIn(page, alice)
     await page.goto('/stakeholders?view=map')
-    await expect(page.locator('.uni-count')).toContainText('1 people')
+    await expect(page.locator('.uni-count')).toContainText('1 person ·')
     await page.locator('.uni-canvas').focus()
     await page.keyboard.press('l')
     await expect(page.getByRole('treeitem', { name: /Bea Ellwood/ })).toBeVisible()

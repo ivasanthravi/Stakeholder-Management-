@@ -104,6 +104,18 @@
 .crumbs a:hover { color: var(--text-1); }
 .crumbs .sep { color: var(--slate-300); }
 .crumbs .here { color: var(--text-1); }
+/* Phones: a truncated trail ("Stakeholders / We / B") helps nobody. Keep only the nearest parent as a back link;
+   the page title right below names the current record. Pages without a parent keep their single label. */
+@media (max-width: 640px) {
+  .crumbs:has(> a) > .here,
+  .crumbs > a:last-of-type + .sep,
+  .crumbs > a:not(:last-of-type),
+  .crumbs > a:not(:last-of-type) + .sep { display: none; }
+  .crumbs > a:last-of-type { color: var(--text-1); }
+  .crumbs > a:last-of-type::before { content: '‹'; margin-right: 6px; color: var(--text-3); }
+  /* A trail without links names a scope ("Stakeholders / Eastgate Depot Renewal"): keep the scope. */
+  .crumbs:not(:has(> a)):has(> .here:not(:first-child)) > :not(.here) { display: none; }
+}
 
 /* ── Toasts ─────────────────────────────────────────────── */
 .toasts { position: fixed; left: calc(var(--sidebar-w) + 16px); bottom: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 60; }

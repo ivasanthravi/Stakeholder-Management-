@@ -1,0 +1,248 @@
+[
+  {
+    "width": 1280,
+    "name": "home",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 1280,
+    "name": "directory",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 1280,
+    "name": "profile",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 1280,
+    "name": "universe",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 1280,
+    "name": "commitments",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 1280,
+    "name": "decisions",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 1280,
+    "name": "engagements",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 1280,
+    "name": "settings-members",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 1280,
+    "name": "billing",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 1280,
+    "name": "pricing",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 1024,
+    "name": "home",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 1024,
+    "name": "directory",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 1024,
+    "name": "profile",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 1024,
+    "name": "universe",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 1024,
+    "name": "commitments",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 1024,
+    "name": "decisions",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 1024,
+    "name": "engagements",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 1024,
+    "name": "settings-members",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 1024,
+    "name": "billing",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 1024,
+    "name": "pricing",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 768,
+    "name": "home",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 768,
+    "name": "directory",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 768,
+    "name": "profile",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 768,
+    "name": "universe",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 768,
+    "name": "commitments",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 768,
+    "name": "decisions",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 768,
+    "name": "engagements",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 768,
+    "name": "settings-members",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 768,
+    "name": "billing",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 768,
+    "name": "pricing",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 320,
+    "name": "home",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 320,
+    "name": "directory",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 320,
+    "name": "profile",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 320,
+    "name": "universe",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 320,
+    "name": "commitments",
+    "docOverflow": false,
+    "over": [
+      "span.cstmt",
+      "span.cstmt",
+      "span.cstmt",
+      "span.cstmt",
+      "span.cstmt"
+    ]
+  },
+  {
+    "width": 320,
+    "name": "decisions",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 320,
+    "name": "engagements",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 320,
+    "name": "settings-members",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 320,
+    "name": "billing",
+    "docOverflow": false,
+    "over": []
+  },
+  {
+    "width": 320,
+    "name": "pricing",
+    "docOverflow": false,
+    "over": []
+  }
+]

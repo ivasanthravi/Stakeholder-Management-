@@ -13,6 +13,7 @@ import { useApp } from '../shell/context'
 import { useHotkeys } from '../lib/hotkeys'
 import { t } from '../lib/motion'
 import { daysFromToday, DECISION_STATUS_LABEL, ENGAGEMENT_KIND_LABEL, fmtDate, fmtRelative, STANCE_LABEL } from '../lib/format'
+import { PeekPanel } from './directory/PeekPanel'
 import './home/home.css'
 
 const KIND_META: Record<Signal['kind'], { label: string; icon: typeof Clock }> = {
@@ -39,6 +40,9 @@ export function Home() {
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
   const [scope, setScope] = useState<'team' | 'mine'>('team')
+  // A stakeholder behind a signal opens in the peek panel, so the attention list stays in view.
+  const [peekId, setPeekId] = useState<string | null>(null)
+  useHotkeys({ Escape: () => { if (peekId) setPeekId(null); else return false } })
 
   return (
     <>
@@ -57,6 +61,7 @@ export function Home() {
           </div>
         </LayoutGroup>
       </header>
+      <div className="home-body">
       <div className="home-scroll">
         <div className="home">
           <div className="home-intro">
@@ -65,8 +70,10 @@ export function Home() {
           </div>
           {dash.isError ? <LoadError error={dash.error} onRetry={() => dash.refetch()} />
             : dash.data && dash.data.stakeholders.total === 0 ? <EmptyWorkspace name={workspace?.name ?? ''} />
-            : <><WorkspaceBriefing /><HomeGrid d={dash.data} scope={scope} /></>}
+            : <><WorkspaceBriefing /><HomeGrid d={dash.data} scope={scope} onPeek={setPeekId} /></>}
         </div>
+      </div>
+      <AnimatePresence>{peekId && <PeekPanel key="peek" id={peekId} onClose={() => setPeekId(null)} />}</AnimatePresence>
       </div>
     </>
   )
@@ -119,7 +126,7 @@ function EmptyWorkspace({ name }: { name: string }) {
   )
 }
 
-function HomeGrid({ d, scope }: { d?: Dashboard; scope: 'team' | 'mine' }) {
+function HomeGrid({ d, scope, onPeek }: { d?: Dashboard; scope: 'team' | 'mine'; onPeek: (stakeholderId: string) => void }) {
   const [filter, setFilter] = useState<typeof FILTERS[number]['id']>('all')
   const [hidden, setHidden] = useState<Set<string>>(new Set())
   const [open, setOpen] = useState<string | null>(null)
@@ -183,7 +190,7 @@ function HomeGrid({ d, scope }: { d?: Dashboard; scope: 'team' | 'mine' }) {
           {!d ? Array.from({ length: 7 }, (_, i) => <li key={i} className="lrow"><div className="lrow-main"><Skeleton w={3} h={22} /><Skeleton w={96} h={10} /><span className="grow"><Skeleton w={`${50 + (i * 13) % 35}%`} h={11} /></span><Skeleton w={52} h={10} /></div></li>) : (
             <AnimatePresence initial={false} mode="popLayout">
               {visible.map((sig, i) => (
-                <LedgerRow key={sig.id} sig={sig} open={open === sig.id} focused={i === focus} busy={busy === sig.id} canComplete={can('commitment.update')}
+                <LedgerRow key={sig.id} sig={sig} onPeek={onPeek} open={open === sig.id} focused={i === focus} busy={busy === sig.id} canComplete={can('commitment.update')}
                   onToggle={() => { setFocus(i); setOpen(o => (o === sig.id ? null : sig.id)) }} onHide={() => hide(sig)} onComplete={() => void complete(sig)} />
               ))}
             </AnimatePresence>
@@ -219,7 +226,7 @@ function HomeGrid({ d, scope }: { d?: Dashboard; scope: 'team' | 'mine' }) {
   )
 }
 
-function LedgerRow({ sig, open, focused, busy, canComplete, onToggle, onHide, onComplete }: { sig: Signal; open: boolean; focused: boolean; busy: boolean; canComplete: boolean; onToggle: () => void; onHide: () => void; onComplete: () => void }) {
+function LedgerRow({ sig, onPeek, open, focused, busy, canComplete, onToggle, onHide, onComplete }: { sig: Signal; onPeek: (stakeholderId: string) => void; open: boolean; focused: boolean; busy: boolean; canComplete: boolean; onToggle: () => void; onHide: () => void; onComplete: () => void }) {
   const nav = useNavigate()
   const meta = KIND_META[sig.kind]
   const person = sig.stakeholder
@@ -254,10 +261,11 @@ function LedgerRow({ sig, open, focused, busy, canComplete, onToggle, onHide, on
                 <span className="t-small c2">Rule: {sig.rule}</span>
               </div>
               {person && (
-                <div className="why-person">
+                <button type="button" className="why-person" onClick={() => onPeek(person.id)} title={`Preview ${person.name} without leaving Home`}>
                   <Avatar name={person.name} size={22} /><span className="t-strong">{person.name}</span>
                   {person.title && <span className="c2 t-small truncate">{person.title}</span>}<StanceBadge stance={person.stance} />
-                </div>
+                  <span className="why-peek t-small">Preview</span>
+                </button>
               )}
               {sig.evidence.length > 0 && (
                 <div className="why-ev">
@@ -324,6 +332,7 @@ function NextStep({ sig, next }: { sig: Signal; next: NonNullable<Signal['next']
 
 // ── AI workspace briefing ──────────────────────────────────────────────────────
 const ITEM_KIND_LABEL: Record<ItemKind, string> = { fact: 'Fact', metric: 'Metric', interpretation: 'AI interpretation', recommendation: 'Recommendation' }
+const ITEM_KIND_PLURAL: Record<ItemKind, string> = { fact: 'facts', metric: 'metrics', interpretation: 'AI interpretation', recommendation: 'recommendations' }
 const clock = (iso: string) => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
 
 /**
@@ -345,7 +354,11 @@ function WorkspaceBriefing() {
       <header className="brief-head">
         <Sparkle size={14} className="brief-ico" aria-hidden />
         <h2 id="brief-h" className="t-heading">Workspace briefing</h2>
-        {shownEngine && <span className="brief-engine t-small c3">{shownEngine.kind === 'local' ? 'Built-in rules engine' : shownEngine.label}{shownEngine.kind !== 'local' && shownEngine.model ? ` · ${shownEngine.model}` : ''}</span>}
+        {shownEngine && (
+          <span className="brief-engine t-small c3" title={shownEngine.kind === 'local' ? 'Facts and rule-based items from your records. No model key is configured, so there is no AI interpretation.' : undefined}>
+            {shownEngine.kind === 'local' ? 'Built-in rules engine · no AI interpretation' : shownEngine.label}{shownEngine.kind !== 'local' && shownEngine.model ? ` · ${shownEngine.model}` : ''}
+          </span>
+        )}
         <span className="grow" />
         {b && <span className="t-small c3 num" title={new Date(b.generatedAt).toLocaleString('en-GB')}>Generated {clock(b.generatedAt)}{b.cached ? ' · cached' : ''}</span>}
         {b && <Button size="sm" variant="ghost" icon={<RotateCw size={13} />} onClick={() => void q.refetch()} loading={q.isFetching} aria-label="Regenerate briefing" title="Regenerate" />}
@@ -378,17 +391,22 @@ function BriefingBody({ b }: { b: Briefing }) {
       {b.aiError && (
         <p className="brief-warn t-small" role="status"><AlertCircle size={13} aria-hidden />The AI model couldn’t complete this briefing ({b.aiError}). Showing facts and rule-based items only.</p>
       )}
-      {local && <p className="t-small c3">Facts and rule-based items from your records. No model key is configured, so there is no AI interpretation.</p>}
       {empty ? <p className="t-small c2">Nothing to report from today’s records.</p> : (
         <div className="brief-sections">
-          {b.sections.filter(s => s.items.length).map(sec => (
-            <section key={sec.id} className="brief-sec" aria-label={sec.title}>
-              <h3 className="t-caption c3">{sec.title}</h3>
-              <ul>
-                {sec.items.map((it, i) => <BriefItem key={i} it={it} aiEngine={!local} cite={ref => num.get(ref)} onOpen={href => nav(href)} />)}
-              </ul>
-            </section>
-          ))}
+          {b.sections.filter(s => s.items.length).map(sec => {
+            // A section whose items are all one kind says so once, instead of repeating the label on every line.
+            // AI interpretation is always labelled on the item itself.
+            const kind = sec.items[0].kind
+            const uniform = kind !== 'interpretation' && sec.items.every(it => it.kind === kind)
+            return (
+              <section key={sec.id} className="brief-sec" aria-label={sec.title}>
+                <h3 className="t-caption c3">{sec.title}{uniform && <span className="brief-sec-kind"> · {ITEM_KIND_PLURAL[kind]}</span>}</h3>
+                <ul>
+                  {sec.items.map((it, i) => <BriefItem key={i} it={it} showKind={!uniform} aiEngine={!local} cite={ref => num.get(ref)} onOpen={href => nav(href)} />)}
+                </ul>
+              </section>
+            )
+          })}
         </div>
       )}
       {b.unsupportedDropped > 0 && <p className="t-small c3">{b.unsupportedDropped} AI statement{b.unsupportedDropped === 1 ? ' was' : 's were'} left out because {b.unsupportedDropped === 1 ? 'it wasn’t' : 'they weren’t'} supported by your records.</p>}
@@ -396,17 +414,17 @@ function BriefingBody({ b }: { b: Briefing }) {
   )
 }
 
-function BriefItem({ it, aiEngine, cite, onOpen }: { it: BriefingItem; aiEngine: boolean; cite: (ref: string) => { n: number; s: Briefing['sources'][number] } | undefined; onOpen: (href: string) => void }) {
+function BriefItem({ it, showKind, aiEngine, cite, onOpen }: { it: BriefingItem; showKind: boolean; aiEngine: boolean; cite: (ref: string) => { n: number; s: Briefing['sources'][number] } | undefined; onOpen: (href: string) => void }) {
   const cites = it.cites.map(cite).filter(Boolean) as { n: number; s: Briefing['sources'][number] }[]
   const tentative = it.kind === 'interpretation'
   return (
     <li className={`bitem bitem-${it.kind}`} data-ai={(tentative || (aiEngine && it.kind === 'recommendation')) || undefined}>
-      <span className="bitem-kind t-micro">{ITEM_KIND_LABEL[it.kind]}{tentative ? ' · tentative' : ''}</span>
+      {showKind && <span className="bitem-kind t-micro">{ITEM_KIND_LABEL[it.kind]}{tentative ? ' · tentative' : ''}</span>}
       <span className="bitem-text">
         {it.text}
         {cites.map(c => <Cite key={c.s.ref} n={c.n} label={c.s.label} onClick={() => { const h = sourceHref(c.s); if (h !== '#') onOpen(h) }} />)}
         {it.kind === 'metric' && it.method && (
-          <details className="bitem-method"><summary className="t-small c3">How this is counted</summary><span className="t-small c2">{it.method}</span></details>
+          <details className="bitem-method"><summary className="t-small c3" aria-label="How this is counted">How?</summary><span className="t-small c2">{it.method}</span></details>
         )}
       </span>
     </li>
@@ -441,10 +459,12 @@ function Horizon({ d, scope }: { d?: Dashboard; scope: 'team' | 'mine' }) {
   const nav = useNavigate()
   const [hover, setHover] = useState<string | null>(null)
   const W = 316, H = 112, PAST = 30, FUT = 30
-  const items = (d?.horizon ?? []).filter(c => scope === 'team' || c.ownerId === d?.me).map(c => ({ c, d: daysFromToday(c.dueDate) })).filter(x => x.d >= -PAST && x.d <= FUT)
-  const x = (v: number) => ((v + PAST) / (PAST + FUT)) * (W - 16) + 8
+  // Every overdue commitment counts and is plotted; anything older than the window is pinned to its left edge.
+  const items = (d?.horizon ?? []).filter(c => scope === 'team' || c.ownerId === d?.me).map(c => ({ c, d: daysFromToday(c.dueDate) })).filter(x => x.d <= FUT)
+  const older = items.some(i => i.d < -PAST)
+  const x = (v: number) => ((Math.max(v, -PAST) + PAST) / (PAST + FUT)) * (W - 16) + 8
   const stacks = new Map<number, number>()
-  const dots = items.sort((a, b) => a.d - b.d).map(it => { const b = Math.round(it.d / 2); const k = stacks.get(b) ?? 0; stacks.set(b, k + 1); return { ...it, cx: x(it.d), cy: Math.max(8, H - 22 - k * 9) } })
+  const dots = items.sort((a, b) => a.d - b.d).map(it => { const b = Math.round(Math.max(it.d, -PAST) / 2); const k = stacks.get(b) ?? 0; stacks.set(b, k + 1); return { ...it, cx: x(it.d), cy: Math.max(8, H - 22 - k * 9) } })
   const od = items.filter(i => i.d < 0).length, wk = items.filter(i => i.d >= 0 && i.d <= 7).length, later = items.filter(i => i.d > 7).length
   const h = dots.find(dd => dd.c.id === hover)
   return (
@@ -454,10 +474,10 @@ function Horizon({ d, scope }: { d?: Dashboard; scope: 'team' | 'mine' }) {
         <Link to="/commitments?view=week"><span className="hz-n num hz-wk">{wk}</span><span className="t-caption c3">due this week</span></Link>
         <Link to="/commitments"><span className="hz-n num">{later}</span><span className="t-caption c3">later</span></Link>
       </div>
-      <svg width="100%" viewBox={`0 0 ${W} ${H}`} className="hz" role="img" aria-label={`${od} overdue, ${wk} due within 7 days, ${later} due later in the next 30 days`}>
+      <svg width="100%" viewBox={`0 0 ${W} ${H}`} className="hz" role="img" aria-label={`${od} overdue${older ? ' (some for more than 30 days)' : ''}, ${wk} due within 7 days, ${later} due later in the next 30 days`}>
         <rect x={8} y={H - 14} width={x(0) - 8} height={1} className="hz-axis-past" />
         <rect x={x(0)} y={H - 14} width={W - 8 - x(0)} height={1} className="hz-axis" />
-        {[-30, -14, 14, 30].map(v => <text key={v} x={x(v)} y={H - 2} textAnchor="middle" className="hz-tick">{v > 0 ? `+${v}d` : `${v}d`}</text>)}
+        {[-30, -14, 14, 30].map(v => <text key={v} x={x(v)} y={H - 2} textAnchor="middle" className="hz-tick">{v === -30 && older ? 'older' : v > 0 ? `+${v}d` : `${v}d`}</text>)}
         <line x1={x(0)} x2={x(0)} y1={6} y2={H - 10} className="hz-today" />
         <text x={x(0)} y={H - 2} textAnchor="middle" className="hz-tick hz-tick-today">Today</text>
         {dots.map((dd, i) => (
@@ -513,7 +533,7 @@ function InitiativeActivity({ d }: { d?: Dashboard }) {
               <Link key={r.id} to={`/initiatives/${r.id}`} className="cov-row" title={`${r.engagements30} engagements in 30 days · ${r.openCommitments} open commitments · ${r.pendingDecisions} pending decisions`}>
                 <span className="mono cov-code">{r.code}</span>
                 <span className="cov-bar" aria-hidden>
-                  <motion.i initial={{ width: 0 }} animate={{ width: `${pct}%`, transition: { duration: 0.5, ease: [0.2, 0, 0, 1] } }} data-low={pct < 70 || undefined} />
+                  <motion.i style={{ width: `${pct}%`, transformOrigin: '0 50%' }} initial={{ scaleX: 0 }} animate={{ scaleX: 1, transition: t.slow }} data-low={pct < 70 || undefined} />
                   <span className="cov-target" style={{ left: '80%' }} />
                 </span>
                 <span className="num cov-n">{r.keyEngaged}/{r.keyTotal}</span>

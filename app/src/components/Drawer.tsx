@@ -56,7 +56,7 @@ function DrawerInner({ title, subtitle, onClose, dirty, children, footer, onSubm
   }
 
   return (
-    <motion.div className="drawer-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: t.fast }} exit={{ opacity: 0, transition: t.exit }} onMouseDown={requestClose}>
+    <motion.div className="drawer-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: t.fast }} exit={{ opacity: 0, pointerEvents: 'none', transition: t.exit }} onMouseDown={requestClose}>
       <motion.div
         ref={ref}
         className="drawer" role="dialog" aria-modal="true" aria-label={title}
@@ -107,7 +107,7 @@ export function ConfirmDialog({ open, title, body, confirmLabel, danger, busy, o
   return createPortal(
     <AnimatePresence>
       {open && (
-        <motion.div className="drawer-scrim dialog-scrim" key="c" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: t.fast }} exit={{ opacity: 0, transition: t.exit }} onMouseDown={onCancel}>
+        <motion.div className="drawer-scrim dialog-scrim" key="c" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: t.fast }} exit={{ opacity: 0, pointerEvents: 'none', transition: t.exit }} onMouseDown={onCancel}>
           <motion.div className="dialog" role="alertdialog" aria-modal="true" aria-label={title}
             initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1, transition: t.fast }} exit={{ scale: 0.98, opacity: 0, transition: t.exit }}
             onMouseDown={e => e.stopPropagation()} onKeyDown={e => { e.stopPropagation(); if (e.key === 'Escape') onCancel() }}>

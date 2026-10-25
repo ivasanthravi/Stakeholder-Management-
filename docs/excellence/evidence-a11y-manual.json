@@ -1,0 +1,141 @@
+{
+  "base": "http://localhost:5173",
+  "ranAt": "2026-10-24T10:00:19.687Z",
+  "results": [
+    {
+      "check": "keyboard-only sign-in",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "focus indicator visible on shell tab stops",
+      "ok": true,
+      "detail": "12/12"
+    },
+    {
+      "check": "command palette: open, search, Enter navigates",
+      "ok": true,
+      "detail": "/stakeholders/10678d4c-95d3-45bd-a4e7-1a7769b36185"
+    },
+    {
+      "check": "create drawer traps focus (40 tabs)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "Esc closes the drawer",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "destructive confirm: focus moves in, Esc cancels, focus returns to trigger",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "relationship map has an accessible list alternative (L)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "reflow 320px /",
+      "ok": true,
+      "detail": "overflow 0px"
+    },
+    {
+      "check": "reflow 320px /pricing",
+      "ok": true,
+      "detail": "overflow 0px"
+    },
+    {
+      "check": "reflow 320px /security",
+      "ok": true,
+      "detail": "overflow 0px"
+    },
+    {
+      "check": "reflow 320px /contact",
+      "ok": true,
+      "detail": "overflow 0px"
+    },
+    {
+      "check": "reflow 320px /sign-in",
+      "ok": true,
+      "detail": "overflow 0px"
+    },
+    {
+      "check": "reflow 320px /sign-up",
+      "ok": true,
+      "detail": "overflow 0px"
+    },
+    {
+      "check": "touch targets ≥24px /",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "no horizontal scroll at 390px /",
+      "ok": true,
+      "detail": "overflow 0px"
+    },
+    {
+      "check": "touch targets ≥24px /stakeholders",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "no horizontal scroll at 390px /stakeholders",
+      "ok": true,
+      "detail": "overflow 0px"
+    },
+    {
+      "check": "touch targets ≥24px /commitments",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "no horizontal scroll at 390px /commitments",
+      "ok": true,
+      "detail": "overflow 0px"
+    },
+    {
+      "check": "touch targets ≥24px /decisions",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "no horizontal scroll at 390px /decisions",
+      "ok": true,
+      "detail": "overflow 0px"
+    },
+    {
+      "check": "touch targets ≥24px /settings/billing",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "no horizontal scroll at 390px /settings/billing",
+      "ok": true,
+      "detail": "overflow 0px"
+    },
+    {
+      "check": "touch targets ≥24px /settings/members",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "no horizontal scroll at 390px /settings/members",
+      "ok": true,
+      "detail": "overflow 0px"
+    },
+    {
+      "check": "reduced motion: no CSS transitions/animations longer than 20 ms",
+      "ok": true,
+      "detail": "0 elements"
+    },
+    {
+      "check": "reduced motion: Motion animations (opacity, SVG, staggered) finish instantly",
+      "ok": true,
+      "detail": "0/40 horizon dots still animating on their first frame"
+    }
+  ]
+}

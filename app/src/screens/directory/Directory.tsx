@@ -16,6 +16,7 @@ import { t } from '../../lib/motion'
 import { fmtRelative, LEVEL_LABEL, STANCE_LABEL } from '../../lib/format'
 import { LoadError } from '../Home'
 import './directory.css'
+import { useVocabulary } from '../../lib/vocabulary'
 
 type SortKey = 'name' | 'stance' | 'influence' | 'last' | 'open'
 const STANCE_ORDER: Stance[] = ['opposed', 'concerned', 'neutral', 'supporter', 'champion', 'unknown']
@@ -34,6 +35,7 @@ export function Directory() {
   const [minInf, setMinInf] = useState<number>(0)
   const [engaged, setEngaged] = useState<'any' | 'cold'>('any')
   const [archived, setArchived] = useState(false)
+  const voc = useVocabulary()
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' } | null>(null)
   const [focus, setFocus] = useState(0)
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -133,11 +135,15 @@ export function Directory() {
     const active = sort?.key === key || (!sort && key === 'influence')
     const dir = sort?.key === key ? sort.dir : 'desc'
     return (
-      <button className={`th th-btn ${align === 'right' ? 'th-right' : ''}`} role="columnheader" aria-sort={active ? (dir === 'asc' ? 'ascending' : 'descending') : 'none'}
-        onClick={() => setSort(s => s?.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: key === 'name' || key === 'stance' ? 'asc' : 'desc' })}>
-        {label}
-        <span className="th-arrow" data-on={active || undefined}>{dir === 'asc' ? <ArrowUp size={11} /> : <ArrowDown size={11} />}</span>
-      </button>
+      // The header cell carries the role and sort state; the button inside stays a button (a role on the button
+      // itself hid that it can be pressed).
+      <span className="th-cell" role="columnheader" aria-sort={active ? (dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+        <button className={`th th-btn ${align === 'right' ? 'th-right' : ''}`}
+          onClick={() => setSort(s => s?.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: key === 'name' || key === 'stance' ? 'asc' : 'desc' })}>
+          {label}
+          <span className="th-arrow" data-on={active || undefined}>{dir === 'asc' ? <ArrowUp size={11} /> : <ArrowDown size={11} />}</span>
+        </button>
+      </span>
     )
   }
 
@@ -168,8 +174,8 @@ export function Directory() {
         {archived && <span className="chip chip-on"><Archive size={12} /><span className="chip-v">Archived</span><button className="chip-x" aria-label="Show active stakeholders" onClick={() => setArchived(false)}><X size={12} /></button></span>}
         {filtersActive ? <button className="link-btn" onClick={clearAll}>Clear all</button> : null}
         <span className="grow" />
-        <span className="t-small c3 num" aria-live="polite">{query.data ? `${total.toLocaleString()} ${archived ? 'archived' : ''}` : ''}{query.isFetching && !loading ? ' · updating' : ''}</span>
-        {!archived && <button className="link-btn" onClick={() => setArchived(true)} title="Show archived stakeholders">Archived</button>}
+        <span className="t-small c3 num" aria-live="polite">{query.data ? `${total.toLocaleString()} ${archived ? 'archived' : voc.lower('stakeholder', total !== 1)}` : ''}{query.isFetching && !loading ? ' · updating' : ''}</span>
+        {!archived && <button className="link-btn" onClick={() => setArchived(true)} title="Show archived stakeholders">Show archived</button>}
         {can('stakeholder.create') && <Button size="sm" variant="primary" icon={<Plus size={13} />} onClick={() => openCreate('stakeholder', initiative ? { initiativeIds: [initiative] } : undefined)} kbd="C P">New</Button>}
       </div>
 
