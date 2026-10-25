@@ -4,6 +4,34 @@ All notable changes are listed here, per release. Versions follow semver.
 - **Releases before Phase 4** were not tagged. Their commits are listed below for reference.
 - **Database changes:** a release that changes the database schema is at least a MINOR version, and its migrations follow the expand/contract policy in `docs/launch/deployment-runbook.md`.
 
+## [Unreleased] — Phase 7: real-world simulation lab
+### Added
+- **Synthetic data universe** (`npm run sim`). Deterministic and seeded; ten industries, profiles A–E (up to 5,000 stakeholders in one workspace, or 50 tenants), and named real-world complications. It writes through the product's own auth and row-level security. Local only: it refuses production and remote databases.
+- **Simulation harnesses:**
+  - `scripts/sim-scale.ts`: truth checks, endpoint latency, load at 1–100 users, isolation under load;
+  - `scripts/sim-graph.sh`: relationship-map stress;
+  - `scripts/sim-serve.ts` with `scripts/sim-personas.mjs`: simulated persona runs.
+- **Duplicate hint.** Creating a stakeholder whose name matches an existing record shows a non-blocking hint that links to that record.
+- **Copilot:**
+  - answers "what changed recently" (read-only `recent_changes` tool);
+  - lists who is connected to an initiative or organisation.
+### Fixed
+- **Command Center at scale.** Overdue commitments could vanish from the list when other signals were numerous (0 of 1,987 shown at 5,000 stakeholders). Counts are now true totals per kind, every kind keeps places in the list, and older items are counted instead of dropped.
+- **Workspace briefing** states the same totals as the Command Center headline. It counted the capped list ("60 overdue" under "1,987 overdue").
+- **"Due this week"** is filtered on the server. At scale it read 0, because it narrowed the first 200 open commitments, all of them overdue.
+- **Departed owners.** Open commitments owned by someone who left the workspace are flagged as needing an owner.
+- **Totals, not page lengths.** Summary sentences, tab counts and Copilot answers ("10 decisions pending") now use true totals.
+- **Long histories** say "Showing the latest 200 of N".
+- **Meeting notes:**
+  - labelled decisions ("Decision: …") and decisions by a board or committee are recognised;
+  - repeated actions are proposed once.
+- **Billing provider outages** return a clear "nothing was changed, try again" (503) instead of a generic error. Webhooks received during the outage sync afterwards.
+- **Simulation loads run `ANALYZE`.** Without planner statistics, the relationship map took 117 s from the server on PGlite at 5,000 stakeholders; it now takes 0.21 s.
+- **Speed at 5,000 stakeholders:**
+  - Directory sort 156 → 11 ms;
+  - Command Center 269 → 162 ms (1 MB → 622 KB);
+  - single-user throughput doubled.
+
 ## [Unreleased] — Phase 6: product excellence
 ### Fixed: data and trust
 - **Old overdue commitments.** Commitments more than 60 days overdue disappeared from the Command Center; they now always appear, and the horizon counts every overdue commitment.

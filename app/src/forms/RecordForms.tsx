@@ -1,7 +1,7 @@
 // Create/edit drawers for every record type. One pattern everywhere: minimal required fields up front,
 // the rest behind "More details"; server validation errors land on the right field; drafts survive failures.
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { z } from 'zod'
 import { useApp, type CreateKind } from '../shell/context'
@@ -49,6 +49,32 @@ function useSave(resource: string, record: Rec | null | undefined, label: string
 }
 
 // ── Stakeholder ──────────────────────────────────────────────────────────────
+const norm = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, ' ').trim()
+
+/** Non-blocking: when a new stakeholder's name matches someone already recorded, say so and link to them. */
+function PossibleDuplicates({ name, onOpen }: { name: string; onOpen: () => void }) {
+  const [matches, setMatches] = useState<{ id: string; name: string; title: string | null; org: string | null }[]>([])
+  useEffect(() => {
+    const q = name.trim().replace(/\s+/g, ' ')
+    if (q.length < 3) { setMatches([]); return }
+    let live = true
+    const t = setTimeout(() => {
+      request<{ stakeholders: { id: string; name: string; title: string | null; org?: string | null }[] }>(ws(`/search?q=${encodeURIComponent(q)}`))
+        .then(r => { if (live) setMatches(r.stakeholders.filter(s => norm(s.name) === norm(q)).slice(0, 3).map(s => ({ ...s, org: s.org ?? null }))) })
+        .catch(() => { if (live) setMatches([]) })
+    }, 300)
+    return () => { live = false; clearTimeout(t) }
+  }, [name])
+  if (!matches.length) return null
+  return (
+    <p className="field-hint dup-hint" role="status">
+      {matches.length === 1 ? 'Someone with this name is already recorded: ' : 'People with this name are already recorded: '}
+      {matches.map((m, i) => <span key={m.id}>{i > 0 && ', '}<Link to={`/stakeholders/${m.id}`} onClick={onOpen}>{m.name}</Link>{[m.title, m.org].filter(Boolean).length ? ` (${[m.title, m.org].filter(Boolean).join(', ')})` : ''}</span>)}
+      . You can still create a new record.
+    </p>
+  )
+}
+
 const stakeholderFormSchema = stakeholderCreateSchema.extend({ orgId: z.string().nullable().optional(), orgRole: z.string().max(120).nullable().optional() })
 export function StakeholderDrawer({ open, onClose, record, defaults, onSaved }: DrawerProps) {
   const editing = !!record?.id
@@ -70,7 +96,8 @@ export function StakeholderDrawer({ open, onClose, record, defaults, onSaved }: 
     <Drawer open={open} onClose={onClose} title={editing ? `Edit ${String(record?.name ?? 'stakeholder')}` : 'New stakeholder'} dirty={form.dirty} onSubmit={submit}
       footer={<DrawerActions submitting={form.submitting} onCancel={onClose} onSubmit={submit} label={editing ? 'Save changes' : 'Create stakeholder'} />}>
       <div className="form-grid">
-        <div className="span-2"><TextField form={form} name="name" label="Name" required autoFocus /></div>
+        <div className="span-2"><TextField form={form} name="name" label="Name" required autoFocus />
+          {!editing && open && <PossibleDuplicates name={String(form.values.name ?? '')} onOpen={onClose} />}</div>
         <TextField form={form} name="title" label="Role / title" />
         {!editing ? <OrganizationPicker value={(form.values.orgId as string) ?? null} onChange={v => form.set('orgId', v)} /> : <TextField form={form} name="location" label="Location" />}
         {!editing && !!form.values.orgId && <div className="span-2"><TextField form={form} name="orgRole" label="Role at organization" placeholder="e.g. Chief Planner" /></div>}

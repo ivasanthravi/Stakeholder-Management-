@@ -22,7 +22,8 @@
     "test:pg": "node scripts/test-postgres.mjs",
     "db:check": "tsx server/db/check.ts",
     "db:drill": "tsx scripts/restore-drill.ts",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "sim": "tsx server/db/sim/cli.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.2.0",

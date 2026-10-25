@@ -1,0 +1,465 @@
+{
+  "profile": "E",
+  "ranAt": "2026-10-25T06:07:30.057Z",
+  "environment": {
+    "cpu": "Apple M4",
+    "cores": 10,
+    "memoryGB": 16,
+    "node": "v24.21.0",
+    "database": "PostgreSQL (embedded-postgres, same machine)",
+    "api": "tsx server/index.ts (development mode, single process, pool 10)",
+    "note": "API, database and load generator share one machine; results are a local baseline, not production capacity."
+  },
+  "generation": {
+    "ms": 19320,
+    "output": [
+      "Solway Grid Networks T49 (simulation): 201 stakeholders, 1000 relationships, 1984 activity records (1400 engagements, 365 commitments, 80 decisions, 139 history) in 341 ms",
+      "Marigold & Finch Retail T50 (simulation): 201 stakeholders, 1000 relationships, 1994 activity records (1400 engagements, 365 commitments, 80 decisions, 149 history) in 337 ms",
+      "Loaded 50 workspace(s) in 17215 ms → manifest /var/folders/d0/2pdzwrr90lb318v390btdvgh0000gp/T/meridian-simscale-jL10TE/manifest.json"
+    ]
+  },
+  "dataset": {
+    "workspaces": 50,
+    "totals": {
+      "users": 150,
+      "organizations": 840,
+      "stakeholders": 10050,
+      "relationships": 50000,
+      "engagements": 70000,
+      "participants": 142790,
+      "decisions": 4000,
+      "commitments": 18250,
+      "events": 7221,
+      "activity": 99471,
+      "complications": 1000
+    },
+    "databaseSize": "125 MB"
+  },
+  "truth": {
+    "overdueCommitments": {
+      "database": 84,
+      "register": 84,
+      "dashboardListed": 57,
+      "totalSignalsReturned": 126,
+      "dashboardTrueCount": 84,
+      "horizonOlder": {
+        "team": 73,
+        "mine": 30
+      }
+    },
+    "waitingDecisions": {
+      "database": 35
+    },
+    "longHistory": {
+      "database": 34,
+      "overviewReturned": 34,
+      "overviewTotal": 34
+    }
+  },
+  "latency": {
+    "dashboard": {
+      "p50": 37,
+      "p95": 37,
+      "status": 200,
+      "bytes": 114353
+    },
+    "directory page 1": {
+      "p50": 5,
+      "p95": 6,
+      "status": 200,
+      "bytes": 31176
+    },
+    "directory sorted by name": {
+      "p50": 5,
+      "p95": 7,
+      "status": 200,
+      "bytes": 31358
+    },
+    "directory filter stance": {
+      "p50": 3,
+      "p95": 3,
+      "status": 200,
+      "bytes": 3727
+    },
+    "directory text filter": {
+      "p50": 3,
+      "p95": 3,
+      "status": 200,
+      "bytes": 2419
+    },
+    "directory deep page": {
+      "p50": 4,
+      "p95": 6,
+      "status": 200,
+      "bytes": 30789
+    },
+    "global search": {
+      "p50": 3,
+      "p95": 3,
+      "status": 200,
+      "bytes": 605
+    },
+    "profile detail": {
+      "p50": 2,
+      "p95": 2,
+      "status": 200,
+      "bytes": 945
+    },
+    "profile overview": {
+      "p50": 3,
+      "p95": 3,
+      "status": 200,
+      "bytes": 1557
+    },
+    "profile overview (long history)": {
+      "p50": 4,
+      "p95": 6,
+      "status": 200,
+      "bytes": 14325
+    },
+    "engagements page 1": {
+      "p50": 3,
+      "p95": 3,
+      "status": 200,
+      "bytes": 26181
+    },
+    "commitments overdue": {
+      "p50": 2,
+      "p95": 2,
+      "status": 200,
+      "bytes": 27956
+    },
+    "decisions open": {
+      "p50": 2,
+      "p95": 2,
+      "status": 200,
+      "bytes": 14553
+    },
+    "organizations": {
+      "p50": 6,
+      "p95": 7,
+      "status": 200,
+      "bytes": 3795
+    },
+    "graph (default initiative)": {
+      "p50": 8,
+      "p95": 8,
+      "status": 200,
+      "bytes": 306674
+    },
+    "graph (whole workspace)": {
+      "p50": 9,
+      "p95": 11,
+      "status": 200,
+      "bytes": 306674
+    }
+  },
+  "load": [
+    {
+      "vus": 1,
+      "requests": 2411,
+      "throughputRps": 120,
+      "errorRate": 0,
+      "p50": 3,
+      "p95": 36,
+      "p99": 37,
+      "serverCpuPctMax": 35.1,
+      "serverCpuPctMean": 21,
+      "serverRssMBMax": 563,
+      "endpoints": {
+        "profile": {
+          "n": 333,
+          "p50": 4,
+          "p95": 5
+        },
+        "create commitment": {
+          "n": 168,
+          "p50": 3,
+          "p95": 4
+        },
+        "dashboard": {
+          "n": 353,
+          "p50": 36,
+          "p95": 37
+        },
+        "create engagement": {
+          "n": 192,
+          "p50": 4,
+          "p95": 5
+        },
+        "directory": {
+          "n": 491,
+          "p50": 2,
+          "p95": 5
+        },
+        "graph": {
+          "n": 190,
+          "p50": 8,
+          "p95": 9
+        },
+        "commitments": {
+          "n": 273,
+          "p50": 2,
+          "p95": 3
+        },
+        "engagements": {
+          "n": 167,
+          "p50": 3,
+          "p95": 3
+        },
+        "search": {
+          "n": 244,
+          "p50": 3,
+          "p95": 3
+        }
+      }
+    },
+    {
+      "vus": 10,
+      "requests": 10480,
+      "throughputRps": 523,
+      "errorRate": 0,
+      "p50": 12,
+      "p95": 65,
+      "p99": 78,
+      "serverCpuPctMax": 107.9,
+      "serverCpuPctMean": 98,
+      "serverRssMBMax": 591,
+      "endpoints": {
+        "directory": {
+          "n": 2072,
+          "p50": 9,
+          "p95": 16
+        },
+        "profile": {
+          "n": 1574,
+          "p50": 12,
+          "p95": 19
+        },
+        "graph": {
+          "n": 841,
+          "p50": 17,
+          "p95": 25
+        },
+        "search": {
+          "n": 1128,
+          "p50": 10,
+          "p95": 16
+        },
+        "engagements": {
+          "n": 736,
+          "p50": 8,
+          "p95": 13
+        },
+        "dashboard": {
+          "n": 1579,
+          "p50": 62,
+          "p95": 80
+        },
+        "commitments": {
+          "n": 1052,
+          "p50": 7,
+          "p95": 12
+        },
+        "create commitment": {
+          "n": 695,
+          "p50": 11,
+          "p95": 19
+        },
+        "create engagement": {
+          "n": 803,
+          "p50": 13,
+          "p95": 22
+        }
+      }
+    },
+    {
+      "vus": 25,
+      "requests": 10974,
+      "throughputRps": 547,
+      "errorRate": 0,
+      "p50": 38,
+      "p95": 98,
+      "p99": 115,
+      "serverCpuPctMax": 117.1,
+      "serverCpuPctMean": 99,
+      "serverRssMBMax": 480,
+      "endpoints": {
+        "directory": {
+          "n": 2174,
+          "p50": 33,
+          "p95": 51
+        },
+        "commitments": {
+          "n": 1110,
+          "p50": 31,
+          "p95": 48
+        },
+        "search": {
+          "n": 1097,
+          "p50": 33,
+          "p95": 52
+        },
+        "create commitment": {
+          "n": 784,
+          "p50": 40,
+          "p95": 60
+        },
+        "graph": {
+          "n": 856,
+          "p50": 41,
+          "p95": 60
+        },
+        "engagements": {
+          "n": 770,
+          "p50": 32,
+          "p95": 49
+        },
+        "create engagement": {
+          "n": 877,
+          "p50": 47,
+          "p95": 70
+        },
+        "profile": {
+          "n": 1651,
+          "p50": 37,
+          "p95": 55
+        },
+        "dashboard": {
+          "n": 1655,
+          "p50": 93,
+          "p95": 116
+        }
+      }
+    },
+    {
+      "vus": 50,
+      "requests": 10057,
+      "throughputRps": 500,
+      "errorRate": 0,
+      "p50": 91,
+      "p95": 165,
+      "p99": 191,
+      "serverCpuPctMax": 111.3,
+      "serverCpuPctMean": 94,
+      "serverRssMBMax": 487,
+      "endpoints": {
+        "directory": {
+          "n": 1987,
+          "p50": 81,
+          "p95": 113
+        },
+        "commitments": {
+          "n": 971,
+          "p50": 81,
+          "p95": 112
+        },
+        "search": {
+          "n": 1017,
+          "p50": 84,
+          "p95": 115
+        },
+        "profile": {
+          "n": 1529,
+          "p50": 87,
+          "p95": 119
+        },
+        "graph": {
+          "n": 785,
+          "p50": 89,
+          "p95": 121
+        },
+        "engagements": {
+          "n": 735,
+          "p50": 81,
+          "p95": 114
+        },
+        "create commitment": {
+          "n": 722,
+          "p50": 100,
+          "p95": 137
+        },
+        "create engagement": {
+          "n": 766,
+          "p50": 116,
+          "p95": 157
+        },
+        "dashboard": {
+          "n": 1545,
+          "p50": 155,
+          "p95": 196
+        }
+      }
+    },
+    {
+      "vus": 100,
+      "requests": 10522,
+      "throughputRps": 520,
+      "errorRate": 0,
+      "p50": 181,
+      "p95": 271,
+      "p99": 297,
+      "serverCpuPctMax": 112.6,
+      "serverCpuPctMean": 98,
+      "serverRssMBMax": 501,
+      "endpoints": {
+        "directory": {
+          "n": 2088,
+          "p50": 167,
+          "p95": 204
+        },
+        "commitments": {
+          "n": 1060,
+          "p50": 165,
+          "p95": 202
+        },
+        "engagements": {
+          "n": 768,
+          "p50": 167,
+          "p95": 206
+        },
+        "search": {
+          "n": 1034,
+          "p50": 169,
+          "p95": 206
+        },
+        "profile": {
+          "n": 1605,
+          "p50": 171,
+          "p95": 211
+        },
+        "graph": {
+          "n": 827,
+          "p50": 176,
+          "p95": 212
+        },
+        "create commitment": {
+          "n": 706,
+          "p50": 201,
+          "p95": 241
+        },
+        "dashboard": {
+          "n": 1602,
+          "p50": 258,
+          "p95": 299
+        },
+        "create engagement": {
+          "n": 832,
+          "p50": 236,
+          "p95": 274
+        }
+      }
+    }
+  ],
+  "isolationUnderLoad": {
+    "directoryResponsesChecked": 8812,
+    "foreignRecordsSeen": 0
+  },
+  "databaseStats": {
+    "numbackends": 11,
+    "xact_commit": "241769",
+    "blks_hit": "223340074",
+    "blks_read": "183",
+    "cache_hit_pct": "100.00"
+  }
+}

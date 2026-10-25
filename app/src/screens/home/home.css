@@ -86,6 +86,8 @@
 .hz-today { stroke: var(--accent); stroke-width: 1.5; }
 .hz-tick { font: 500 9.5px var(--font-sans); fill: var(--text-3); }
 .hz-tick-today { fill: var(--accent); font-weight: 600; }
+.hz-older { fill: var(--critical); font-weight: 600; cursor: pointer; }
+.hz-older:hover { text-decoration: underline; }
 .hz-dot { fill: var(--slate-400); stroke: var(--bg-surface); stroke-width: 1.5; cursor: pointer; transition: r var(--dur-fast) var(--ease-standard); }
 .hz-dot.wk { fill: var(--amber-500); }
 .hz-dot.od { fill: var(--red-500); }

@@ -205,6 +205,8 @@ export const commitmentUpdateSchema = commitmentCreateSchema.partial().extend({ 
 export const commitmentListQuerySchema = listQuerySchema.extend({
   status: z.string().optional(),
   overdue: z.enum(['true', 'false']).optional(),
+  /** Due between today and today + N days (inclusive): "Due this week" is 7. */
+  dueWithinDays: z.coerce.number().int().min(0).max(366).optional(),
   initiativeId: id.optional(),
   stakeholderId: id.optional(),
   ownerId: z.string().optional(),

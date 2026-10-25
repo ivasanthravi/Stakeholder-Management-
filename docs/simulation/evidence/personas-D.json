@@ -1,0 +1,155 @@
+{
+ "label": "D",
+ "ranAt": "2026-10-25T06:14:44.338Z",
+ "simulated": true,
+ "note": "Scripted automation on simulated data. Timings are local (one machine, production build, PostgreSQL). Not user research.",
+ "workspace": {
+  "users": 100,
+  "counts": {
+   "users": 100,
+   "organizations": 284,
+   "stakeholders": 5001,
+   "relationships": 25000,
+   "engagements": 35000,
+   "participants": 71811,
+   "decisions": 2000,
+   "commitments": 9005,
+   "events": 3445,
+   "activity": 49450,
+   "complications": 20
+  }
+ },
+ "results": [
+  {
+   "persona": "Executive",
+   "role": "owner",
+   "steps": [
+    {
+     "step": "Command Center: what needs attention",
+     "ms": 425,
+     "observed": "Home Sunday 25 October Team Assigned to me Good morning, Yara 1987 overdue commitments, 237 decisions waiting and 92 key relationships cooling across 8 initiatives. Workspace briefing Built-in rules engine · no AI interpretation Generated 11:44 Today · metrics 1987 commitments are overdue.How? 237 d",
+     "ok": true
+    },
+    {
+     "step": "Decisions waiting",
+     "ms": 402,
+     "observed": 101,
+     "ok": true
+    },
+    {
+     "step": "Relationship map (default initiative)",
+     "ms": 1570,
+     "observed": "963 people · 2293 relationships · 266 organizations · ← → to traverse",
+     "ok": true
+    }
+   ],
+   "errors": []
+  },
+  {
+   "persona": "Program Manager",
+   "role": "manager",
+   "steps": [
+    {
+     "step": "Initiatives register",
+     "ms": 407,
+     "observed": 9,
+     "ok": true
+    },
+    {
+     "step": "Open the first initiative",
+     "ms": 207,
+     "observed": "River Crossing Bridge",
+     "ok": true
+    },
+    {
+     "step": "Overdue commitments",
+     "ms": 485,
+     "observed": "Commitments Agreed obligations between your team and a stakeholder New commitment C M Open 2802 Overdue 1966 Due this week 199 Mine 30 Completed 5277 F Initiative 1966 commitments Complete Key Commitment Stakeholder Who owes Owner Due Initiative Source C-3359 KCP Community Relations to return the pe",
+     "ok": true
+    }
+   ],
+   "errors": []
+  },
+  {
+   "persona": "Relationship Manager",
+   "role": "contributor",
+   "steps": [
+    {
+     "step": "Directory",
+     "ms": 85,
+     "observed": 37,
+     "ok": true
+    },
+    {
+     "step": "Filter by name",
+     "ms": 10,
+     "observed": 37,
+     "ok": true
+    },
+    {
+     "step": "Open a profile",
+     "ms": 105,
+     "observed": "Ada Halloran",
+     "ok": true
+    },
+    {
+     "step": "Profile engagements tab",
+     "ms": 64,
+     "observed": "Stakeholders / Ironbridge Structures East 18 / Ada Halloran Show in map M Ask AI Prepare briefing Edit E Log engagement L AH Ada Halloran Director Ironbridge Structures East 18 Champion Very high influence Very high interest BRG2 Approver Relationship owner RZ Rania Zhou Last engaged Today Contact a",
+     "ok": true
+    }
+   ],
+   "errors": []
+  },
+  {
+   "persona": "Operations Lead",
+   "role": "manager",
+   "steps": [
+    {
+     "step": "Command Center: items needing an owner",
+     "ms": 392,
+     "observed": "Home Sunday 25 October Team Assigned to me Good morning, Chidi 1966 overdue commitments, 237 decisions waiting and 90 key relationships cooling across 8 initiatives. Workspace briefing Built-in rules engine · no AI interpretation Generated 11:44 Today · metrics 1966 commitments are overdue.How? 237 ",
+     "ok": true
+    },
+    {
+     "step": "Commitments due this week",
+     "ms": 413,
+     "observed": "Commitments Agreed obligations between your team and a stakeholder New commitment C M Open 2802 Overdue 1966 Due this week 199 Mine 30 Completed 5277 F Initiative 199 commitments Complete Key Commitment Stakeholder Who owes Owner Due Initiative Source C-502 Send the revised traffic management plan t",
+     "ok": true
+    },
+    {
+     "step": "Engagements register",
+     "ms": 407,
+     "observed": 52,
+     "ok": true
+    }
+   ],
+   "errors": []
+  },
+  {
+   "persona": "Workspace Admin",
+   "role": "owner",
+   "steps": [
+    {
+     "step": "Members",
+     "ms": 392,
+     "observed": 98,
+     "ok": true
+    },
+    {
+     "step": "Audit log",
+     "ms": 376,
+     "observed": "Settings / Audit log Kestrel Civil Partners (simulation) Account My profile Notifications & privacy Security Workspace General Members Roles & permissions Subscription Billing history Usage AI Audit log Data management Audit log Security-relevant events in this workspace: access, membership and sett",
+     "ok": true
+    },
+    {
+     "step": "Usage and plan",
+     "ms": 36,
+     "observed": "Settings / Subscription Kestrel Civil Partners (simulation) Account My profile Notifications & privacy Security Workspace General Members Roles & permissions Subscription Billing history Usage AI Audit log Data management Subscription Test mode Development billing simulator (no real payments) Your p",
+     "ok": true
+    }
+   ],
+   "errors": []
+  }
+ ]
+}

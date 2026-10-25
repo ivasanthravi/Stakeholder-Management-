@@ -77,6 +77,10 @@ export interface Signal {
 export interface Dashboard {
   generatedAt: string; me: string
   signals: Signal[]
+  /** Totals by signal kind over every signal (the `signals` list is capped). Prefer these for any number shown. */
+  signalCounts?: { team: Partial<Record<Signal['kind'], number>>; mine: Partial<Record<Signal['kind'], number>> }
+  /** Overdue commitments older than the horizon window (counted, not listed). */
+  horizonOlder?: { team: number; mine: number }
   horizon: { id: string; key: string; title: string; dueDate: string; stakeholderId: string | null; stakeholderName: string | null; ownerId: string | null }[]
   decisions: { id: string; key: string; title: string; status: DecisionStatus; dueDate: string | null; createdAt: string; ownerName: string | null; initiativeCode: string | null; approvers: number }[]
   recentEngagements: { id: string; key: string; kind: string; title: string; occurredAt: string; initiativeCode: string | null; participants: number }[]

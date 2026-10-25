@@ -393,7 +393,7 @@ export function Timeline({ d, limit, compact }: { d: Overview; limit?: number; c
           )
         })}
       </ol>
-      {!compact && d.engagementTotal >= 200 && <p className="t-small c3 card-empty">Showing the latest 200. <Link className="inline-link" to={`/engagements?stakeholderId=${d.stakeholder.id}`}>See all in Engagements</Link></p>}
+      {!compact && d.engagementTotal >= 200 && <p className="t-small c3 card-empty">Showing the latest 200 of {d.engagementTotal.toLocaleString()}. <Link className="inline-link" to={`/engagements?stakeholderId=${d.stakeholder.id}`}>See all in Engagements</Link></p>}
     </div>
   )
 }

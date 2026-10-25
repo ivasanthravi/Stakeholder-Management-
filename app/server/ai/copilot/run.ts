@@ -23,7 +23,7 @@ export type Card = { kind: 'commitments' | 'stakeholders' | 'decisions' | 'engag
 const STATUS: Record<ToolName, string> = {
   search_records: 'Searching records', get_stakeholder: 'Reading the stakeholder record', list_stakeholders: 'Listing stakeholders',
   list_commitments: 'Checking commitments', list_decisions: 'Checking decisions', engagement_history: 'Reading engagement history',
-  get_initiative: 'Reading the initiative', relationship_path: 'Tracing recorded relationships',
+  get_initiative: 'Reading the initiative', relationship_path: 'Tracing recorded relationships', recent_changes: 'Reading recent changes',
 }
 
 const COPILOT_RULES = `You are Meridian's copilot. Answer questions about this workspace's stakeholders, organizations, initiatives, engagements, decisions and commitments.
@@ -167,8 +167,9 @@ async function runLocal({ db, tn, message, context, emit }: RunInput): Promise<R
     const ds = r.decisions as any[] // eslint-disable-line @typescript-eslint/no-explicit-any
     if (!ds.length) lines.push(`No ${/decided/.test(q) ? 'decided' : 'pending'} decisions${here}.`)
     else {
-      const late = ds.filter(d => d.late)
-      lines.push(`${ds.length} decision${ds.length === 1 ? ' is' : 's are'} ${/decided/.test(q) ? 'decided' : 'still pending'}${here}${late.length ? `, ${late.length} past the date it was needed` : ''}:`)
+      // Counts come from the tool's totals: the list below is only the first page.
+      const total = r.total_matching as number, late = r.late_matching as number
+      lines.push(`${total} decision${total === 1 ? ' is' : 's are'} ${/decided/.test(q) ? 'decided' : 'still pending'}${here}${late ? `, ${late} past the date ${late === 1 ? 'it was' : 'they were'} needed` : ''}${total > ds.length ? `; the ${ds.length} most urgent` : ''}:`)
       for (const d of ds) lines.push(`- ${d.key} ${d.title} — ${d.status.replace('_', ' ')}${d.needed_by ? `, needed by ${d.needed_by}${d.late ? ' (late)' : ''}` : ''}${d.owner ? `, owner ${d.owner}` : ''} [${d.ref}]`)
     }
     followUps = ['Who are the approvers on the late decisions?', 'Which commitments relate to these decisions?']
@@ -211,10 +212,24 @@ async function runLocal({ db, tn, message, context, emit }: RunInput): Promise<R
   } else if (/(risk|block|delay|unresolved|issues?|stuck)/.test(q)) {
     const [c, d] = [await call('list_commitments', { filter: 'overdue', ...scope, limit: 5 }), await call('list_decisions', { status: 'pending', ...scope, limit: 5 })]
     const late = (d.decisions as any[]).filter(x => x.late) // eslint-disable-line @typescript-eslint/no-explicit-any
-    lines.push(`From the records${here}: ${c.total_matching} overdue commitment${c.total_matching === 1 ? '' : 's'} and ${late.length} decision${late.length === 1 ? '' : 's'} past the date ${late.length === 1 ? 'it was' : 'they were'} needed.`)
+    const lateN = d.late_matching as number
+    lines.push(`From the records${here}: ${c.total_matching} overdue commitment${c.total_matching === 1 ? '' : 's'} and ${lateN} decision${lateN === 1 ? '' : 's'} past the date ${lateN === 1 ? 'it was' : 'they were'} needed.`)
     for (const x of late) lines.push(`- ${x.key} ${x.title} — needed by ${x.needed_by} [${x.ref}]`)
     for (const x of c.commitments) lines.push(`- ${x.key} ${x.title} — ${x.days_overdue} days overdue [${x.ref}]`)
     lines.push('These are recorded facts; whether they will delay the work is a judgement for your team.')
+  } else if (/(what('s| has| have)? changed|changes|last (30 days|month)|past month|this month)/.test(q)) {
+    const r = await call('recent_changes', { days: 30, initiative_id: context.initiativeId ?? null })
+    const total = r.stance_changes + r.decisions_decided + r.commitments_completed + r.stakeholders_added
+    lines.push(total ? `In the last 30 days${here}: ${r.decisions_decided} decision${r.decisions_decided === 1 ? '' : 's'} decided, ${r.commitments_completed} commitment${r.commitments_completed === 1 ? '' : 's'} completed, ${r.stance_changes} stance change${r.stance_changes === 1 ? '' : 's'} and ${r.stakeholders_added} stakeholder${r.stakeholders_added === 1 ? '' : 's'} added.` : `Nothing changed in the last 30 days${here} in records you can see.`)
+    for (const d of r.latest_decisions) lines.push(`- ${d.key} ${d.title} — ${d.status} on ${d.on} [${d.ref}]`)
+    for (const s of r.latest_stance_changes) lines.push(`- ${s.name}: ${s.from} → ${s.to} [${s.ref}]`)
+    for (const c of r.latest_completed) lines.push(`- ${c.key} ${c.title} — completed ${c.on} [${c.ref}]`)
+    followUps = ['Which commitments are overdue?', 'Which stakeholders haven’t been engaged recently?']
+  } else if ((context.initiativeId || context.organizationId) && /(connected|involved|members?|which stakeholders|who (is|are) (on|in|part))/.test(q)) {
+    const r = await call('list_stakeholders', { initiative_id: context.initiativeId ?? null, organization_id: context.organizationId ?? null, sort: 'influence', min_influence: null, limit: 10 })
+    lines.push(r.total_matching ? `${r.total_matching} stakeholder${r.total_matching === 1 ? ' is' : 's are'} recorded${here}${r.total_matching > (r.stakeholders ?? []).length ? `; the ${(r.stakeholders ?? []).length} with the highest recorded influence` : ''}:` : `No stakeholders are recorded${here}.`)
+    for (const s of r.stakeholders ?? []) lines.push(`- ${s.name}${s.title ? `, ${s.title}` : ''} — ${s.stance.toLowerCase()}${s.influence ? `, influence ${s.influence}/4` : ''}, last engaged ${DAYS(s.days_since_last_engagement)} [${s.ref}]`)
+    followUps = ['Which of these are concerned or opposed?', 'Which of these haven’t been engaged recently?']
   } else if (/(connect|path|reach|introduc|know)/.test(q)) {
     lines.push('Name both people in full (“How is Jonah Thorne connected to Bea Ellwood?”), or open one profile and ask about the other. The map’s “Find path” does the same.')
     // Two full names in the question, or one name plus the profile in context.

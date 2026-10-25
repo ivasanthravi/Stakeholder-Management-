@@ -78,7 +78,8 @@ describe('identification and authority', () => {
   })
   test('the copilot has read-only tools only — it can’t change records', () => {
     const names = Object.keys(TOOL_DEFS)
-    expect(names.every(n => /^(search|get|list|engagement_history|relationship_path)/.test(n))).toBe(true)
+    // recent_changes (Phase 7) only selects, under the caller’s row-level security.
+    expect(names.every(n => /^(search|get|list|engagement_history|relationship_path|recent_changes)/.test(n))).toBe(true)
     expect(names.some(n => /create|update|delete|archive|accept|send|assign/.test(n))).toBe(false)
   })
 })

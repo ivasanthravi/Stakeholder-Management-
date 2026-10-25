@@ -1,0 +1,154 @@
+{
+ "label": "D",
+ "ranAt": "2026-10-25T06:11:25.114Z",
+ "simulated": true,
+ "note": "Scripted automation on simulated data. Timings are local (one machine, production build, PostgreSQL). Not user research.",
+ "workspace": {
+  "users": 100,
+  "counts": {
+   "users": 100,
+   "organizations": 284,
+   "stakeholders": 5001,
+   "relationships": 25000,
+   "engagements": 35000,
+   "participants": 71811,
+   "decisions": 2000,
+   "commitments": 9005,
+   "events": 3445,
+   "activity": 49450,
+   "complications": 20
+  }
+ },
+ "results": [
+  {
+   "persona": "Executive",
+   "role": "owner",
+   "steps": [
+    {
+     "step": "Command Center: what needs attention",
+     "ms": 425,
+     "observed": "Home Sunday 25 October Team Assigned to me Good morning, Yara 1987 overdue commitments, 237 decisions waiting and 92 key relationships cooling across 8 initiatives. Workspace briefing Built-in rules engine · no AI interpretation Generated 11:41 Today · metrics 60 commitments are overdue.How? 45 deci",
+     "ok": true
+    },
+    {
+     "step": "Decisions waiting",
+     "ms": 407,
+     "observed": 101,
+     "ok": true
+    },
+    {
+     "step": "Relationship map (default initiative)",
+     "ms": 1623,
+     "observed": "963 people · 2293 relationships · 266 organizations · ← → to traverse",
+     "ok": true
+    }
+   ],
+   "errors": []
+  },
+  {
+   "persona": "Program Manager",
+   "role": "owner",
+   "steps": [
+    {
+     "step": "Initiatives register",
+     "ms": 408,
+     "observed": 9,
+     "ok": true
+    },
+    {
+     "step": "Open the first initiative",
+     "ms": 210,
+     "observed": "River Crossing Bridge",
+     "ok": true
+    },
+    {
+     "step": "Overdue commitments",
+     "ms": 489,
+     "observed": "Commitments Agreed obligations between your team and a stakeholder New commitment C M Open 2835 Overdue 1987 Due this week 0 Mine 31 Completed 5341 F Initiative 1987 commitments Complete Key Commitment Stakeholder Who owes Owner Due Initiative Source C-3359 KCP Community Relations to return the perm",
+     "ok": true
+    }
+   ],
+   "errors": []
+  },
+  {
+   "persona": "Relationship Manager",
+   "role": "contributor",
+   "steps": [
+    {
+     "step": "Directory",
+     "ms": 86,
+     "observed": 37,
+     "ok": true
+    },
+    {
+     "step": "Filter by name",
+     "ok": false,
+     "error": "Cannot read properties of undefined (reading 'split')"
+    },
+    {
+     "step": "Open a profile",
+     "ms": 72,
+     "observed": "Abel Delgado",
+     "ok": true
+    },
+    {
+     "step": "Profile engagements tab",
+     "ms": 60,
+     "observed": "Stakeholders / Wexmoor Groundworks / Abel Delgado Show in map M Ask AI Prepare briefing Edit E Log engagement L AD Abel Delgado Director Wexmoor Groundworks Tarnley Unknown Very high influence Very high interest FLD2 Partner Relationship owner YM Yara Macarthur Last engaged 2d ago Contact abel.delga",
+     "ok": true
+    }
+   ],
+   "errors": []
+  },
+  {
+   "persona": "Operations Lead",
+   "role": "owner",
+   "steps": [
+    {
+     "step": "Command Center: items needing an owner",
+     "ms": 375,
+     "observed": 0,
+     "ok": true
+    },
+    {
+     "step": "Commitments register",
+     "ms": 431,
+     "observed": "Commitments Agreed obligations between your team and a stakeholder New commitment C M Open 2835 Overdue 1987 Due this week 0 Mine 31 Completed 5341 F Initiative 2835 commitments Complete Key Commitment Stakeholder Who owes Owner Due Initiative Source C-3359 KCP Community Relations to return the perm",
+     "ok": true
+    },
+    {
+     "step": "Engagements register",
+     "ms": 410,
+     "observed": 52,
+     "ok": true
+    }
+   ],
+   "errors": []
+  },
+  {
+   "persona": "Workspace Admin",
+   "role": "owner",
+   "steps": [
+    {
+     "step": "Members",
+     "ms": 392,
+     "observed": "Settings / Members Kestrel Civil Partners (simulation) Account My profile Notifications & privacy Security Workspace General Members Roles & permissions Subscription Billing history Usage AI Audit log Data management Members Who has access to this workspace and what they can do. 99 of 100 seats used",
+     "ok": false
+    },
+    {
+     "step": "Audit log",
+     "ms": 369,
+     "observed": "Settings / Audit log Kestrel Civil Partners (simulation) Account My profile Notifications & privacy Security Workspace General Members Roles & permissions Subscription Billing history Usage AI Audit log Data management Audit log Security-relevant events in this workspace: access, membership and sett",
+     "ok": true
+    },
+    {
+     "step": "Usage and plan",
+     "ms": 42,
+     "observed": "Settings / Subscription Kestrel Civil Partners (simulation) Account My profile Notifications & privacy Security Workspace General Members Roles & permissions Subscription Billing history Usage AI Audit log Data management Subscription Test mode Development billing simulator (no real payments) Your p",
+     "ok": true
+    }
+   ],
+   "errors": []
+  }
+ ]
+}

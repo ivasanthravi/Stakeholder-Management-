@@ -14,12 +14,15 @@ test('commitments overdue for months still raise a signal and appear on the hori
   for (const [title, due] of [['Long forgotten', iso(-200)], ['Recently late', iso(-3)], ['Coming up', iso(10)], ['Far future', iso(90)]] as const) {
     expect((await owner.post(`/api/w/${w}/commitments`, { title, stakeholderId: s.body.id, dueDate: due })).status).toBe(201)
   }
-  const d = (await owner.get(`/api/w/${w}/dashboard`)).body as { signals: { kind: string; title: string; reason: string }[]; horizon: { title: string }[] }
+  const d = (await owner.get(`/api/w/${w}/dashboard`)).body as { signals: { kind: string; title: string; reason: string }[]; signalCounts: { team: Record<string, number> }; horizon: { title: string }[]; horizonOlder: { team: number } }
   const overdue = d.signals.filter(x => x.kind === 'overdue').map(x => x.title)
   expect(overdue.some(t => t.includes('Long forgotten'))).toBe(true)
   expect(overdue.some(t => t.includes('Recently late'))).toBe(true)
   expect(d.signals.find(x => x.title.includes('Long forgotten'))!.reason).toMatch(/^200 days overdue/)
   const horizon = d.horizon.map(h => h.title)
-  expect(horizon).toEqual(expect.arrayContaining(['Long forgotten', 'Recently late', 'Coming up']))
+  // The horizon lists its ±30-day window; older overdue commitments are counted (and shown as "+N older").
+  expect(horizon).toEqual(expect.arrayContaining(['Recently late', 'Coming up']))
   expect(horizon).not.toContain('Far future')
+  expect(d.horizonOlder.team).toBe(1)
+  expect(d.signalCounts.team.overdue).toBe(2)
 })

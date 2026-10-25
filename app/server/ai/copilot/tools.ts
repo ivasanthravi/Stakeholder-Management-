@@ -35,6 +35,7 @@ export const TOOL_DEFS = {
   list_commitments: { description: 'List commitments. filter: overdue | due_soon (next 14 days) | open | unassigned.', input: z.object({ filter: z.enum(['overdue', 'due_soon', 'open', 'unassigned']), initiative_id: uuid.nullable(), stakeholder_id: uuid.nullable(), limit: z.number().int().min(1).max(25) }) },
   list_decisions: { description: 'List decisions. status: pending (proposed or under review) | decided | all.', input: z.object({ status: z.enum(['pending', 'decided', 'all']), initiative_id: uuid.nullable(), stakeholder_id: uuid.nullable(), limit: z.number().int().min(1).max(25) }) },
   engagement_history: { description: 'Recorded engagements (meetings, calls, emails…) for a stakeholder, organization or initiative, newest first.', input: z.object({ stakeholder_id: uuid.nullable(), organization_id: uuid.nullable(), initiative_id: uuid.nullable(), since_days: z.number().int().min(1).max(730).nullable(), limit: z.number().int().min(1).max(25) }) },
+  recent_changes: { description: 'What changed recently: stance changes, decisions decided, commitments completed and stakeholders added, with counts and the latest examples.', input: z.object({ days: z.number().int().min(1).max(90), initiative_id: uuid.nullable() }) },
   get_initiative: { description: 'An initiative with its status, owner, stakeholder count, open and overdue commitments and pending decisions.', input: z.object({ initiative_id: uuid }) },
   relationship_path: { description: 'Shortest chain of recorded relationships between two stakeholders (up to 4 hops).', input: z.object({ from_stakeholder_id: uuid, to_stakeholder_id: uuid }) },
 } as const
@@ -140,7 +141,10 @@ export async function runTool(db: DB, tn: TenantContext, reg: RefRegistry, name:
         }
       }
       case 'list_decisions': {
-        const rows = await t.select({ id: decision.id, key: decision.key, title: decision.title, status: decision.status, due: decision.dueDate, created: decision.createdAt, ownerName: user.name, code: initiative.code })
+        // Totals over every matching decision, not just the rows returned (answers state counts; a page of 10 isn't the total).
+        const rows = await t.select({ id: decision.id, key: decision.key, title: decision.title, status: decision.status, due: decision.dueDate, created: decision.createdAt, ownerName: user.name, code: initiative.code,
+          total: sql<number>`count(*) over ()`.mapWith(Number),
+          lateTotal: sql<number>`count(*) filter (where ${decision.dueDate} < current_date and ${decision.status} in ('proposed','under_review')) over ()`.mapWith(Number) })
           .from(decision).leftJoin(user, eq(user.id, decision.ownerId)).leftJoin(initiative, eq(initiative.id, decision.initiativeId))
           .where(and(isNull(decision.archivedAt),
             a.status === 'pending' ? inArray(decision.status, ['proposed', 'under_review']) : a.status === 'decided' ? inArray(decision.status, ['approved', 'rejected']) : undefined,
@@ -148,7 +152,7 @@ export async function runTool(db: DB, tn: TenantContext, reg: RefRegistry, name:
             a.stakeholder_id ? sql`exists (select 1 from decision_stakeholder ds where ds.decision_id = ${decision.id} and ds.stakeholder_id = ${a.stakeholder_id})` : undefined))
           .orderBy(sql`${decision.dueDate} nulls last`).limit(a.limit as number)
         const today = new Date().toISOString().slice(0, 10)
-        return { decisions: rows.map(r => ({ ref: reg.add('decision', r.id, `${r.key} ${r.title}`, r.due), key: r.key, title: r.title, status: r.status, needed_by: r.due, late: !!r.due && r.due < today && ['proposed', 'under_review'].includes(r.status), days_open: Math.round((Date.now() - r.created.getTime()) / DAY), owner: r.ownerName, initiative: r.code })) }
+        return { total_matching: rows[0]?.total ?? 0, late_matching: rows[0]?.lateTotal ?? 0, decisions: rows.map(r => ({ ref: reg.add('decision', r.id, `${r.key} ${r.title}`, r.due), key: r.key, title: r.title, status: r.status, needed_by: r.due, late: !!r.due && r.due < today && ['proposed', 'under_review'].includes(r.status), days_open: Math.round((Date.now() - r.created.getTime()) / DAY), owner: r.ownerName, initiative: r.code })) }
       }
       case 'engagement_history': {
         const since = a.since_days ? new Date(Date.now() - (a.since_days as number) * DAY) : null
@@ -160,6 +164,30 @@ export async function runTool(db: DB, tn: TenantContext, reg: RefRegistry, name:
             a.organization_id ? sql`${engagementParticipant.stakeholderId} in (select stakeholder_id from stakeholder_organization where organization_id = ${a.organization_id} and valid_to is null)` : undefined))
           .orderBy(desc(engagement.occurredAt)).limit(a.limit as number)
         return { engagements: rows.map(e => ({ ref: reg.add('engagement', e.id, `${e.key} ${e.title}`, iso(e.at)), date: iso(e.at)?.slice(0, 10), kind: e.kind, title: e.title, summary: e.summary })) }
+      }
+      case 'recent_changes': {
+        // Every item is joined to its record, so RLS hides anything the user can't see (restricted stakeholders never
+        // leak through history text).
+        const days = a.days as number, ini = (a.initiative_id as string | null) ?? null
+        const since = sql`now() - make_interval(days => ${days})`
+        const stance = rowsOf<Record<string, unknown>>(await t.execute(sql`
+          select distinct on (s.id) s.id, s.name, a.changes, a.created_at as at from activity_event a join stakeholder s on s.id = a.entity_id
+          where a.entity_type = 'stakeholder' and a.verb = 'stance_changed' and a.created_at > ${since} and s.archived_at is null
+            ${ini ? sql`and exists (select 1 from initiative_stakeholder x where x.stakeholder_id = s.id and x.initiative_id = ${ini})` : sql``}
+          order by s.id, a.created_at desc`))
+        const decided = await t.select({ id: decision.id, key: decision.key, title: decision.title, status: decision.status, at: decision.decidedAt }).from(decision)
+          .where(and(isNull(decision.archivedAt), inArray(decision.status, ['approved', 'rejected', 'deferred']), sql`${decision.decidedAt} > ${since}`, ini ? eq(decision.initiativeId, ini) : undefined)).orderBy(desc(decision.decidedAt))
+        const done = await t.select({ id: commitment.id, key: commitment.key, title: commitment.title, at: commitment.completedAt }).from(commitment)
+          .where(and(isNull(commitment.archivedAt), eq(commitment.status, 'completed'), sql`${commitment.completedAt} > ${since}`, ini ? eq(commitment.initiativeId, ini) : undefined)).orderBy(desc(commitment.completedAt))
+        const added = await t.select({ id: stakeholder.id, name: stakeholder.name, at: stakeholder.createdAt }).from(stakeholder)
+          .where(and(isNull(stakeholder.archivedAt), sql`${stakeholder.createdAt} > ${since}`, ini ? sql`exists (select 1 from initiative_stakeholder x where x.stakeholder_id = ${stakeholder.id} and x.initiative_id = ${ini})` : undefined)).orderBy(desc(stakeholder.createdAt))
+        const ch = (r: Record<string, unknown>) => (r.changes as { stance?: { from: string; to: string } } | null)?.stance
+        return {
+          days, stance_changes: stance.length, decisions_decided: decided.length, commitments_completed: done.length, stakeholders_added: added.length,
+          latest_stance_changes: stance.slice(0, 5).map(r => ({ ref: reg.add('stakeholder', r.id as string, r.name as string), name: r.name, from: ch(r) ? STANCE_LABEL[ch(r)!.from] : null, to: ch(r) ? STANCE_LABEL[ch(r)!.to] : null })),
+          latest_decisions: decided.slice(0, 5).map(d => ({ ref: reg.add('decision', d.id, `${d.key} ${d.title}`), key: d.key, title: d.title, status: d.status, on: iso(d.at)?.slice(0, 10) })),
+          latest_completed: done.slice(0, 5).map(c => ({ ref: reg.add('commitment', c.id, `${c.key} ${c.title}`), key: c.key, title: c.title, on: iso(c.at)?.slice(0, 10) })),
+        }
       }
       case 'get_initiative': {
         const [i] = await t.select({ id: initiative.id, code: initiative.code, name: initiative.name, status: initiative.status, description: initiative.description, ownerName: user.name }).from(initiative).leftJoin(user, eq(user.id, initiative.ownerId)).where(eq(initiative.id, a.initiative_id as string))

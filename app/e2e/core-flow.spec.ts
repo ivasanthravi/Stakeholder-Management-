@@ -133,6 +133,17 @@ test.describe.serial('Phase 1 core flow', () => {
     await expect(page.getByRole('treeitem', { name: /Bea Ellwood/ })).toBeVisible()
   })
 
+  test('new stakeholder with an existing name: non-blocking hint links to the existing record', async ({ page }) => {
+    await signIn(page, alice)
+    await create(page, 'cp')
+    await field(page, 'Name').fill('bea  ellwood')
+    const hint = page.locator('.dup-hint')
+    await expect(hint).toContainText('already recorded')
+    await expect(page.getByRole('button', { name: 'Create stakeholder' })).toBeEnabled()
+    await hint.getByRole('link', { name: 'Bea Ellwood' }).click()
+    await expect(page).toHaveURL(new RegExp(`${stakeholderUrl}$`))
+  })
+
   test('tenant isolation: another account cannot see or open Tenant A records', async ({ page }) => {
     await signUpAndVerify(page, bob)
     await page.goto('/')

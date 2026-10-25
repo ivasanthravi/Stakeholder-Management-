@@ -154,9 +154,10 @@ export const aiRoutes = new Hono<AppEnv>()
   .get('/briefings/decisions/:id', c => cachedBriefing(c, 'briefing_decision', async lookup => completeBriefing(engineOf(c), await tx(c, t => decisionBriefing(t, engineOf(c), c.req.param('id'))), c.req.raw.signal, lookup)))
   .get('/briefings/workspace', c => cachedBriefing(c, 'briefing_workspace', async lookup => {
     const th = (await aiSettings(c.var.deps.db, c.var.tenant.workspaceId)).thresholds
+    // Totals, not the length of the capped signal list (Phase 7: at 5,000 stakeholders the list holds 60 of 1,987 overdue).
     const d = await tx(c, t => computeDashboard(t, c.var.tenant.userId, th))
     const eng7 = await tx(c, async t => ((await t.execute(sql`select count(*)::int as n from engagement where archived_at is null and occurred_at > now() - interval '7 days'`)) as unknown as { rows: { n: number }[] }).rows[0]?.n ?? 0)
-    return completeBriefing(engineOf(c), workspaceBriefing(engineOf(c), d.signals as never, { overdue: d.signals.filter(s => s.kind === 'overdue').length, decisions: d.signals.filter(s => s.kind === 'decision-waiting').length, cooling: d.signals.filter(s => s.kind === 'cooling').length, engagements7: eng7 }), c.req.raw.signal, lookup)
+    return completeBriefing(engineOf(c), workspaceBriefing(engineOf(c), d.signals as never, { overdue: d.signalCounts.team.overdue ?? 0, decisions: d.signalCounts.team['decision-waiting'] ?? 0, cooling: d.signalCounts.team.cooling ?? 0, engagements7: eng7 }), c.req.raw.signal, lookup)
   }))
 
   // ── Relationship paths (deterministic) ────────────────────────────────────

@@ -79,9 +79,17 @@ export function Home() {
   )
 }
 
+/** Signal totals by kind: the server's full counts when present (the signal list itself is capped at scale). */
+function kindCounts(d: Dashboard, scope: 'team' | 'mine') {
+  if (d.signalCounts) return d.signalCounts[scope]
+  const o: Partial<Record<Signal['kind'], number>> = {}
+  for (const x of d.signals) if (scope === 'team' || x.ownerId === d.me) o[x.kind] = (o[x.kind] ?? 0) + 1
+  return o
+}
+
 function Summary({ d, scope }: { d: Dashboard; scope: 'team' | 'mine' }) {
-  const s = d.signals.filter(x => scope === 'team' || x.ownerId === d.me)
-  const od = s.filter(x => x.kind === 'overdue').length, dw = s.filter(x => x.kind === 'decision-waiting').length, cool = s.filter(x => x.kind === 'cooling').length
+  const k = kindCounts(d, scope)
+  const od = k.overdue ?? 0, dw = k['decision-waiting'] ?? 0, cool = k.cooling ?? 0
   const parts = [od && `${od} overdue commitment${od > 1 ? 's' : ''}`, dw && `${dw} decision${dw > 1 ? 's' : ''} waiting`, cool && `${cool} key relationship${cool > 1 ? 's' : ''} cooling`].filter(Boolean) as string[]
   const n = d.initiatives.length
   if (!parts.length) return n ? <>Nothing is slipping across {n} initiative{n === 1 ? '' : 's'}.</> : <>Nothing is slipping yet.</>
@@ -141,7 +149,14 @@ function HomeGrid({ d, scope, onPeek }: { d?: Dashboard; scope: 'team' | 'mine';
   const f = FILTERS.find(x => x.id === filter)!
   const matching = scoped.filter(x => !('kinds' in f) || (f.kinds as readonly string[]).includes(x.kind))
   const visible = matching.slice(0, 60)
-  const counts = Object.fromEntries(FILTERS.map(fl => [fl.id, scoped.filter(x => !('kinds' in fl) || (fl.kinds as readonly string[]).includes(x.kind)).length]))
+  // Tab counts are true totals (minus anything hidden here); the list below shows the first 60 of them.
+  const totals = d ? kindCounts(d, scope) : {}
+  const hiddenOf = (kinds?: readonly string[]) => (d?.signals ?? []).filter(x => hidden.has(x.id) && (!kinds || kinds.includes(x.kind))).length
+  const counts = Object.fromEntries(FILTERS.map(fl => {
+    const kinds = 'kinds' in fl ? (fl.kinds as readonly string[]) : undefined
+    const total = Object.entries(totals).reduce((s, [kind, n]) => s + (!kinds || kinds.includes(kind) ? n ?? 0 : 0), 0)
+    return [fl.id, Math.max(0, total - hiddenOf(kinds))]
+  })) as Record<typeof FILTERS[number]['id'], number>
 
   const hide = (sig: Signal) => {
     setHidden(h => new Set(h).add(sig.id))
@@ -202,7 +217,7 @@ function HomeGrid({ d, scope, onPeek }: { d?: Dashboard; scope: 'team' | 'mine';
               <p className="c2 t-small">Items appear when commitments slip, decisions wait too long, or key relationships go quiet.</p>
             </motion.li>
           )}
-          {d && matching.length > visible.length && <li className="ledger-more t-small c2">Showing {visible.length} of {matching.length}. <Link className="inline-link" to="/commitments?view=overdue">See all overdue commitments</Link></li>}
+          {d && counts[filter] > visible.length && <li className="ledger-more t-small c2">Showing {visible.length} of {counts[filter].toLocaleString()}. <Link className="inline-link" to={filter === 'decisions' ? '/decisions' : filter === 'relationships' ? '/stakeholders' : '/commitments?view=overdue'}>{filter === 'decisions' ? 'See all decisions' : filter === 'relationships' ? 'See all stakeholders' : 'See all overdue commitments'}</Link></li>}
         </ul>
         <footer className="ledger-foot t-small c3">
           <span className="row gap-1"><Kbd>J</Kbd><Kbd>K</Kbd> move</span>
@@ -461,11 +476,13 @@ function Horizon({ d, scope }: { d?: Dashboard; scope: 'team' | 'mine' }) {
   const W = 316, H = 112, PAST = 30, FUT = 30
   // Every overdue commitment counts and is plotted; anything older than the window is pinned to its left edge.
   const items = (d?.horizon ?? []).filter(c => scope === 'team' || c.ownerId === d?.me).map(c => ({ c, d: daysFromToday(c.dueDate) })).filter(x => x.d <= FUT)
-  const older = items.some(i => i.d < -PAST)
+  // Older overdue commitments arrive as a count (the server lists only the ±30-day window).
+  const olderCount = (d?.horizonOlder?.[scope] ?? 0) + items.filter(i => i.d < -PAST).length
+  const older = olderCount > 0
   const x = (v: number) => ((Math.max(v, -PAST) + PAST) / (PAST + FUT)) * (W - 16) + 8
   const stacks = new Map<number, number>()
   const dots = items.sort((a, b) => a.d - b.d).map(it => { const b = Math.round(Math.max(it.d, -PAST) / 2); const k = stacks.get(b) ?? 0; stacks.set(b, k + 1); return { ...it, cx: x(it.d), cy: Math.max(8, H - 22 - k * 9) } })
-  const od = items.filter(i => i.d < 0).length, wk = items.filter(i => i.d >= 0 && i.d <= 7).length, later = items.filter(i => i.d > 7).length
+  const od = items.filter(i => i.d < 0 && i.d >= -PAST).length + olderCount, wk = items.filter(i => i.d >= 0 && i.d <= 7).length, later = items.filter(i => i.d > 7).length
   const h = dots.find(dd => dd.c.id === hover)
   return (
     <Card title="Commitment horizon" meta="±30 days" loading={!d}>
@@ -474,10 +491,12 @@ function Horizon({ d, scope }: { d?: Dashboard; scope: 'team' | 'mine' }) {
         <Link to="/commitments?view=week"><span className="hz-n num hz-wk">{wk}</span><span className="t-caption c3">due this week</span></Link>
         <Link to="/commitments"><span className="hz-n num">{later}</span><span className="t-caption c3">later</span></Link>
       </div>
-      <svg width="100%" viewBox={`0 0 ${W} ${H}`} className="hz" role="img" aria-label={`${od} overdue${older ? ' (some for more than 30 days)' : ''}, ${wk} due within 7 days, ${later} due later in the next 30 days`}>
+      <svg width="100%" viewBox={`0 0 ${W} ${H}`} className="hz" role="img" aria-label={`${od} overdue${older ? ` (${olderCount} for more than 30 days)` : ''}, ${wk} due within 7 days, ${later} due later in the next 30 days`}>
         <rect x={8} y={H - 14} width={x(0) - 8} height={1} className="hz-axis-past" />
         <rect x={x(0)} y={H - 14} width={W - 8 - x(0)} height={1} className="hz-axis" />
-        {[-30, -14, 14, 30].map(v => <text key={v} x={x(v)} y={H - 2} textAnchor="middle" className="hz-tick">{v === -30 && older ? 'older' : v > 0 ? `+${v}d` : `${v}d`}</text>)}
+        {[-30, -14, 14, 30].map(v => v === -30 && older
+          ? <text key={v} x={x(v)} y={H - 2} textAnchor="start" className="hz-tick hz-older" role="link" tabIndex={0} onClick={() => nav('/commitments?view=overdue')} onKeyDown={e => { if (e.key === 'Enter') nav('/commitments?view=overdue') }}><title>{`${olderCount} commitments overdue by more than 30 days`}</title>{`+${olderCount} older`}</text>
+          : <text key={v} x={x(v)} y={H - 2} textAnchor="middle" className="hz-tick">{v > 0 ? `+${v}d` : `${v}d`}</text>)}
         <line x1={x(0)} x2={x(0)} y1={6} y2={H - 10} className="hz-today" />
         <text x={x(0)} y={H - 2} textAnchor="middle" className="hz-tick hz-tick-today">Today</text>
         {dots.map((dd, i) => (

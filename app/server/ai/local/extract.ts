@@ -73,6 +73,10 @@ const PROMISE = /\b(we|i|I|they|he|she|[Tt]he\s+[a-z]+(?:\s[a-z]+)?|[A-Z][a-z]+(
 const ACTION_TO = /^(?:action[:\s-]+)?([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)\s+to\s+([a-z][^;]+)/
 const DECISION = /\b(agreed that|decided|decision (?:was|is)|confirmed (?:that )?|approved|resolved to|signed off|endorsed|will not oppose|no longer under consideration|was withdrawn|(?:has|have) been (?:cancelled|postponed|withdrawn|dropped)|(?:was|were) (?:cancelled|postponed))\b/i
 const HEDGE = /\b(might|may|could|would consider|possibly|perhaps|if\b|unless|subject to|provisionally)\b/i
+/** An explicitly labelled decision ("Decision: …", "Agreed: …", "Resolved – …") is recorded as one whatever its verb. */
+const LABELLED_DECISION = /^(?:decision|decided|agreed|resolution|resolved)\s*[:\-–—]\s*/i
+/** Decision-making bodies: when they "agreed to" something, that records a decision, not a personal promise. */
+const BODY = /^the\s+(?:council|board|committee|faculty|senate|panel|cabinet|executive|trust|forum|partnership|steering (?:group|board|committee)|working group|programme board|project board)\b/i
 const QUESTION = /\?$|\b(asked whether|asked if|unclear whether|to be confirmed|tbc|remains open|still not (?:received|clear|agreed)|no decision)\b/i
 const NEEDS = /\b(need(?:s)? to|should|must|follow[- ]up on|to be arranged|to be scheduled)\b/i
 /** Explicit refusals or inability ("I can't promise a date") are never obligations. */
@@ -109,6 +113,12 @@ export function localExtract(input: MeetingInput): MeetingExtraction {
 
   for (const s of ss) {
     const t = s.text
+    const label = LABELLED_DECISION.exec(t)
+    if (label && !HEDGE.test(t) && !QUESTION.test(t.slice(label[0].length))) {
+      const rest = t.slice(label[0].length).replace(/^(?:we|the group|the meeting)\s+(?:agreed|decided)\s+(?:that\s+|to\s+)?/i, '').replace(/[.]+$/, '')
+      decisions.push({ text: rest.charAt(0).toUpperCase() + rest.slice(1), quote: t, basis: 'explicit', people: peopleIn(t) })
+      continue
+    }
     if (QUESTION.test(t)) { open_questions.push({ text: t.replace(/^.*?\b(asked whether|asked if)\b\s*/i, m => m ? 'Whether ' : '').replace(/^whether whether/i, 'Whether'), quote: t }); continue }
 
     // Speaker attribution: "Daniel said we will …" → owner Daniel.
@@ -118,7 +128,7 @@ export function localExtract(input: MeetingInput): MeetingExtraction {
     const voice = said?.[1] ?? s.speaker ?? null
     const pm = clause.match(PROMISE)
     // "It was agreed that the fund will be administered by …" records a decision, not a promise.
-    const groupDecision = !!pm && /^the\s/i.test(pm[1]) && DECISION.test(t)
+    const groupDecision = !!pm && /^the\s/i.test(pm[1]) && (DECISION.test(t) || (BODY.test(pm[1]) && /\b(?:agreed|decided|resolved) to\b/i.test(t)))
     if (pm && !groupDecision && !NEGATED.test(clause) && !HEDGE.test(clause.slice(0, clause.indexOf(pm[0])) + pm[0].slice(0, 30))) {
       const subject = pm[1]
       const isPronounUs = /^(we|i)$/i.test(subject) || /^the\s+(?:team|project team)$/i.test(subject)
@@ -135,16 +145,23 @@ export function localExtract(input: MeetingInput): MeetingExtraction {
       continue
     }
     const am = t.match(ACTION_TO)
-    if (am && !DECISION.test(t)) {
+    if (am && !DECISION.test(t) && !groupDecision) {
       actions.push({ text: imperative(am[2]), quote: t, owner_name: am[1], basis: 'explicit' })
       continue
     }
-    if (DECISION.test(t) && !HEDGE.test(t)) {
+    if ((DECISION.test(t) || groupDecision) && !HEDGE.test(t)) {
       decisions.push({ text: t.replace(/^(?:the )?(?:council|board|committee|group|we)\s+/i, m => m).replace(/[.]+$/, ''), quote: t, basis: 'explicit', people: peopleIn(t) })
       continue
     }
     if (NEEDS.test(t) && !HEDGE.test(t) && !NEGATED.test(t)) actions.push({ text: t.replace(/[.]+$/, ''), quote: t, owner_name: null, basis: 'inferred' })
   }
+
+  // The same item stated twice ("Actions recap: …") is one item, not two.
+  const once = <T extends { text: string }>(xs: T[], key: (x: T) => string) => { const seen = new Set<string>(); return xs.filter(x => { const k = key(x); if (seen.has(k)) return false; seen.add(k); return true }) }
+  const norm = (x: string) => x.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim()
+  commitments.splice(0, commitments.length, ...once(commitments, c => `${norm(c.text)}|${c.owner_name ?? ''}|${c.due_date ?? c.due_text ?? ''}`))
+  actions.splice(0, actions.length, ...once(actions, a => `${norm(a.text)}|${a.owner_name ?? ''}`))
+  decisions.splice(0, decisions.length, ...once(decisions, d => norm(d.text)))
 
   const topics = [...new Set(ss.map(s => s.heading).filter((h): h is string => !!h))].slice(0, 8)
   const people_mentioned = peopleIn(input.notes)

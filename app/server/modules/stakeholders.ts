@@ -65,7 +65,37 @@ export const stakeholderRoutes = new Hono<AppEnv>()
         q.organizationId ? sql`exists (select 1 from stakeholder_organization so where so.stakeholder_id = s.id and so.organization_id = ${q.organizationId} and so.valid_to is null)` : undefined,
         q.ownerId ? sql`s.owner_id = ${q.ownerId}` : undefined,
       ].filter(Boolean)
-      const res = await t.execute(sql`
+      // Sorting on the stakeholder's own columns doesn't need the per-person lookups: pick the page first (on the table
+      // alone), then compute details for those rows only. At 5,000 stakeholders the single-query form computed the
+      // lookups for everyone before taking 50 (docs/simulation/performance-results.md).
+      const pageFirst = q.cold !== 'true' && ['name', 'influence', 'updated', 'stance'].includes(q.sort ?? 'influence')
+      const res = pageFirst ? await t.execute(sql`
+        with picked as (
+          select s.id, count(*) over ()::int as total,
+            row_number() over (order by ${sql.raw(sortExpr)} ${sql.raw(dir)} nulls last, lower(s.name) asc, s.id asc) as ord
+          from stakeholder s
+          where ${sql.join(filters as never[], sql` and `)}
+          order by ${sql.raw(sortExpr)} ${sql.raw(dir)} nulls last, lower(s.name) asc, s.id asc
+          limit ${q.limit} offset ${q.offset}
+        )
+        select s.id, s.name, s.title, s.email, s.stance, s.influence, s.interest, s.engagement_status, s.tags, s.owner_id,
+          s.restricted, s.version, s.updated_at, u.name as owner_name, prim.org as primary_org,
+          last.at as last_engaged_at, coalesce(openc.n, 0) as open_commitments, picked.total
+        from picked join stakeholder s on s.id = picked.id left join "user" u on u.id = s.owner_id
+          left join lateral (
+            select max(e.occurred_at) as at from engagement_participant ep join engagement e on e.id = ep.engagement_id
+            where ep.stakeholder_id = s.id and e.archived_at is null
+          ) last on true
+          left join lateral (
+            select count(*)::int as n from commitment c
+            where c.stakeholder_id = s.id and c.status in ('open', 'in_progress') and c.archived_at is null
+          ) openc on true
+          left join lateral (
+            select json_build_object('id', o.id, 'name', o.name, 'shortName', o.short_name) as org
+            from stakeholder_organization so join organization o on o.id = so.organization_id
+            where so.stakeholder_id = s.id and so.valid_to is null order by so.is_primary desc, so.created_at limit 1
+          ) prim on true
+        order by picked.ord`) : await t.execute(sql`
         -- Per-stakeholder LATERAL lookups (indexed) instead of workspace-wide aggregates joined by filter: the aggregate form
         -- went quadratic at a few thousand stakeholders (see docs/launch/performance-report.md).
         with base as (
@@ -280,6 +310,10 @@ export async function overview(t: Tx, id: string) {
   }).filter(Boolean)
   const series = (await weeklySeries(t, [id], 52)).get(id) ?? new Array(52).fill(0)
   const briefing = buildBriefing({ s: s as never, engagements, commitments, decisions, relationships: relationships as never[] })
-  return { stakeholder: s, engagements, engagementTotal: engagements.length, commitments, decisions, relationships, series, briefing }
+  // The timeline returns the latest 200; the total is counted separately so the profile never presents 200 as "all".
+  const engagementTotal = engagements.length < 200 ? engagements.length : Number(rowsOf<{ n: number }>(await t.execute(sql`
+    select count(*)::int as n from engagement_participant ep join engagement e on e.id = ep.engagement_id
+    where ep.stakeholder_id = ${id} and e.archived_at is null`))[0]?.n ?? engagements.length)
+  return { stakeholder: s, engagements, engagementTotal, commitments, decisions, relationships, series, briefing }
 }
 

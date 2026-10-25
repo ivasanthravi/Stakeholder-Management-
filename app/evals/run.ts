@@ -196,7 +196,7 @@ const startedAt = new Date().toISOString()
 const result = {
   engine: { kind: engine.kind, model: engine.model, label: engine.label }, startedAt,
   // meetings.json and adversarial.json were used while developing the local rules (development sets); heldout.json was not.
-  extraction: [await extractionEval(engine, load('meetings.json'), 'multi-industry (dev)'), await extractionEval(engine, load('adversarial.json'), 'adversarial (dev)'), await extractionEval(engine, load('heldout.json'), 'held-out'), await extractionEval(engine, load('launch.json'), 'launch held-out')],
+  extraction: [await extractionEval(engine, load('meetings.json'), 'multi-industry (dev)'), await extractionEval(engine, load('adversarial.json'), 'adversarial (dev)'), await extractionEval(engine, load('heldout.json'), 'held-out'), await extractionEval(engine, load('launch.json'), 'launch held-out'), await extractionEval(engine, load('simulation.json'), 'simulation (Phase 7)')],
   grounded: await groundedEval(engine),
 }
 mkdirSync(join(here, 'results'), { recursive: true })

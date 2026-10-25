@@ -23,6 +23,15 @@ function provider(c: Ctx) {
   return p
 }
 
+/** Provider calls: an unreachable or failing provider is a 503 the user can act on, not a generic 500. */
+async function reach<T>(call: () => Promise<T>): Promise<T> {
+  try { return await call() } catch (e) {
+    if (e instanceof ApiError) throw e
+    log('warn', 'billing provider call failed', { reason: (e as Error).message.slice(0, 160) })
+    throw new ApiError(503, 'billing_unavailable', 'We couldn’t reach the billing provider. Nothing was changed. Please try again in a few minutes.')
+  }
+}
+
 /** What can be bought right now: self-serve plans whose provider price is configured. */
 function catalog(c: Ctx) {
   const p = c.var.deps.billing
@@ -72,7 +81,7 @@ export const billingRoutes = new Hono<AppEnv>()
     const row = await loadSubscription(c.var.deps.db, c.var.tenant.workspaceId)
     const p = c.var.deps.billing
     if (!p || !row.providerCustomerId || row.provider !== p.id) return c.json({ invoices: [], source: p?.label ?? null })
-    return c.json({ invoices: await p.listInvoices(row.providerCustomerId), source: p.label })
+    return c.json({ invoices: await reach(() => p.listInvoices(row.providerCustomerId!)), source: p.label })
   })
 
   .post('/checkout', async c => {
@@ -88,11 +97,11 @@ export const billingRoutes = new Hono<AppEnv>()
       throw new ApiError(409, 'conflict', 'This workspace already has a subscription. Change the plan instead.')
     }
     await assertSeatsCover(c, input.plan, input.seats)
-    const session = await p.createCheckout({
+    const session = await reach(() => p.createCheckout({
       workspaceId: t.workspaceId, workspaceName: t.workspaceName, email: c.var.user!.email,
       customerId: row.provider === p.id ? row.providerCustomerId : null, plan: input.plan, interval: input.interval, seats: input.seats,
       successUrl: `${env.APP_URL}/settings/billing?checkout=success`, cancelUrl: `${env.APP_URL}/settings/billing?checkout=canceled`,
-    })
+    }))
     await recordAudit(db, { workspaceId: t.workspaceId, actorId: t.userId, action: 'billing.checkout_started', entityType: 'subscription', entityId: t.workspaceId, metadata: input }, meta(c))
     await track(db, 'checkout_initiated', { userId: t.userId, workspaceId: t.workspaceId, props: input })
     return c.json({ url: session.url })
@@ -103,7 +112,7 @@ export const billingRoutes = new Hono<AppEnv>()
     const p = provider(c)
     const row = await loadSubscription(c.var.deps.db, c.var.tenant.workspaceId)
     if (!row.providerCustomerId || row.provider !== p.id) throw new ApiError(409, 'conflict', 'There’s no billing account yet. Choose a plan first.')
-    const s = await p.createPortal(row.providerCustomerId, `${c.var.deps.env.APP_URL}/settings/billing`, row.providerSubscriptionId)
+    const s = await reach(() => p.createPortal(row.providerCustomerId!, `${c.var.deps.env.APP_URL}/settings/billing`, row.providerSubscriptionId))
     if (!s) throw new ApiError(503, 'billing_unavailable', 'The billing portal isn’t available with this provider.')
     return c.json({ url: s.url })
   })
@@ -119,7 +128,7 @@ export const billingRoutes = new Hono<AppEnv>()
     if (!PLANS[input.plan].selfServe) throw new ApiError(422, 'sales_led', `${PLANS[input.plan].name} is arranged with our team. Contact sales.`)
     if (!p.priceId(input.plan, input.interval)) throw new ApiError(422, 'not_sold', 'That plan and billing period isn’t available yet.')
     await assertSeatsCover(c, input.plan, input.seats)
-    await p.updateSubscription(row.providerSubscriptionId, input)
+    await reach(() => p.updateSubscription(row.providerSubscriptionId!, input))
     await recordAudit(db, { workspaceId: t.workspaceId, actorId: t.userId, action: 'billing.change_requested', entityType: 'subscription', entityId: t.workspaceId, metadata: { from: { plan: row.plan, seats: row.seats, interval: row.interval }, to: input } }, meta(c))
     // Refresh from the provider now (same path as webhooks) so the page reflects the change without waiting.
     await syncSubscription(billingDeps(c), row.providerSubscriptionId)
@@ -135,7 +144,7 @@ export const billingRoutes = new Hono<AppEnv>()
     const row = await loadSubscription(db, t.workspaceId)
     if (!row.providerSubscriptionId || row.provider !== p.id) throw new ApiError(409, 'conflict', 'There’s no paid subscription to cancel.')
     // Self-serve cancellation always takes effect at the end of the paid period; nothing is refunded or deleted here.
-    await p.cancel(row.providerSubscriptionId, { atPeriodEnd: true })
+    await reach(() => p.cancel(row.providerSubscriptionId!, { atPeriodEnd: true }))
     await recordAudit(db, { workspaceId: t.workspaceId, actorId: t.userId, action: 'billing.cancel_requested', entityType: 'subscription', entityId: t.workspaceId, metadata: { reason: reason ?? null } }, meta(c))
     await syncSubscription(billingDeps(c), row.providerSubscriptionId)
     return c.json({ entitlements: await entitlementsFor(db, t.workspaceId) })
@@ -148,7 +157,7 @@ export const billingRoutes = new Hono<AppEnv>()
     const t = c.var.tenant
     const row = await loadSubscription(db, t.workspaceId)
     if (!row.providerSubscriptionId || row.provider !== p.id || !row.cancelAtPeriodEnd) throw new ApiError(409, 'conflict', 'There’s no scheduled cancellation to undo.')
-    await p.resume(row.providerSubscriptionId)
+    await reach(() => p.resume(row.providerSubscriptionId!))
     await recordAudit(db, { workspaceId: t.workspaceId, actorId: t.userId, action: 'billing.resumed', entityType: 'subscription', entityId: t.workspaceId }, meta(c))
     await syncSubscription(billingDeps(c), row.providerSubscriptionId)
     return c.json({ entitlements: await entitlementsFor(db, t.workspaceId) })

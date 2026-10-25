@@ -198,7 +198,6 @@ type View = typeof VIEWS[number]['id']
 const OPEN = 'open,in_progress'
 /** Narrow-screen variant of dueLabel. */
 const shortDue = (iso: string | null) => { if (!iso) return 'No date'; const d = daysFromToday(iso); return d < 0 ? `${-d}d late` : d === 0 ? 'Today' : d <= 7 ? `In ${d}d` : fmtDate(iso) }
-const inWeek = (r: { dueDate: string | null }) => { if (!r.dueDate) return false; const d = daysFromToday(r.dueDate); return d >= 0 && d <= 7 }
 
 export function Commitments() {
   const [params, setParams] = useSearchParams()
@@ -225,20 +224,18 @@ export function Commitments() {
 
   const base = { q, initiativeId: initiative }
   const viewParams: Record<View, Params> = {
-    open: { ...base, status: OPEN }, overdue: { ...base, overdue: 'true' }, week: { ...base, status: OPEN },
+    open: { ...base, status: OPEN }, overdue: { ...base, overdue: 'true' }, week: { ...base, status: OPEN, dueWithinDays: 7 },
     mine: { ...base, status: OPEN, ownerId: myId }, completed: { ...base, status: 'completed' },
   }
-  // "Due this week" has no server filter: read the open set (sorted by due date) and narrow it here.
-  const openAll = useList<CommitmentRow>('commitments', { ...base, status: OPEN, limit: 200 })
-  const paged = usePaged<CommitmentRow>('commitments', viewParams[view], 100, view !== 'week')
+  const paged = usePaged<CommitmentRow>('commitments', viewParams[view], 100)
   const cOpen = useList<CommitmentRow>('commitments', { ...viewParams.open, limit: 1 })
   const cOver = useList<CommitmentRow>('commitments', { ...viewParams.overdue, limit: 1 })
   const cMine = useList<CommitmentRow>('commitments', { ...viewParams.mine, limit: 1 }, { enabled: !!myId })
   const cDone = useList<CommitmentRow>('commitments', { ...viewParams.completed, limit: 1 })
-  const weekRows = useMemo(() => (openAll.data?.items ?? []).filter(inWeek), [openAll.data])
-  const counts = { open: cOpen.data?.total, overdue: cOver.data?.total, week: openAll.data ? weekRows.length : undefined, mine: cMine.data?.total, completed: cDone.data?.total }
+  const cWeek = useList<CommitmentRow>('commitments', { ...viewParams.week, limit: 1 })
+  const counts = { open: cOpen.data?.total, overdue: cOver.data?.total, week: cWeek.data?.total, mine: cMine.data?.total, completed: cDone.data?.total }
 
-  const server = useMemo(() => (view === 'week' ? weekRows : paged.data?.pages.flatMap(p => p.items) ?? []), [view, weekRows, paged.data])
+  const server = useMemo(() => paged.data?.pages.flatMap(p => p.items) ?? [], [paged.data])
   // Rows toggled in this view stay in place (struck through) until the view changes, so completing one doesn't make it vanish mid-gesture.
   const [kept, setKept] = useState<Map<string, { row: CommitmentRow; index: number }>>(new Map())
   useEffect(() => { setKept(new Map()) }, [view, q, initiative])
@@ -257,9 +254,9 @@ export function Commitments() {
     return new Map(k).set(id, { ...e, row: { ...e.row, status, version: next.version, completedAt: status === 'completed' ? new Date().toISOString() : null } })
   }))
 
-  const query = view === 'week' ? openAll : paged
+  const query = paged
   const loading = query.isPending
-  const total = view === 'week' ? weekRows.length : paged.data?.pages[0]?.total ?? 0
+  const total = paged.data?.pages[0]?.total ?? 0
   const canUpdate = can('commitment.update')
 
   useEffect(() => { setFocus(f => Math.min(f, Math.max(0, rows.length - 1))) }, [rows.length])
@@ -363,7 +360,7 @@ export function Commitments() {
                   </div>
                 )
               })}
-            {view !== 'week' && paged.hasNextPage && (
+            {paged.hasNextPage && (
               <div className="rb-more"><Button size="sm" loading={paged.isFetchingNextPage} onClick={() => void paged.fetchNextPage()}>Load more</Button><span className="t-small c3 num">Showing {rows.length} of {total}</span></div>
             )}
           </div>

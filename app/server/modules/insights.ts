@@ -76,10 +76,15 @@ export async function computeDashboard(t: Tx, me: string, th: Thresholds) {
           left join engagement e on e.id = ep.engagement_id and e.archived_at is null
         where s.archived_at is null and s.engagement_status <> 'do_not_contact'
         group by s.id, u.name`))
-      const recentEv = rowsOf<Record<string, unknown>>(await t.execute(sql`
+      // The latest engagement is evidence for cooling signals only: fetch it for those people, not for everyone
+      // (65 ms for 5,000 stakeholders when computed for all of them).
+      const cooling = (p: Record<string, unknown>) => (p.influence as number) >= 3 && (p.prior as number) >= 3 && (p.recent as number) <= (p.prior as number) * th.coolingRatio
+      const coolingIds = people.filter(cooling).map(p => p.id as string)
+      const recentEv = coolingIds.length ? rowsOf<Record<string, unknown>>(await t.execute(sql`
         select distinct on (ep.stakeholder_id) ep.stakeholder_id as sid, e.id, e.key, e.title, e.occurred_at as "occurredAt"
         from engagement_participant ep join engagement e on e.id = ep.engagement_id
-        where e.archived_at is null order by ep.stakeholder_id, e.occurred_at desc`))
+        where e.archived_at is null and ep.stakeholder_id in (${sql.join(coolingIds.map(x => sql`${x}`), sql`, `)})
+        order by ep.stakeholder_id, e.occurred_at desc`)) : []
       const evBy = new Map(recentEv.map(r => [r.sid as string, r]))
       const shifts = rowsOf<Record<string, unknown>>(await t.execute(sql`
         select a.entity_id as sid, a.changes, a.created_at as at, s.name, s.title, s.stance
@@ -111,7 +116,7 @@ export async function computeDashboard(t: Tx, me: string, th: Thresholds) {
         }
       }
       for (const p of people) {
-        if ((p.influence as number) >= 3 && (p.prior as number) >= 3 && (p.recent as number) <= (p.prior as number) * th.coolingRatio) {
+        if (cooling(p)) {
           const ev = evBy.get(p.id as string)
           signals.push({
             id: `c-${p.id}`, kind: 'cooling', severity: p.influence === 4 ? 2 : 1, title: p.name as string,
@@ -133,46 +138,89 @@ export async function computeDashboard(t: Tx, me: string, th: Thresholds) {
       }
       // Unassigned open commitments (accountability gap) and repeated delays (due date moved 2+ times).
       const unassigned = rowsOf<Record<string, unknown>>(await t.execute(sql`
-        select cm.id, cm.key, cm.title, cm.due_date as "dueDate", cm.version, s.id as sid, s.name as sname, s.title as stitle, s.stance as sstance, i.code
-        from commitment cm left join stakeholder s on s.id = cm.stakeholder_id left join initiative i on i.id = cm.initiative_id
-        where cm.archived_at is null and cm.status in ('open','in_progress') and cm.owner_id is null and (cm.stakeholder_id is null or s.id is not null)
+        -- No accountable owner: never assigned, or owned by someone who has since left the workspace.
+        select cm.id, cm.key, cm.title, cm.due_date as "dueDate", cm.version, s.id as sid, s.name as sname, s.title as stitle, s.stance as sstance, i.code,
+          (cm.owner_id is not null) as departed, u.name as "formerOwner"
+        from commitment cm left join stakeholder s on s.id = cm.stakeholder_id left join initiative i on i.id = cm.initiative_id left join "user" u on u.id = cm.owner_id
+        where cm.archived_at is null and cm.status in ('open','in_progress') and (cm.stakeholder_id is null or s.id is not null)
+          and (cm.owner_id is null or not exists (select 1 from membership m where m.user_id = cm.owner_id and m.removed_at is null))
         order by cm.due_date nulls last limit 50`))
-      for (const u of unassigned) signals.push({ id: `n-${u.id}`, kind: 'unassigned', severity: 2, title: `${u.key} ${u.title}`, reason: `No accountable owner${u.dueDate ? ` · due ${u.dueDate}` : ''}`, rule: 'Open commitment with no owner', commitmentId: u.id as string, commitmentVersion: u.version as number, stakeholder: u.sid ? { id: u.sid as string, name: u.sname as string, title: u.stitle as string | null, stance: u.sstance as string } : null, ownerId: null, ownerName: null, initiativeCode: u.code as string | null, evidence: [], at: 0 })
+      const unassignedTotal = Number(rowsOf<{ n: number }>(await t.execute(sql`
+        select count(*)::int as n from commitment cm left join stakeholder s on s.id = cm.stakeholder_id
+        where cm.archived_at is null and cm.status in ('open','in_progress') and (cm.stakeholder_id is null or s.id is not null)
+          and (cm.owner_id is null or not exists (select 1 from membership m where m.user_id = cm.owner_id and m.removed_at is null))`))[0]?.n ?? 0)
+      for (const u of unassigned) signals.push({ id: `n-${u.id}`, kind: 'unassigned', severity: 2, title: `${u.key} ${u.title}`, reason: `${u.departed ? `Owner left the workspace${u.formerOwner ? ` (${u.formerOwner})` : ''}` : 'No accountable owner'}${u.dueDate ? ` · due ${u.dueDate}` : ''}`, rule: 'Open commitment with no owner, or whose owner is no longer a member', commitmentId: u.id as string, commitmentVersion: u.version as number, stakeholder: u.sid ? { id: u.sid as string, name: u.sname as string, title: u.stitle as string | null, stance: u.sstance as string } : null, ownerId: null, ownerName: null, initiativeCode: u.code as string | null, evidence: [], at: 0 })
       const delayed = rowsOf<Record<string, unknown>>(await t.execute(sql`
         select cm.id, cm.key, cm.title, cm.due_date as "dueDate", cm.version, cm.owner_id as "ownerId", u.name as "ownerName", s.id as sid, s.name as sname, s.title as stitle, s.stance as sstance, count(a.id)::int as moves
         from commitment cm join activity_event a on a.entity_type = 'commitment' and a.entity_id = cm.id and a.changes ? 'dueDate'
           left join "user" u on u.id = cm.owner_id left join stakeholder s on s.id = cm.stakeholder_id
         where cm.archived_at is null and cm.status in ('open','in_progress') and (cm.stakeholder_id is null or s.id is not null)
         group by cm.id, u.name, s.id having count(a.id) >= 2 limit 50`))
+      const delayedTotal = Number(rowsOf<{ n: number }>(await t.execute(sql`
+        select count(*)::int as n from (select cm.id from commitment cm join activity_event a on a.entity_type = 'commitment' and a.entity_id = cm.id and a.changes ? 'dueDate'
+          where cm.archived_at is null and cm.status in ('open','in_progress') group by cm.id having count(a.id) >= 2) x`))[0]?.n ?? 0)
       for (const d of delayed) signals.push({ id: `r-${d.id}`, kind: 'repeated-delay', severity: 2, title: `${d.key} ${d.title}`, reason: `Due date moved ${d.moves} times${d.dueDate ? ` · now ${d.dueDate}` : ''}`, rule: 'Open commitment whose due date has been changed two or more times', commitmentId: d.id as string, commitmentVersion: d.version as number, stakeholder: d.sid ? { id: d.sid as string, name: d.sname as string, title: d.stitle as string | null, stance: d.sstance as string } : null, ownerId: d.ownerId as string | null, ownerName: d.ownerName as string | null, initiativeCode: null, evidence: [], at: 0 })
 
       // Recommended next step per signal (deterministic; the action is offered for the user to approve).
       for (const sg of signals) sg.next = NEXT_STEP[sg.kind]?.(sg) ?? null
       signals.sort((a, b) => b.severity - a.severity || a.at - b.at)
 
-      const horizon = commitments.map(cm => ({ id: cm.id, key: cm.key, title: cm.title, dueDate: cm.dueDate, stakeholderId: cm.stakeholderId, stakeholderName: cm.stakeholderName, ownerId: cm.ownerId }))
+      // Counts by kind over EVERY signal (the list sent below is capped): the Command Center's numbers must stay true
+      // at enterprise volume. Two kinds are capped in their own queries, so their totals come from count queries.
+      const byKind = (xs: Signal[]) => { const o: Record<string, number> = {}; for (const x of xs) o[x.kind] = (o[x.kind] ?? 0) + 1; return o }
+      const team: Record<string, number> = { ...byKind(signals), unassigned: unassignedTotal, 'repeated-delay': delayedTotal }
+      const mine = byKind(signals.filter(x => x.ownerId === me))
+      // The horizon chart covers ±30 days; older overdue commitments are counted, not listed (thousands at scale).
+      const windowStart = Date.now() - 30 * DAY
+      const inWindow = commitments.filter(cm => Date.parse(String(cm.dueDate) + 'T23:59:59Z') >= windowStart)
+      const older = commitments.filter(cm => Date.parse(String(cm.dueDate) + 'T23:59:59Z') < windowStart)
+      const horizon = inWindow.map(cm => ({ id: cm.id, key: cm.key, title: cm.title, dueDate: cm.dueDate, stakeholderId: cm.stakeholderId, stakeholderName: cm.stakeholderName, ownerId: cm.ownerId }))
+      const horizonOlder = { team: older.length, mine: older.filter(cm => cm.ownerId === me).length }
       const recentEngagements = rowsOf<Record<string, unknown>>(await t.execute(sql`
         select e.id, e.key, e.kind, e.title, e.occurred_at as "occurredAt", i.code as "initiativeCode",
           (select count(*) from engagement_participant ep where ep.engagement_id = e.id)::int as participants
         from engagement e left join initiative i on i.id = e.initiative_id
         where e.archived_at is null order by e.occurred_at desc limit 8`))
+      // Key-stakeholder coverage: "engaged in the last 60 days" is computed once as a set and joined, instead of an
+      // exists() per key stakeholder per initiative (100 ms at 5,000 stakeholders; docs/simulation/performance-results.md).
       const initiatives = rowsOf<Record<string, unknown>>(await t.execute(sql`
+        with recent as (
+          select distinct ep.stakeholder_id from engagement_participant ep join engagement e on e.id = ep.engagement_id
+          where e.archived_at is null and e.occurred_at > now() - interval '60 days'
+        ), cover as (
+          select x.initiative_id, count(*)::int as key_total, count(r.stakeholder_id)::int as key_engaged
+          from initiative_stakeholder x join stakeholder s on s.id = x.stakeholder_id and s.archived_at is null and s.influence >= 3
+            left join recent r on r.stakeholder_id = s.id
+          group by x.initiative_id
+        )
         select i.id, i.code, i.name, i.status,
-          (select count(*) from initiative_stakeholder x join stakeholder s on s.id = x.stakeholder_id where x.initiative_id = i.id and s.archived_at is null and s.influence >= 3)::int as "keyTotal",
-          (select count(*) from initiative_stakeholder x join stakeholder s on s.id = x.stakeholder_id
-             where x.initiative_id = i.id and s.archived_at is null and s.influence >= 3
-               and exists (select 1 from engagement_participant ep join engagement e on e.id = ep.engagement_id
-                 where ep.stakeholder_id = s.id and e.archived_at is null and e.occurred_at > now() - interval '60 days'))::int as "keyEngaged",
+          coalesce(cv.key_total, 0) as "keyTotal",
+          coalesce(cv.key_engaged, 0) as "keyEngaged",
           (select count(*) from engagement e where e.initiative_id = i.id and e.archived_at is null and e.occurred_at > now() - interval '30 days')::int as "engagements30",
           (select count(*) from commitment cm where cm.initiative_id = i.id and cm.archived_at is null and cm.status in ('open','in_progress'))::int as "openCommitments",
           (select count(*) from decision d where d.initiative_id = i.id and d.archived_at is null and d.status in ('proposed','under_review'))::int as "pendingDecisions"
-        from initiative i where i.archived_at is null order by array_position(array['active','planned','on_hold','completed'], i.status), i.code`))
+        from initiative i left join cover cv on cv.initiative_id = i.id where i.archived_at is null order by array_position(array['active','planned','on_hold','completed'], i.status), i.code`))
       const stanceCounts = rowsOf<{ stance: string; n: number }>(await t.execute(sql`select stance, count(*)::int as n from stakeholder where archived_at is null group by stance`))
       return {
         generatedAt: new Date().toISOString(), me,
-        signals: signals.slice(0, 200), horizon, decisions, recentEngagements, initiatives,
+        signals: capPerKind(signals, me), signalCounts: { team, mine }, horizon, horizonOlder, decisions, recentEngagements, initiatives,
         stakeholders: { total: stanceCounts.reduce((a, r) => a + r.n, 0), byStance: Object.fromEntries(stanceCounts.map(r => [r.stance, r.n])) },
       }
+}
+
+/**
+ * The list the Command Center renders: the most severe 40 of EACH kind for the team, plus the user's own most severe
+ * 40 of each kind (for "Assigned to me"). A single global cut let one kind crowd out the rest: at 5,000 stakeholders no
+ * overdue commitment survived a top-200 sorted by severity then age. Totals travel separately in `signalCounts`.
+ */
+function capPerKind(sorted: Signal[], me: string, per = 40) {
+  const team = new Map<string, number>(), mine = new Map<string, number>()
+  return sorted.filter(sg => {
+    const t = team.get(sg.kind) ?? 0, m = mine.get(sg.kind) ?? 0
+    const own = sg.ownerId === me
+    if (t < per || (own && m < per)) { team.set(sg.kind, t + 1); if (own) mine.set(sg.kind, m + 1); return true }
+    return false
+  })
 }
 
 export const insightRoutes = new Hono<AppEnv>()

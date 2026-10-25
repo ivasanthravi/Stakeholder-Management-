@@ -27,6 +27,7 @@ export const commitmentRoutes = new Hono<AppEnv>()
         and (cm.stakeholder_id is null or s.id is not null)
         ${statuses.length ? sql`and cm.status in (${sql.join(statuses.map(s => sql`${s}`), sql`, `)})` : sql``}
         ${q.overdue === 'true' ? sql`and cm.status in ('open','in_progress') and cm.due_date < current_date` : sql``}
+        ${q.dueWithinDays !== undefined ? sql`and cm.due_date between current_date and current_date + ${q.dueWithinDays}::int` : sql``}
         ${q.initiativeId ? sql`and cm.initiative_id = ${q.initiativeId}` : sql``}
         ${q.stakeholderId ? sql`and cm.stakeholder_id = ${q.stakeholderId}` : sql``}
         ${q.ownerId ? sql`and cm.owner_id = ${q.ownerId}` : sql``}
